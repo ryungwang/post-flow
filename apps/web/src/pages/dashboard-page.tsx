@@ -122,7 +122,12 @@ export function DashboardPage() {
                       className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-accent/40"
                       onClick={() => setSelected(p)}
                     >
-                      <td className="max-w-xl truncate px-6 py-3.5 font-medium">{p.content}</td>
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <ScoreBadge score={p.score} compact />
+                          <span className="max-w-md truncate font-medium">{p.content}</span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3.5">
                         <Badge variant={meta.variant}>{meta.label}</Badge>
                       </td>

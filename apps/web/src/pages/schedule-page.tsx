@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PostDetailDialog } from "@/components/post-detail-dialog";
+import { ScoreBadge } from "@/components/score-badge";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { POST_STATUS_META } from "@/lib/post-status";
 import { cn } from "@/lib/utils";
@@ -232,6 +233,7 @@ export function SchedulePage() {
                       <p className="line-clamp-2 text-sm font-medium">{p.content}</p>
                       <div className="mt-1 flex items-center gap-2">
                         <Badge variant={POST_STATUS_META[p.status].variant}>{POST_STATUS_META[p.status].label}</Badge>
+                        <ScoreBadge score={p.score} compact />
                         <span className="text-xs text-muted-foreground tabular-nums">
                           {(() => { const d = p.scheduledAt ?? p.publishedAt; return d ? new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(new Date(d)) : ""; })()}
                         </span>
