@@ -2,6 +2,12 @@
 build/
 !gradle/wrapper/gradle-wrapper.jar
 .gradle/
+dist/
+
+# Node / pnpm / turbo
+node_modules/
+.turbo/
+*.tsbuildinfo
 
 # IDE
 .idea/
