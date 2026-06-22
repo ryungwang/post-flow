@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Library, Loader2, Search, Send, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -179,9 +180,16 @@ export function LibraryPage() {
             <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
               <Library className="size-6" />
             </div>
-            <p className="text-sm text-muted-foreground">
-              아직 저장된 콘텐츠가 없어요. AI 생성에서 카드를 저장해 보세요.
-            </p>
+            {q.trim() || statusFilter !== "ALL" || scoreFilter !== "ALL" ? (
+              <p className="text-sm text-muted-foreground">조건에 맞는 콘텐츠가 없어요.</p>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">아직 저장된 콘텐츠가 없어요.</p>
+                <Button asChild size="sm" className="gap-1.5">
+                  <Link to="/content/generate">첫 콘텐츠 만들기</Link>
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
