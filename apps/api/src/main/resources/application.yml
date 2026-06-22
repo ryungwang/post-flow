@@ -46,3 +46,11 @@ ai:
       LIGHT: claude-haiku-4-5
       STANDARD: claude-sonnet-4-6
       PREMIUM: claude-opus-4-8
+
+auth:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  jwt:
+    # Dev default is non-secret; prod MUST inject AUTH_JWT_SECRET (>= 32 bytes).
+    secret: ${AUTH_JWT_SECRET:dev-only-insecure-secret-change-me-32bytes!!}
+    expiration: ${AUTH_JWT_EXPIRATION:7d}

@@ -35,4 +35,21 @@ public class User extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Plan plan = Plan.FREE;
+
+    public static User create(String email, String name, String profileImage) {
+        User u = new User();
+        u.email = email;
+        u.name = name;
+        u.profileImage = profileImage;
+        u.plan = Plan.FREE;
+        return u;
+    }
+
+    /** Refresh mutable profile fields from the identity provider on each login. */
+    public void updateProfile(String name, String profileImage) {
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+        this.profileImage = profileImage;
+    }
 }
