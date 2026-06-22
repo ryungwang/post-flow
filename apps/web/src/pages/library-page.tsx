@@ -1,13 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Library, Loader2, Send, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PostDetailDialog } from "@/components/post-detail-dialog";
 import { ScoreBadge } from "@/components/score-badge";
-import { postsApi, type Post } from "@/lib/posts-api";
+import { postsApi, type Post, type PostStatus } from "@/lib/posts-api";
 import { POST_STATUS_META } from "@/lib/post-status";
+
+type SortKey = "recent" | "score-desc" | "score-asc";
 
 function fmt(iso: string | null) {
   if (!iso) return "—";
@@ -50,7 +59,24 @@ export function LibraryPage() {
     },
   });
 
-  const posts = data ?? [];
+  const allPosts = data ?? [];
+  const [sort, setSort] = useState<SortKey>("recent");
+  const [statusFilter, setStatusFilter] = useState<PostStatus | "ALL">("ALL");
+  const [scoreFilter, setScoreFilter] = useState<"ALL" | "80" | "60" | "low">("ALL");
+
+  const posts = useMemo(() => {
+    let list = allPosts.filter((p) => {
+      if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
+      if (scoreFilter === "80" && p.score < 80) return false;
+      if (scoreFilter === "60" && (p.score < 60 || p.score >= 80)) return false;
+      if (scoreFilter === "low" && p.score >= 60) return false;
+      return true;
+    });
+    if (sort === "score-desc") list = [...list].sort((a, b) => b.score - a.score);
+    else if (sort === "score-asc") list = [...list].sort((a, b) => a.score - b.score);
+    // recent = backend order (createdAt desc)
+    return list;
+  }, [allPosts, sort, statusFilter, scoreFilter]);
 
   const toggle = (id: number) =>
     setChecked((prev) => {
@@ -90,6 +116,42 @@ export function LibraryPage() {
             </>
           )}
         </div>
+
+        {!isLoading && !isError && allPosts.length > 0 && checked.size === 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-6 py-3">
+            <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+              <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">최신순</SelectItem>
+                <SelectItem value="score-desc">관심도 높은순</SelectItem>
+                <SelectItem value="score-asc">관심도 낮은순</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as PostStatus | "ALL")}>
+              <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">모든 상태</SelectItem>
+                {(Object.keys(POST_STATUS_META) as PostStatus[]).map((st) => (
+                  <SelectItem key={st} value={st}>{POST_STATUS_META[st].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={scoreFilter} onValueChange={(v) => setScoreFilter(v as typeof scoreFilter)}>
+              <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">모든 관심도</SelectItem>
+                <SelectItem value="80">80+ (높음)</SelectItem>
+                <SelectItem value="60">60–79 (보통)</SelectItem>
+                <SelectItem value="low">60 미만 (낮음)</SelectItem>
+              </SelectContent>
+            </Select>
+            {(statusFilter !== "ALL" || scoreFilter !== "ALL" || sort !== "recent") && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setSort("recent"); setStatusFilter("ALL"); setScoreFilter("ALL"); }}>
+                초기화
+              </Button>
+            )}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
