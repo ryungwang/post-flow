@@ -2,6 +2,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { LogOut, Plus } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/store/auth";
 
@@ -26,9 +27,10 @@ export function AppShell() {
       <div className="app-ambient flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border/60 bg-background/70 px-6 backdrop-blur-xl">
           <div className="flex-1" />
-          <Button size="sm" className="gap-1.5">
+          <Button size="sm" className="gap-1.5" onClick={() => navigate("/content/generate")}>
             <Plus className="size-4" />새 콘텐츠
           </Button>
+          <NotificationBell />
           <ThemeToggle />
           <div className="flex items-center gap-2 pl-1">
             <div
