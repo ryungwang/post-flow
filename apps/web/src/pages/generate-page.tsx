@@ -45,6 +45,8 @@ export function GeneratePage() {
   const [error, setError] = useState<string | null>(null);
   const [cards, setCards] = useState<GeneratedCard[] | null>(null);
 
+  const [sort, setSort] = useState<"score" | "original">("score");
+
   const [hookOpen, setHookOpen] = useState(false);
   const [hooks, setHooks] = useState<HookVariant[] | null>(null);
   const [hooksLoading, setHooksLoading] = useState(false);
@@ -227,17 +229,31 @@ export function GeneratePage() {
           <>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-semibold">생성 결과 {cards.length}개</h2>
+              <div className="flex items-center rounded-lg border bg-background p-0.5 text-xs">
+                {([["score", "관심도순"], ["original", "생성순"]] as const).map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setSort(k)}
+                    className={`rounded-md px-2.5 py-1 transition-colors ${sort === k ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {cards.map((card, i) => (
-                <div key={i} className="animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
-                  <GeneratedCardView
-                    card={card}
-                    onChange={(patch) => updateCard(i, patch)}
-                    onDelete={() => removeCard(i)}
-                  />
-                </div>
-              ))}
+              {cards
+                .map((card, i) => ({ card, i }))
+                .sort((a, b) => (sort === "score" ? b.card.score - a.card.score : a.i - b.i))
+                .map(({ card, i }) => (
+                  <div key={i} className="animate-fade-up">
+                    <GeneratedCardView
+                      card={card}
+                      onChange={(patch) => updateCard(i, patch)}
+                      onDelete={() => removeCard(i)}
+                    />
+                  </div>
+                ))}
             </div>
           </>
         )}
