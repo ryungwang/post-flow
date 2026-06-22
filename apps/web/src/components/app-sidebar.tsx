@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Library,
   Link2,
+  MessageSquareReply,
   Settings,
   Sparkles,
   Wand2,
@@ -29,6 +30,7 @@ const NAV: Item[] = [
     ],
   },
   { label: "스케줄", to: "/schedule", icon: CalendarClock },
+  { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply },
   { label: "분석", to: "/analytics", icon: BarChart3 },
   {
     label: "설정",

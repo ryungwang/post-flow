@@ -2,6 +2,8 @@ package com.postflow.threads;
 
 import com.postflow.threads.api.ThreadsContainerStatus;
 import com.postflow.threads.api.ThreadsIdResponse;
+import com.postflow.threads.api.ThreadsReply;
+import com.postflow.threads.api.ThreadsRepliesResponse;
 import com.postflow.threads.api.ThreadsTokenResponse;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -9,6 +11,8 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+
+import java.util.List;
 
 /**
  * Thin client over the Threads Graph API (token exchange + 2-step publishing).
@@ -105,6 +109,33 @@ public class ThreadsApiClient {
         } catch (RestClientException e) {
             throw new ThreadsApiException("Failed to fetch container status", e);
         }
+    }
+
+    /** List replies (comments) on a published media. */
+    public List<ThreadsReply> getReplies(String mediaId, String accessToken) {
+        try {
+            ThreadsRepliesResponse res = graph.get()
+                    .uri(b -> b.path("/{id}/replies")
+                            .queryParam("fields", "id,text,username")
+                            .queryParam("access_token", accessToken)
+                            .build(mediaId))
+                    .retrieve()
+                    .body(ThreadsRepliesResponse.class);
+            return res != null && res.data() != null ? res.data() : List.of();
+        } catch (RestClientException e) {
+            throw new ThreadsApiException("Failed to fetch replies", e);
+        }
+    }
+
+    /** Create a reply container to a given comment/media; returns its creation id. */
+    public String createReplyContainer(String threadsUserId, String accessToken, String text, String replyToId) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("media_type", "TEXT");
+        form.add("text", text);
+        form.add("reply_to_id", replyToId);
+        form.add("access_token", accessToken);
+        ThreadsIdResponse res = postPath("/{id}/threads", threadsUserId, form);
+        return res.id();
     }
 
     /** Publish a finished container; returns the published media id. */

@@ -11,6 +11,7 @@ import { AnalyticsPage } from "@/pages/analytics-page";
 import { AccountPage } from "@/pages/account-page";
 import { LoginPage } from "@/pages/login-page";
 import { LandingPage } from "@/pages/landing-page";
+import { AutomationPage } from "@/pages/automation-page";
 import { ThreadsSettingsPage } from "@/pages/threads-settings-page";
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/content/series" element={<SeriesPage />} />
           <Route path="/content/library" element={<LibraryPage />} />
           <Route path="/schedule" element={<SchedulePage />} />
+          <Route path="/automation" element={<AutomationPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings/account" element={<AccountPage />} />
           <Route path="/settings/threads" element={<ThreadsSettingsPage />} />

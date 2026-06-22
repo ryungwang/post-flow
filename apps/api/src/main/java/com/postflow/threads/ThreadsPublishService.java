@@ -37,6 +37,13 @@ public class ThreadsPublishService {
         return apiClient.publish(threadsUserId, accessToken, creationId);
     }
 
+    /** Publish a reply to a comment/media; returns the published reply id. */
+    public String publishReply(String threadsUserId, String accessToken, String text, String replyToId) {
+        String creationId = apiClient.createReplyContainer(threadsUserId, accessToken, text, replyToId);
+        awaitFinished(creationId, accessToken);
+        return apiClient.publish(threadsUserId, accessToken, creationId);
+    }
+
     private void awaitFinished(String containerId, String accessToken) {
         for (int attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
             ThreadsContainerStatus status = apiClient.getContainerStatus(containerId, accessToken);
