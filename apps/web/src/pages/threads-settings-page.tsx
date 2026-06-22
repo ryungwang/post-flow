@@ -168,15 +168,23 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
         <ul className="divide-y divide-border/60">
           {list.map((a) => (
             <li key={a.id} className="flex items-center gap-3 py-3">
-              <div className="bg-brand-gradient flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-brand-foreground">
-                {a.username.charAt(0).toUpperCase()}
-              </div>
+              {a.profilePictureUrl ? (
+                <img src={a.profilePictureUrl} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div className="bg-brand-gradient flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-brand-foreground">
+                  {(a.name ?? a.username).charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 text-sm font-medium">
-                  @{a.username}
+                  {a.name ?? `@${a.username}`}
                   {a.isDefault && <Badge variant="success">기본</Badge>}
                 </div>
-                <div className="text-xs text-muted-foreground">{a.status}</div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {a.name && <span>@{a.username}</span>}
+                  {a.followersCount != null && <span>팔로워 {a.followersCount.toLocaleString()}</span>}
+                  <span>· {a.status}</span>
+                </div>
               </div>
               {!a.isDefault && (
                 <Button variant="ghost" size="sm" disabled={setDefault.isPending} onClick={() => setDefault.mutate(a.id)}>기본으로</Button>

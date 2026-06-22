@@ -46,7 +46,7 @@ public class SocialAccountService {
         Instant expiresAt = expiryFrom(longLived.expiresIn());
         String threadsUserId = shortLived.userId();
         String token = longLived.accessToken();
-        String username = apiClient.fetchUsername(token);
+        com.postflow.threads.api.ThreadsUsername profile = apiClient.fetchProfile(token);
         boolean multi = PlanPolicy.canMultiAccount(userService.getById(userId).getPlan());
 
         SocialAccount target = repository
@@ -62,8 +62,8 @@ public class SocialAccountService {
                     }
                     return repository.save(SocialAccount.connect(userId, threadsUserId, token, expiresAt));
                 });
-        if (username != null) {
-            target.setUsername(username);
+        if (profile != null) {
+            target.updateProfile(profile.username(), profile.name(), profile.profilePictureUrl());
         }
         makeDefault(userId, target); // newly connected becomes the active account
     }
@@ -86,13 +86,31 @@ public class SocialAccountService {
                 .orElseGet(ThreadsStatusResponse::notConnected);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ThreadsAccountDto> list(Long userId) {
-        return repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS).stream()
-                .map(a -> new ThreadsAccountDto(a.getId(),
-                        a.getUsername() != null ? a.getUsername() : a.getThreadsUserId(),
-                        a.getStatus().name(), a.isDefault(), a.getExpiresAt()))
-                .toList();
+        List<ThreadsAccountDto> out = new java.util.ArrayList<>();
+        for (SocialAccount a : repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS)) {
+            // one-time enrichment: cache real @handle/name/picture if missing or still the numeric id
+            if (a.getStatus() == ConnectionStatus.CONNECTED
+                    && (a.getName() == null || a.getUsername() == null || a.getUsername().matches("\\d+"))) {
+                com.postflow.threads.api.ThreadsUsername p = apiClient.fetchProfile(a.getAccessToken());
+                if (p != null) {
+                    a.updateProfile(p.username(), p.name(), p.profilePictureUrl());
+                }
+            }
+            Long followers = a.getStatus() == ConnectionStatus.CONNECTED
+                    ? apiClient.fetchFollowers(a.getThreadsUserId(), a.getAccessToken()) : null;
+            out.add(new ThreadsAccountDto(
+                    a.getId(),
+                    a.getUsername() != null ? a.getUsername() : a.getThreadsUserId(),
+                    a.getName(),
+                    a.getProfilePictureUrl(),
+                    followers,
+                    a.getStatus().name(),
+                    a.isDefault(),
+                    a.getExpiresAt()));
+        }
+        return out;
     }
 
     @Transactional

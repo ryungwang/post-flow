@@ -113,12 +113,35 @@ public class ThreadsApiClient {
 
     /** Best-effort fetch of the connected account's @username. */
     public String fetchUsername(String accessToken) {
+        com.postflow.threads.api.ThreadsUsername me = fetchProfile(accessToken);
+        return me != null ? me.username() : null;
+    }
+
+    /** Best-effort fetch of the account profile (username, name, picture, biography). */
+    public com.postflow.threads.api.ThreadsUsername fetchProfile(String accessToken) {
         try {
-            com.postflow.threads.api.ThreadsUsername me = graph.get()
-                    .uri(b -> b.path("/me").queryParam("fields", "username").queryParam("access_token", accessToken).build())
+            return graph.get()
+                    .uri(b -> b.path("/me")
+                            .queryParam("fields", "id,username,name,threads_profile_picture_url,threads_biography")
+                            .queryParam("access_token", accessToken).build())
                     .retrieve()
                     .body(com.postflow.threads.api.ThreadsUsername.class);
-            return me != null ? me.username() : null;
+        } catch (RestClientException e) {
+            return null;
+        }
+    }
+
+    /** Best-effort follower count via insights (requires threads_manage_insights). Null on failure. */
+    public Long fetchFollowers(String threadsUserId, String accessToken) {
+        try {
+            com.postflow.threads.api.ThreadsInsights insights = graph.get()
+                    .uri(b -> b.path("/{id}/threads_insights")
+                            .queryParam("metric", "followers_count")
+                            .queryParam("access_token", accessToken)
+                            .build(threadsUserId))
+                    .retrieve()
+                    .body(com.postflow.threads.api.ThreadsInsights.class);
+            return insights != null ? insights.followersCount() : null;
         } catch (RestClientException e) {
             return null;
         }

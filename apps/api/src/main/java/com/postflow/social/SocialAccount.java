@@ -53,6 +53,12 @@ public class SocialAccount extends BaseTimeEntity {
     @Column(name = "username")
     private String username;
 
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "profile_picture_url", length = 2048)
+    private String profilePictureUrl;
+
     /** Whether this is the account used for publishing by default. */
     @Column(name = "is_default", nullable = false)
     private boolean isDefault = true;
@@ -76,6 +82,15 @@ public class SocialAccount extends BaseTimeEntity {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    /** Update cached profile (username/name/picture) from the Threads API. */
+    public void updateProfile(String username, String name, String profilePictureUrl) {
+        if (username != null) {
+            this.username = username;
+        }
+        this.name = name;
+        this.profilePictureUrl = profilePictureUrl;
     }
 
     public void setDefault(boolean isDefault) {

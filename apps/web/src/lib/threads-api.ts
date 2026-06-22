@@ -9,6 +9,9 @@ export type ThreadsStatus = {
 export type ThreadsAccount = {
   id: number;
   username: string;
+  name: string | null;
+  profilePictureUrl: string | null;
+  followersCount: number | null;
   status: string;
   isDefault: boolean;
   expiresAt: string | null;
