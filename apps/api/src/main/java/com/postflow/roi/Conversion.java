@@ -65,4 +65,8 @@ public class Conversion extends BaseTimeEntity {
         c.source = "MANUAL";
         return c;
     }
+
+    public void markWebhook() {
+        this.source = "WEBHOOK";
+    }
 }

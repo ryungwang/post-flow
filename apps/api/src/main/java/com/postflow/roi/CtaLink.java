@@ -37,13 +37,23 @@ public class CtaLink extends BaseTimeEntity {
     @Column(length = 255)
     private String label;
 
-    public static CtaLink create(Long postId, Long userId, String slug, String destinationUrl, String label) {
+    /** When true, the short link routes to a hosted lead-capture page before the destination. */
+    @Column(name = "capture_lead", nullable = false)
+    private boolean captureLead = false;
+
+    @Column(length = 255)
+    private String headline;
+
+    public static CtaLink create(Long postId, Long userId, String slug, String destinationUrl,
+                                 String label, boolean captureLead, String headline) {
         CtaLink c = new CtaLink();
         c.postId = postId;
         c.userId = userId;
         c.slug = slug;
         c.destinationUrl = destinationUrl;
         c.label = label;
+        c.captureLead = captureLead;
+        c.headline = headline;
         return c;
     }
 }

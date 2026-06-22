@@ -27,7 +27,8 @@ public class CtaLinkController {
     public CtaLinkDto create(@AuthenticationPrincipal Long userId,
                              @PathVariable Long postId,
                              @Valid @RequestBody CreateCtaLinkRequest request) {
-        CtaLink link = ctaLinkService.createLink(userId, postId, request.destinationUrl(), request.label());
+        CtaLink link = ctaLinkService.createLink(userId, postId, request.destinationUrl(),
+                request.label(), request.captureLead(), request.headline());
         return CtaLinkDto.from(link, ctaLinkService.baseUrl());
     }
 }

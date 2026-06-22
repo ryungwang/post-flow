@@ -45,6 +45,14 @@ public class RoiService {
     }
 
     @Transactional
+    public Conversion recordWebhookConversion(Long userId, Long postId, java.math.BigDecimal amount,
+                                              String currency, String note) {
+        Conversion c = Conversion.manual(userId, postId, null, amount, currency, null, note);
+        c.markWebhook();
+        return conversionRepository.save(c);
+    }
+
+    @Transactional
     public Lead createLead(Long userId, Long postId, Long ctaLinkId, String email, String name, String source) {
         return leadRepository.save(Lead.create(userId, postId, ctaLinkId, email, name, source));
     }

@@ -10,6 +10,7 @@ import { SchedulePage } from "@/pages/schedule-page";
 import { AnalyticsPage } from "@/pages/analytics-page";
 import { AccountPage } from "@/pages/account-page";
 import { LoginPage } from "@/pages/login-page";
+import { LandingPage } from "@/pages/landing-page";
 import { ThreadsSettingsPage } from "@/pages/threads-settings-page";
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/lp/:slug" element={<LandingPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<DashboardPage />} />

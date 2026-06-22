@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 
 public record CreateCtaLinkRequest(
         @NotBlank String destinationUrl,
-        String label
+        String label,
+        boolean captureLead,
+        String headline
 ) {
 }

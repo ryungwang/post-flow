@@ -115,6 +115,8 @@ export function RoiView() {
 function ActionsCard({ posts, onChanged }: { posts: { id: number; content: string }[]; onChanged: () => void }) {
   const [linkPost, setLinkPost] = useState<string>("");
   const [dest, setDest] = useState("https://");
+  const [captureLead, setCaptureLead] = useState(false);
+  const [headline, setHeadline] = useState("무료 체크리스트 받기");
   const [created, setCreated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -122,7 +124,7 @@ function ActionsCard({ posts, onChanged }: { posts: { id: number; content: strin
   const [amount, setAmount] = useState("");
 
   const createLink = useMutation({
-    mutationFn: () => roiApi.createCtaLink(Number(linkPost), dest),
+    mutationFn: () => roiApi.createCtaLink(Number(linkPost), dest, undefined, captureLead, captureLead ? headline : undefined),
     onSuccess: (r) => setCreated(r.shortUrl),
   });
   const addRevenue = useMutation({
@@ -150,6 +152,13 @@ function ActionsCard({ posts, onChanged }: { posts: { id: number; content: strin
           </SelectContent>
         </Select>
         <Input value={dest} onChange={(e) => setDest(e.target.value)} placeholder="https://도착 페이지" />
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input type="checkbox" className="size-4 accent-[var(--brand)]" checked={captureLead} onChange={(e) => setCaptureLead(e.target.checked)} />
+          리드 수집 폼 사용 (이메일 먼저 받고 이동)
+        </label>
+        {captureLead && (
+          <Input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="랜딩 헤드라인 (예: 무료 체크리스트 받기)" />
+        )}
         <Button className="w-full gap-1.5" disabled={!linkPost || !dest.startsWith("http") || createLink.isPending} onClick={() => createLink.mutate()}>
           {createLink.isPending ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />} 링크 생성
         </Button>

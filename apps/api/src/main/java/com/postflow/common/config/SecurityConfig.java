@@ -39,7 +39,8 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
                         .requestMatchers("/api/ping", "/api/auth/google", "/api/auth/dev-login",
-                                "/api/threads/callback", "/r/**", "/api/public/**").permitAll()
+                                "/api/threads/callback", "/r/**", "/api/public/**",
+                                "/api/webhooks/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint))

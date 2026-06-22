@@ -34,8 +34,8 @@ export type CtaLink = {
 
 export const roiApi = {
   dashboard: () => api.get<RoiDashboard>("/roi/dashboard"),
-  createCtaLink: (postId: number, destinationUrl: string, label?: string) =>
-    api.post<CtaLink>(`/posts/${postId}/cta-links`, { destinationUrl, label }),
+  createCtaLink: (postId: number, destinationUrl: string, label?: string, captureLead?: boolean, headline?: string) =>
+    api.post<CtaLink>(`/posts/${postId}/cta-links`, { destinationUrl, label, captureLead: !!captureLead, headline }),
   createConversion: (postId: number, amount: number, note?: string) =>
     api.post<{ id: number }>("/conversions", { postId, amount, note }),
 };

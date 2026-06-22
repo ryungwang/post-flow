@@ -22,15 +22,18 @@ public class CtaLinkService {
     private final LinkClickRepository linkClickRepository;
     private final PostRepository postRepository;
     private final String baseUrl;
+    private final String frontendBaseUrl;
 
     public CtaLinkService(CtaLinkRepository ctaLinkRepository,
                           LinkClickRepository linkClickRepository,
                           PostRepository postRepository,
-                          @Value("${roi.short-link-base-url:http://localhost:8080}") String baseUrl) {
+                          @Value("${roi.short-link-base-url:http://localhost:8080}") String baseUrl,
+                          @Value("${roi.frontend-base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.ctaLinkRepository = ctaLinkRepository;
         this.linkClickRepository = linkClickRepository;
         this.postRepository = postRepository;
         this.baseUrl = baseUrl;
+        this.frontendBaseUrl = frontendBaseUrl;
     }
 
     public String baseUrl() {
@@ -38,7 +41,8 @@ public class CtaLinkService {
     }
 
     @Transactional
-    public CtaLink createLink(Long userId, Long postId, String destinationUrl, String label) {
+    public CtaLink createLink(Long userId, Long postId, String destinationUrl, String label,
+                              boolean captureLead, String headline) {
         Post post = postRepository.findById(postId).orElseThrow(() -> new PostNotFoundException(postId));
         if (!post.getUserId().equals(userId)) {
             throw new PostNotFoundException(postId);
@@ -46,16 +50,26 @@ public class CtaLinkService {
         if (!isHttpUrl(destinationUrl)) {
             throw new IllegalArgumentException("destinationUrl must be an http(s) URL");
         }
-        return ctaLinkRepository.save(CtaLink.create(postId, userId, uniqueSlug(), destinationUrl, label));
+        return ctaLinkRepository.save(CtaLink.create(
+                postId, userId, uniqueSlug(), destinationUrl, label, captureLead, headline));
     }
 
-    /** Resolve a slug, record the click, and return the destination URL (302 target). */
+    public CtaLink getBySlug(String slug) {
+        return ctaLinkRepository.findBySlug(slug)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown link"));
+    }
+
+    /**
+     * Resolve a slug, record the click, and return the redirect target.
+     * For lead-capture links the target is the hosted landing page; otherwise the destination.
+     */
     @Transactional
     public String resolveAndRecordClick(String slug, String referrer, String ua, String ip) {
-        CtaLink link = ctaLinkRepository.findBySlug(slug)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown link"));
+        CtaLink link = getBySlug(slug);
         linkClickRepository.save(LinkClick.of(link.getId(), link.getPostId(), referrer, ua, hash(ip)));
-        return link.getDestinationUrl();
+        return link.isCaptureLead()
+                ? frontendBaseUrl + "/lp/" + slug
+                : link.getDestinationUrl();
     }
 
     private boolean isHttpUrl(String url) {
