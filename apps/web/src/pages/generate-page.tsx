@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { contentApi, type GeneratedCard, type HookVariant } from "@/lib/content-api";
 import { ScoreBadge } from "@/components/score-badge";
+import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ApiError } from "@/lib/api";
 
 const TOPIC_CHIPS = ["AI", "스타트업", "개발", "생산성", "여행", "음식", "운동", "육아"];
@@ -341,6 +342,12 @@ function GeneratedCardView({
       )}
 
       {card.cta && <p className="mt-3 text-sm font-medium text-primary">{card.cta}</p>}
+
+      {!editing && (
+        <div className="mt-3">
+          <ScoreAnalysisPanel content={card.content} hashtags={card.hashtags} cta={card.cta} score={card.score} />
+        </div>
+      )}
 
       <div className="mt-4 flex items-center justify-between border-t pt-3">
         <span className={`text-xs tabular-nums ${over ? "text-destructive" : "text-muted-foreground"}`}>
