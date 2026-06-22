@@ -28,6 +28,44 @@ public final class ContentScorer {
         return Math.max(0, Math.min(100, total));
     }
 
+    public record Component(String label, int score, int max) {
+    }
+
+    public record ScoreAnalysis(int total, List<Component> components, List<String> tips) {
+    }
+
+    /** Full breakdown + actionable tips for raising the attention score. */
+    public static ScoreAnalysis analyze(String content, List<String> hashtags, String cta) {
+        if (content == null || content.isBlank()) {
+            return new ScoreAnalysis(0, List.of(), List.of("본문을 입력하세요."));
+        }
+        String first = firstLine(content);
+        int h = hook(first), len = length(content), q = question(content),
+                c = cta(cta), tags = hashtags(hashtags), st = structure(content);
+
+        List<Component> components = List.of(
+                new Component("훅", h, 35),
+                new Component("길이", len, 20),
+                new Component("질문", q, 12),
+                new Component("CTA", c, 13),
+                new Component("해시태그", tags, 10),
+                new Component("구조", st, 10));
+
+        List<String> tips = new java.util.ArrayList<>();
+        if (h < 25) tips.add("첫 문장에 숫자·질문·호기심 단어(비결/실수/이유)를 넣어 시선을 잡으세요.");
+        if (q == 0) tips.add("본문 끝에 질문을 넣어 댓글을 유도하세요.");
+        if (c == 0) tips.add("행동 유도(CTA) 한 줄을 추가하세요. (선택)");
+        int n = content.length();
+        if (n < 150) tips.add("본문을 조금 더 구체적으로 채우세요 (150자 이상 권장).");
+        else if (n > 480) tips.add("500자에 근접했어요 — 핵심만 남겨 간결하게.");
+        int tagCount = hashtags == null ? 0 : hashtags.size();
+        if (tagCount < 3 || tagCount > 5) tips.add("해시태그를 3~5개로 맞추세요.");
+        if (st < 6) tips.add("줄바꿈·목록으로 가독성을 높이세요.");
+        if (tips.isEmpty()) tips.add("훌륭해요! 관심을 끌 요소를 골고루 갖췄습니다.");
+
+        return new ScoreAnalysis(Math.min(100, h + len + q + c + tags + st), components, tips);
+    }
+
     /** Hook strength of a single line, normalized to 0-100 (for ranking hook variants). */
     public static int hookScore(String line) {
         if (line == null || line.isBlank()) {

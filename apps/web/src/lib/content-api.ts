@@ -22,9 +22,14 @@ export type GenerateRequest = {
 
 export type HookVariant = { hook: string; score: number };
 
+export type ScoreComponent = { label: string; score: number; max: number };
+export type ScoreAnalysis = { total: number; components: ScoreComponent[]; tips: string[] };
+
 export const contentApi = {
   generate: (req: GenerateRequest) =>
     api.post<GenerateResponse>("/ai/generate", req),
   hooks: (topic: string, count = 6) =>
     api.post<HookVariant[]>("/ai/hooks", { topic, count }),
+  score: (content: string, hashtags: string[], cta: string | null) =>
+    api.post<ScoreAnalysis>("/ai/score", { content, hashtags, cta }),
 };

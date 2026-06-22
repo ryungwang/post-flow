@@ -36,6 +36,16 @@ public class AiContentController {
         return hookGenerator.generate(topic, count);
     }
 
+    /** Attention-score breakdown + improvement tips (heuristic — works without API keys). */
+    @PostMapping("/score")
+    @SuppressWarnings("unchecked")
+    public ContentScorer.ScoreAnalysis score(@RequestBody Map<String, Object> body) {
+        String content = String.valueOf(body.getOrDefault("content", ""));
+        List<String> hashtags = body.get("hashtags") instanceof List<?> l ? (List<String>) l : List.of();
+        String cta = body.get("cta") != null ? String.valueOf(body.get("cta")) : null;
+        return ContentScorer.analyze(content, hashtags, cta);
+    }
+
     @PostMapping("/generate")
     public GenerateContentResponse generate(
             @AuthenticationPrincipal Long userId,
