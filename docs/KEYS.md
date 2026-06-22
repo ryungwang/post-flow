@@ -86,6 +86,16 @@ PostFlow를 실제로 동작시키려면 3종의 외부 키가 필요하다. 키
    ```
 7. 백엔드 재시작 → 설정 > Threads 연결에서 "연결하기" → Meta 동의 → 콜백 → 연결됨 확인.
 
+> ⚠️ **Threads OAuth는 HTTPS redirect URI 필수** (http 로컬은 `error_code 1349187 "안전하지 않은 로그인 차단"`).
+> 로컬 테스트 제일 쉬운 법 = **cloudflared 퀵터널**(계정 불필요):
+> ```
+> brew install cloudflared
+> cloudflared tunnel --url http://localhost:8080   # → https://xxxx.trycloudflare.com 발급
+> ```
+> 1) 발급된 `https://xxxx.trycloudflare.com/api/threads/callback` 을 Threads 앱 Redirect URI에 등록
+> 2) `apps/api/.env` 에 `THREADS_REDIRECT_URI=https://xxxx.trycloudflare.com/api/threads/callback` → 백엔드 재시작
+> 3) 연결하기(팝업) → 승인 → 연결됨. (트라이클라우드플레어 URL은 재시작마다 바뀜 — 프로덕션은 고정 https 도메인 사용)
+
 > 토큰은 long-lived(60일)로 저장되고 만료 7일 전 자동 갱신된다(서버 cron). refresh_token은 없다.
 > 발행 한도: 사용자당 250건/24h. 네이티브 예약 없음 → 서버 스케줄러가 발행 시점에 처리.
 
