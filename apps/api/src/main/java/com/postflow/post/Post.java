@@ -42,6 +42,9 @@ public class Post extends BaseTimeEntity {
     @Column(length = 500)
     private String cta;
 
+    @Column(name = "media_url", length = 2048)
+    private String mediaUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private PostStatus status = PostStatus.DRAFT;
@@ -61,14 +64,20 @@ public class Post extends BaseTimeEntity {
     @Column(name = "retry_count", nullable = false)
     private int retryCount = 0;
 
-    public static Post create(Long userId, String content, List<String> hashtags, String cta) {
+    public static Post create(Long userId, String content, List<String> hashtags, String cta, String mediaUrl) {
         Post p = new Post();
         p.userId = userId;
         p.content = content;
         p.hashtags = hashtags != null ? hashtags : new ArrayList<>();
         p.cta = cta;
+        p.mediaUrl = mediaUrl;
         p.status = PostStatus.DRAFT;
         return p;
+    }
+
+    /** Set or clear the attached media URL (null clears). */
+    public void updateMedia(String mediaUrl) {
+        this.mediaUrl = mediaUrl;
     }
 
     public void updateContent(String content) {

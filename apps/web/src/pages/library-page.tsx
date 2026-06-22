@@ -91,16 +91,21 @@ export function LibraryPage() {
                       onClick={() => setSelected(p)}
                     >
                       <td className="px-6 py-3.5">
-                        <div className="max-w-xl">
-                          <p className="line-clamp-3 whitespace-pre-line font-medium">{p.content}</p>
-                          {p.hashtags?.length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap gap-1">
-                              {p.hashtags.map((h, i) => (
-                                <Badge key={i} variant="secondary">#{h}</Badge>
-                              ))}
-                            </div>
+                        <div className="flex max-w-xl gap-3">
+                          {p.mediaUrl && (
+                            <img src={p.mediaUrl} alt="" className="size-14 shrink-0 rounded-md border object-cover" />
                           )}
-                          {p.cta && <p className="mt-1.5 text-xs font-medium text-brand">{p.cta}</p>}
+                          <div className="min-w-0">
+                            <p className="line-clamp-3 whitespace-pre-line font-medium">{p.content}</p>
+                            {p.hashtags?.length > 0 && (
+                              <div className="mt-1.5 flex flex-wrap gap-1">
+                                {p.hashtags.map((h, i) => (
+                                  <Badge key={i} variant="secondary">#{h}</Badge>
+                                ))}
+                              </div>
+                            )}
+                            {p.cta && <p className="mt-1.5 text-xs font-medium text-brand">{p.cta}</p>}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3.5">

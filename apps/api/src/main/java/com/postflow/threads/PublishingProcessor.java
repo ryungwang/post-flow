@@ -64,7 +64,8 @@ public class PublishingProcessor {
         }
         post.startPublishing();
         return Optional.of(new PublishTask(
-                postId, account.getThreadsUserId(), account.getAccessToken(), post.getContent()));
+                postId, account.getThreadsUserId(), account.getAccessToken(),
+                post.getContent(), post.getMediaUrl()));
     }
 
     @Transactional
@@ -87,6 +88,7 @@ public class PublishingProcessor {
         return account.getExpiresAt() != null && account.getExpiresAt().isBefore(Instant.now());
     }
 
-    public record PublishTask(Long postId, String threadsUserId, String accessToken, String content) {
+    public record PublishTask(Long postId, String threadsUserId, String accessToken,
+                              String content, String mediaUrl) {
     }
 }

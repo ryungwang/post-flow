@@ -1,0 +1,1 @@
+ALTER TABLE posts ADD COLUMN media_url VARCHAR(2048);

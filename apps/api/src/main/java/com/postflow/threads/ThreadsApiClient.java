@@ -79,6 +79,19 @@ public class ThreadsApiClient {
         return res.id();
     }
 
+    /** Create an image media container; returns its creation id. Image URL must be public. */
+    public String createImageContainer(String threadsUserId, String accessToken, String text, String imageUrl) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("media_type", "IMAGE");
+        form.add("image_url", imageUrl);
+        if (text != null && !text.isBlank()) {
+            form.add("text", text);
+        }
+        form.add("access_token", accessToken);
+        ThreadsIdResponse res = postPath("/{id}/threads", threadsUserId, form);
+        return res.id();
+    }
+
     /** Poll a container's processing status. */
     public ThreadsContainerStatus getContainerStatus(String containerId, String accessToken) {
         try {

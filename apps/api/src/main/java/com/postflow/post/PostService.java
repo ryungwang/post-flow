@@ -41,11 +41,18 @@ public class PostService {
 
     @Transactional
     public PostDto create(Long userId, CreatePostRequest request) {
-        Post post = Post.create(userId, request.content(), request.hashtags(), request.cta());
+        Post post = Post.create(userId, request.content(), request.hashtags(), request.cta(), request.mediaUrl());
         if (request.scheduledAt() != null) {
             post.schedule(request.scheduledAt());
         }
         return PostDto.from(postRepository.save(post));
+    }
+
+    @Transactional
+    public PostDto setMedia(Long userId, Long id, String mediaUrl) {
+        Post post = loadOwned(userId, id);
+        post.updateMedia(mediaUrl);
+        return PostDto.from(post);
     }
 
     @Transactional
@@ -78,8 +85,8 @@ public class PostService {
         }
         PublishTask task = claimed.get();
         try {
-            String mediaId = publishService.publishText(
-                    task.threadsUserId(), task.accessToken(), task.content());
+            String mediaId = publishService.publish(
+                    task.threadsUserId(), task.accessToken(), task.content(), task.mediaUrl());
             publishingProcessor.complete(id, mediaId);
         } catch (ThreadsApiException e) {
             publishingProcessor.fail(id, e.getMessage());

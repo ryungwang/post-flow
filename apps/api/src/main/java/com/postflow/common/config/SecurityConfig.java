@@ -40,7 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
                         .requestMatchers("/api/ping", "/api/auth/google", "/api/auth/dev-login",
                                 "/api/threads/callback", "/r/**", "/api/public/**",
-                                "/api/webhooks/**").permitAll()
+                                "/api/webhooks/**", "/files/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint))

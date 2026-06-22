@@ -45,8 +45,8 @@ public class ScheduledPublisher {
             Long postId = post.getId();
             processor.claim(postId).ifPresent(task -> {
                 try {
-                    String mediaId = publishService.publishText(
-                            task.threadsUserId(), task.accessToken(), task.content());
+                    String mediaId = publishService.publish(
+                            task.threadsUserId(), task.accessToken(), task.content(), task.mediaUrl());
                     processor.complete(postId, mediaId);
                 } catch (ThreadsApiException e) {
                     log.warn("Publish failed for post {}: {}", postId, e.getMessage());

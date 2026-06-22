@@ -22,7 +22,17 @@ public class ThreadsPublishService {
 
     /** Publish text to Threads; returns the published media id. Throws on failure/timeout. */
     public String publishText(String threadsUserId, String accessToken, String text) {
-        String creationId = apiClient.createTextContainer(threadsUserId, accessToken, text);
+        return publish(threadsUserId, accessToken, text, null);
+    }
+
+    /**
+     * Publish to Threads; creates an IMAGE container when {@code mediaUrl} is present
+     * (must be a publicly reachable URL), otherwise a TEXT container. Returns the media id.
+     */
+    public String publish(String threadsUserId, String accessToken, String text, String mediaUrl) {
+        String creationId = (mediaUrl != null && !mediaUrl.isBlank())
+                ? apiClient.createImageContainer(threadsUserId, accessToken, text, mediaUrl)
+                : apiClient.createTextContainer(threadsUserId, accessToken, text);
         awaitFinished(creationId, accessToken);
         return apiClient.publish(threadsUserId, accessToken, creationId);
     }

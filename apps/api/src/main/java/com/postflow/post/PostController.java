@@ -52,6 +52,16 @@ public class PostController {
         return postService.update(userId, id, request);
     }
 
+    public record MediaRequest(String mediaUrl) {
+    }
+
+    @PutMapping("/{id}/media")
+    public PostDto setMedia(@AuthenticationPrincipal Long userId,
+                            @PathVariable Long id,
+                            @RequestBody MediaRequest request) {
+        return postService.setMedia(userId, id, request.mediaUrl());
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal Long userId, @PathVariable Long id) {

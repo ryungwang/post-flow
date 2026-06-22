@@ -16,6 +16,7 @@ public record CreatePostRequest(
         @NotBlank @Size(max = 500) String content,
         List<String> hashtags,
         String cta,
+        String mediaUrl,
         Instant scheduledAt
 ) {
 }

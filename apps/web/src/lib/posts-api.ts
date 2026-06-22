@@ -13,6 +13,7 @@ export type Post = {
   content: string;
   hashtags: string[];
   cta: string | null;
+  mediaUrl: string | null;
   status: PostStatus;
   scheduledAt: string | null;
   publishedAt: string | null;
@@ -24,6 +25,7 @@ export type CreatePost = {
   content: string;
   hashtags?: string[];
   cta?: string | null;
+  mediaUrl?: string | null;
   scheduledAt?: string | null;
 };
 
@@ -31,5 +33,6 @@ export const postsApi = {
   list: () => api.get<Post[]>("/posts"),
   create: (body: CreatePost) => api.post<Post>("/posts", body),
   publishNow: (id: number) => api.post<Post>(`/posts/${id}/publish`),
+  setMedia: (id: number, mediaUrl: string | null) => api.put<Post>(`/posts/${id}/media`, { mediaUrl }),
   remove: (id: number) => api.del<void>(`/posts/${id}`),
 };
