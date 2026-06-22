@@ -23,8 +23,8 @@ export function AppShell() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <AppSidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center gap-3 border-b px-6">
+      <div className="app-ambient flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border/60 bg-background/70 px-6 backdrop-blur-xl">
           <div className="flex-1" />
           <Button size="sm" className="gap-1.5">
             <Plus className="size-4" />새 콘텐츠
@@ -32,7 +32,7 @@ export function AppShell() {
           <ThemeToggle />
           <div className="flex items-center gap-2 pl-1">
             <div
-              className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-secondary text-sm font-medium text-secondary-foreground"
+              className="bg-brand-gradient text-brand-foreground flex size-8 items-center justify-center overflow-hidden rounded-full text-sm font-semibold"
               title={user?.email ?? undefined}
             >
               {user?.profileImage ? (
@@ -46,7 +46,7 @@ export function AppShell() {
             </Button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main className="relative z-10 flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

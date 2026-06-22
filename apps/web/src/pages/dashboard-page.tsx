@@ -90,7 +90,7 @@ export function DashboardPage() {
           return (
             <Card
               key={kpi.label}
-              className="lift animate-fade-up p-5"
+              className="lift animate-fade-up p-5 hover:border-brand/40 hover:shadow-brand"
               style={{ animationDelay: `${i * 70}ms` }}
             >
               <div className="flex items-center justify-between">
