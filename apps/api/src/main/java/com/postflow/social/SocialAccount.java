@@ -50,6 +50,13 @@ public class SocialAccount extends BaseTimeEntity {
     @Column(name = "last_refreshed_at")
     private Instant lastRefreshedAt;
 
+    @Column(name = "username")
+    private String username;
+
+    /** Whether this is the account used for publishing by default. */
+    @Column(name = "is_default", nullable = false)
+    private boolean isDefault = true;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ConnectionStatus status = ConnectionStatus.CONNECTED;
@@ -65,6 +72,14 @@ public class SocialAccount extends BaseTimeEntity {
         a.lastRefreshedAt = Instant.now();
         a.status = ConnectionStatus.CONNECTED;
         return a;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setDefault(boolean isDefault) {
+        this.isDefault = isDefault;
     }
 
     /** Re-link on reconnect (new token + threads user id). */

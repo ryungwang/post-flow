@@ -6,7 +6,18 @@ export type ThreadsStatus = {
   expiresAt: string | null;
 };
 
+export type ThreadsAccount = {
+  id: number;
+  username: string;
+  status: string;
+  isDefault: boolean;
+  expiresAt: string | null;
+};
+
 export const threadsApi = {
   status: () => api.get<ThreadsStatus>("/threads/status"),
   connectUrl: () => api.get<{ authorizeUrl: string }>("/threads/connect"),
+  accounts: () => api.get<ThreadsAccount[]>("/threads/accounts"),
+  setDefault: (id: number) => api.post<void>(`/threads/accounts/${id}/default`),
+  disconnect: (id: number) => api.del<void>(`/threads/accounts/${id}`),
 };

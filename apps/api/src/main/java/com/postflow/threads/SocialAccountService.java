@@ -5,30 +5,39 @@ import com.postflow.social.SocialAccount;
 import com.postflow.social.SocialAccountRepository;
 import com.postflow.social.SocialProvider;
 import com.postflow.threads.api.ThreadsTokenResponse;
+import com.postflow.threads.dto.ThreadsAccountDto;
 import com.postflow.threads.dto.ThreadsStatusResponse;
+import com.postflow.user.PlanLimitException;
+import com.postflow.user.PlanPolicy;
+import com.postflow.user.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
- * Owns Threads connection lifecycle: code→token exchange, in-place token refresh,
- * and connection status. Tokens are long-lived (60-day) and have no refresh_token —
- * see PRD → Threads Integration.
+ * Threads connection lifecycle with multi-account support: code→token exchange, in-place
+ * token refresh, default-account selection, listing/disconnect. Tokens are long-lived
+ * (60-day, no refresh_token) — see PRD → Threads Integration.
  */
 @Service
 public class SocialAccountService {
 
+    private static final SocialProvider THREADS = SocialProvider.THREADS;
+
     private final SocialAccountRepository repository;
     private final ThreadsApiClient apiClient;
+    private final UserService userService;
 
-    public SocialAccountService(SocialAccountRepository repository, ThreadsApiClient apiClient) {
+    public SocialAccountService(SocialAccountRepository repository, ThreadsApiClient apiClient, UserService userService) {
         this.repository = repository;
         this.apiClient = apiClient;
+        this.userService = userService;
     }
 
-    /** Exchange an authorization code for a long-lived token and store the connection. */
+    /** Exchange an authorization code for a long-lived token and store/refresh the connection. */
     @Transactional
     public void connectFromCode(Long userId, String code) {
         ThreadsTokenResponse shortLived = apiClient.exchangeCodeForShortLivedToken(code);
@@ -37,11 +46,26 @@ public class SocialAccountService {
         Instant expiresAt = expiryFrom(longLived.expiresIn());
         String threadsUserId = shortLived.userId();
         String token = longLived.accessToken();
+        String username = apiClient.fetchUsername(token);
+        boolean multi = PlanPolicy.canMultiAccount(userService.getById(userId).getPlan());
 
-        repository.findByUserIdAndProvider(userId, SocialProvider.THREADS)
-                .ifPresentOrElse(
-                        existing -> existing.reconnect(threadsUserId, token, expiresAt),
-                        () -> repository.save(SocialAccount.connect(userId, threadsUserId, token, expiresAt)));
+        SocialAccount target = repository
+                .findByUserIdAndProviderAndThreadsUserId(userId, THREADS, threadsUserId)
+                .map(existing -> { existing.reconnect(threadsUserId, token, expiresAt); return existing; })
+                .orElseGet(() -> {
+                    List<SocialAccount> mine = repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS);
+                    if (!multi && !mine.isEmpty()) {
+                        // single-account plans: replace the existing connection
+                        SocialAccount only = mine.get(0);
+                        only.reconnect(threadsUserId, token, expiresAt);
+                        return only;
+                    }
+                    return repository.save(SocialAccount.connect(userId, threadsUserId, token, expiresAt));
+                });
+        if (username != null) {
+            target.setUsername(username);
+        }
+        makeDefault(userId, target); // newly connected becomes the active account
     }
 
     @Transactional
@@ -63,8 +87,60 @@ public class SocialAccountService {
     }
 
     @Transactional(readOnly = true)
+    public List<ThreadsAccountDto> list(Long userId) {
+        return repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS).stream()
+                .map(a -> new ThreadsAccountDto(a.getId(),
+                        a.getUsername() != null ? a.getUsername() : a.getThreadsUserId(),
+                        a.getStatus().name(), a.isDefault(), a.getExpiresAt()))
+                .toList();
+    }
+
+    @Transactional
+    public void setDefaultAccount(Long userId, Long accountId) {
+        SocialAccount account = repository.findById(accountId)
+                .filter(a -> a.getUserId().equals(userId))
+                .orElseThrow(() -> new IllegalArgumentException("account not found"));
+        makeDefault(userId, account);
+    }
+
+    @Transactional
+    public void disconnect(Long userId, Long accountId) {
+        SocialAccount account = repository.findById(accountId)
+                .filter(a -> a.getUserId().equals(userId))
+                .orElseThrow(() -> new IllegalArgumentException("account not found"));
+        boolean wasDefault = account.isDefault();
+        repository.delete(account);
+        if (wasDefault) {
+            repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS).stream()
+                    .findFirst().ifPresent(a -> a.setDefault(true));
+        }
+    }
+
+    /** Connecting an additional account requires the Business plan. */
+    @Transactional(readOnly = true)
+    public void assertCanAddAccount(Long userId) {
+        boolean multi = PlanPolicy.canMultiAccount(userService.getById(userId).getPlan());
+        long count = repository.countByUserIdAndProvider(userId, THREADS);
+        if (!multi && count >= 1) {
+            throw new PlanLimitException("다중 계정 연결은 Business 플랜부터 가능해요. (현재 플랜은 1계정)");
+        }
+    }
+
+    /** The default account used for publishing. */
+    @Transactional(readOnly = true)
     public Optional<SocialAccount> find(Long userId) {
-        return repository.findByUserIdAndProvider(userId, SocialProvider.THREADS);
+        Optional<SocialAccount> def = repository.findFirstByUserIdAndProviderAndIsDefaultTrue(userId, THREADS);
+        if (def.isPresent()) {
+            return def;
+        }
+        return repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS).stream().findFirst();
+    }
+
+    private void makeDefault(Long userId, SocialAccount target) {
+        for (SocialAccount a : repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS)) {
+            a.setDefault(a.getId() != null && a.getId().equals(target.getId()));
+        }
+        target.setDefault(true);
     }
 
     private Instant expiryFrom(Long expiresInSeconds) {

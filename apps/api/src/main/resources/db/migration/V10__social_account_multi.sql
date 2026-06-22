@@ -1,0 +1,2 @@
+ALTER TABLE social_accounts ADD COLUMN username VARCHAR(255);
+ALTER TABLE social_accounts ADD COLUMN is_default BOOLEAN NOT NULL DEFAULT TRUE;

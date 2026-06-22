@@ -111,6 +111,19 @@ public class ThreadsApiClient {
         }
     }
 
+    /** Best-effort fetch of the connected account's @username. */
+    public String fetchUsername(String accessToken) {
+        try {
+            com.postflow.threads.api.ThreadsUsername me = graph.get()
+                    .uri(b -> b.path("/me").queryParam("fields", "username").queryParam("access_token", accessToken).build())
+                    .retrieve()
+                    .body(com.postflow.threads.api.ThreadsUsername.class);
+            return me != null ? me.username() : null;
+        } catch (RestClientException e) {
+            return null;
+        }
+    }
+
     /** List replies (comments) on a published media. */
     public List<ThreadsReply> getReplies(String mediaId, String accessToken) {
         try {

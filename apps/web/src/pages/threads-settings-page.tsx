@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AtSign, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { threadsApi } from "@/lib/threads-api";
+import { accountApi } from "@/lib/account-api";
 
 const STATUS_META: Record<string, { label: string; variant: "success" | "warning" | "muted" }> = {
   CONNECTED: { label: "연결됨", variant: "success" },
@@ -53,7 +54,7 @@ export function ThreadsSettingsPage() {
           window.removeEventListener("message", onMessage);
           clearInterval(timer);
           setConnecting(false);
-          qc.invalidateQueries({ queryKey: ["threads-status"] });
+          qc.invalidateQueries({ queryKey: ["threads-status"] }); qc.invalidateQueries({ queryKey: ["threads-accounts"] });
         }
       };
       window.addEventListener("message", onMessage);
@@ -63,7 +64,7 @@ export function ThreadsSettingsPage() {
           clearInterval(timer);
           window.removeEventListener("message", onMessage);
           setConnecting(false);
-          qc.invalidateQueries({ queryKey: ["threads-status"] });
+          qc.invalidateQueries({ queryKey: ["threads-status"] }); qc.invalidateQueries({ queryKey: ["threads-accounts"] });
         }
       }, 600);
     } catch {
@@ -118,6 +119,63 @@ export function ThreadsSettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      <AccountsCard onAdd={connect} adding={connecting} />
     </div>
+  );
+}
+
+function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean }) {
+  const qc = useQueryClient();
+  const { data: accounts } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
+  const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["threads-accounts"] });
+    qc.invalidateQueries({ queryKey: ["threads-status"] }); qc.invalidateQueries({ queryKey: ["threads-accounts"] });
+  };
+  const setDefault = useMutation({ mutationFn: (id: number) => threadsApi.setDefault(id), onSuccess: invalidate });
+  const disconnect = useMutation({ mutationFn: (id: number) => threadsApi.disconnect(id), onSuccess: invalidate });
+  const list = accounts ?? [];
+  if (list.length === 0) return null;
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <CardTitle>연결된 계정</CardTitle>
+            <CardDescription>발행은 기본 계정으로 나갑니다.</CardDescription>
+          </div>
+          {usage?.canMultiAccount && (
+            <Button variant="outline" size="sm" disabled={adding} onClick={onAdd}>+ 계정 추가</Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y divide-border/60">
+          {list.map((a) => (
+            <li key={a.id} className="flex items-center gap-3 py-3">
+              <div className="bg-brand-gradient flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-brand-foreground">
+                {a.username.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-sm font-medium">
+                  @{a.username}
+                  {a.isDefault && <Badge variant="success">기본</Badge>}
+                </div>
+                <div className="text-xs text-muted-foreground">{a.status}</div>
+              </div>
+              {!a.isDefault && (
+                <Button variant="ghost" size="sm" disabled={setDefault.isPending} onClick={() => setDefault.mutate(a.id)}>기본으로</Button>
+              )}
+              <Button variant="ghost" size="sm" className="text-destructive" disabled={disconnect.isPending} onClick={() => disconnect.mutate(a.id)}>연결 해제</Button>
+            </li>
+          ))}
+        </ul>
+        {!usage?.canMultiAccount && list.length >= 1 && (
+          <p className="mt-3 text-xs text-muted-foreground">다중 계정은 Business 플랜부터 — 추가 연결 시 현재 계정이 교체됩니다.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

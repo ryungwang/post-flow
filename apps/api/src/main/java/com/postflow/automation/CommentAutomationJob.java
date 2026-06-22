@@ -68,7 +68,10 @@ public class CommentAutomationJob {
     @Transactional
     protected void processRule(CommentRule rule) {
         SocialAccount account = socialAccountRepository
-                .findByUserIdAndProvider(rule.getUserId(), SocialProvider.THREADS)
+                .findFirstByUserIdAndProviderAndIsDefaultTrue(rule.getUserId(), SocialProvider.THREADS)
+                .or(() -> socialAccountRepository
+                        .findByUserIdAndProviderOrderByIdAsc(rule.getUserId(), SocialProvider.THREADS)
+                        .stream().findFirst())
                 .filter(a -> a.getStatus() == ConnectionStatus.CONNECTED && !isExpired(a))
                 .orElse(null);
         if (account == null) {

@@ -56,7 +56,10 @@ public class PublishingProcessor {
             return Optional.empty();
         }
         SocialAccount account = socialAccountRepository
-                .findByUserIdAndProvider(post.getUserId(), SocialProvider.THREADS)
+                .findFirstByUserIdAndProviderAndIsDefaultTrue(post.getUserId(), SocialProvider.THREADS)
+                .or(() -> socialAccountRepository
+                        .findByUserIdAndProviderOrderByIdAsc(post.getUserId(), SocialProvider.THREADS)
+                        .stream().findFirst())
                 .orElse(null);
         if (account == null || account.getStatus() != ConnectionStatus.CONNECTED || isExpired(account)) {
             post.markReconnectRequired();
