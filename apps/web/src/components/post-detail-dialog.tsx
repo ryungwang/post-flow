@@ -20,6 +20,7 @@ import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ThreadsPreview } from "@/components/threads-preview";
 import { contentApi } from "@/lib/content-api";
+import { CTA_TEMPLATES } from "@/lib/cta-templates";
 import { useAuth } from "@/store/auth";
 import { POST_STATUS_META } from "@/lib/post-status";
 import { cn } from "@/lib/utils";
@@ -175,6 +176,20 @@ export function PostDetailDialog({
                   <div className="space-y-1.5">
                     <Label>CTA</Label>
                     <Input value={draftCta} onChange={(e) => setDraftCta(e.target.value)} placeholder="무료 체크리스트 받기 → 댓글 CHECK" />
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {CTA_TEMPLATES.map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setDraftCta(t)}
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-xs transition-colors",
+                            draftCta === t ? "border-brand/40 bg-brand/10 text-brand" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                          )}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
