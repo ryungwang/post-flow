@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Eye, FileText, Heart, Lightbulb, Loader2, MessageCircle, Pencil, RefreshCw, Sparkles, Wand2 } from "lucide-react";
+import { Activity, CheckCircle2, Circle, Eye, FileText, Heart, Lightbulb, Loader2, MessageCircle, Pencil, RefreshCw, Rocket, Sparkles, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { pingApi } from "@/lib/api";
 import { analyticsApi } from "@/lib/analytics-api";
 import { contentApi } from "@/lib/content-api";
 import { postsApi, type Post } from "@/lib/posts-api";
+import { threadsApi } from "@/lib/threads-api";
 import { POST_STATUS_META } from "@/lib/post-status";
 
 const nf = new Intl.NumberFormat("ko-KR");
@@ -68,6 +69,8 @@ export function DashboardPage() {
         </div>
         <ApiBadge />
       </div>
+
+      <Onboarding posts={postsQ.data ?? []} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
         {kpis.map((kpi, i) => (
@@ -194,6 +197,54 @@ function ImprovementsBoard({ posts, onSelect }: { posts: Post[]; onSelect: (p: P
           })}
         </ul>
       )}
+    </Card>
+  );
+}
+
+function Onboarding({ posts }: { posts: Post[] }) {
+  const { data: threads } = useQuery({ queryKey: ["threads-status"], queryFn: threadsApi.status });
+  const steps = [
+    { label: "Threads 계정 연결", done: !!threads?.connected, to: "/settings/threads", cta: "연결하기" },
+    { label: "첫 콘텐츠 만들기", done: posts.length > 0, to: "/content/generate", cta: "생성하기" },
+    {
+      label: "첫 발행 또는 예약",
+      done: posts.some((p) => p.status === "PUBLISHED" || p.status === "SCHEDULED"),
+      to: "/content/library",
+      cta: "발행하기",
+    },
+  ];
+  const doneCount = steps.filter((s) => s.done).length;
+  if (doneCount === steps.length) return null; // 셋업 완료 → 숨김
+
+  return (
+    <Card className="mb-6 p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Rocket className="size-4 text-brand" />
+          <h2 className="font-semibold">시작하기</h2>
+        </div>
+        <span className="text-sm text-muted-foreground tabular-nums">{doneCount}/{steps.length}</span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="bg-brand-gradient h-full rounded-full transition-[width]" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
+      </div>
+      <ul className="mt-4 space-y-2">
+        {steps.map((s) => (
+          <li key={s.label} className="flex items-center gap-3">
+            {s.done ? (
+              <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
+            ) : (
+              <Circle className="size-5 shrink-0 text-muted-foreground" />
+            )}
+            <span className={`flex-1 text-sm ${s.done ? "text-muted-foreground line-through" : "font-medium"}`}>{s.label}</span>
+            {!s.done && (
+              <Button asChild variant="outline" size="sm">
+                <Link to={s.to}>{s.cta}</Link>
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }
