@@ -60,4 +60,8 @@ public class User extends BaseTimeEntity {
     public void setWebhookSecret(String webhookSecret) {
         this.webhookSecret = webhookSecret;
     }
+
+    public void changePlan(Plan plan) {
+        this.plan = plan;
+    }
 }

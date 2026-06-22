@@ -58,6 +58,9 @@ dependencies {
     // AI — Anthropic (default LLMProvider implementation)
     implementation "com.anthropic:anthropic-java:${anthropicVersion}"
 
+    // Payments — Stripe (PaymentProvider implementation)
+    implementation 'com.stripe:stripe-java:28.4.0'
+
     // File storage — AWS S3 (prod profile)
     implementation 'software.amazon.awssdk:s3'
 

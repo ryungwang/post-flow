@@ -41,7 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/ping", "/api/auth/google", "/api/auth/dev-login",
                                 "/api/threads/callback", "/api/threads/deauthorize",
                                 "/api/threads/data-deletion", "/r/**", "/api/public/**",
-                                "/api/webhooks/**", "/files/**").permitAll()
+                                "/api/webhooks/**", "/api/billing/webhook", "/files/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint))

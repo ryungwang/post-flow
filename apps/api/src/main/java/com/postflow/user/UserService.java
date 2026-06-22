@@ -50,6 +50,11 @@ public class UserService {
                 .orElseGet(() -> userRepository.save(User.create(email, name, profileImage)));
     }
 
+    @Transactional
+    public void changePlan(Long userId, Plan plan) {
+        getById(userId).changePlan(plan);
+    }
+
     @Transactional(readOnly = true)
     public User getById(Long id) {
         return userRepository.findById(id)

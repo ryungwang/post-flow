@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
 import { accountApi } from "@/lib/account-api";
+import { billingApi } from "@/lib/billing-api";
 import { LEGAL } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,14 @@ export function AccountPage() {
   const clear = useAuth((s) => s.clear);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+
+  const upgrade = useMutation({
+    mutationFn: (plan: string) => billingApi.checkout(plan),
+    onSuccess: (res) => {
+      if (res.url) window.location.href = res.url; // Stripe checkout
+      else window.location.reload(); // dev/local instant upgrade → refresh plan
+    },
+  });
 
   const logout = () => {
     window.google?.accounts.id.disableAutoSelect();
@@ -135,15 +144,20 @@ export function AccountPage() {
                         variant={active ? "secondary" : "default"}
                         size="sm"
                         className="mt-4 w-full"
-                        disabled={active}
+                        disabled={active || p.key === "FREE" || upgrade.isPending}
+                        onClick={() => upgrade.mutate(p.key)}
                       >
-                        {active ? "사용 중" : "업그레이드"}
+                        {upgrade.isPending && upgrade.variables === p.key
+                          ? <Loader2 className="size-4 animate-spin" />
+                          : active ? "사용 중" : "업그레이드"}
                       </Button>
                     </div>
                   );
                 })}
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">결제 연동은 준비 중입니다.</p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Stripe 결제 — 키 설정 시 실결제, 미설정(로컬) 시 바로 전환됩니다.
+              </p>
             </CardContent>
           </Card>
 
