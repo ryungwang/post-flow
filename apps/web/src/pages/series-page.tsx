@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, CalendarRange, Check, Eye, Loader2, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -21,17 +22,20 @@ export function SeriesPage() {
   const [days, setDays] = useState(7);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limited, setLimited] = useState(false);
   const [items, setItems] = useState<SeriesItem[] | null>(null);
 
   const generate = async () => {
     if (!topic.trim()) return;
     setLoading(true);
     setError(null);
+    setLimited(false);
     try {
       const res = await seriesApi.generate(topic.trim(), days);
       setItems(res.items);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setError("로그인이 필요해요.");
+      else if (e instanceof ApiError && e.status === 402) { setLimited(true); setError(e.message); }
       else if (e instanceof ApiError && e.message && !e.message.startsWith("Request failed"))
         setError(e.message); // 백엔드 친절 메시지(플랜 잠금/크레딧 등)
       else setError("생성에 실패했어요. 다시 시도해 주세요.");
@@ -83,7 +87,16 @@ export function SeriesPage() {
               {loading ? <Loader2 className="size-4 animate-spin" /> : <CalendarRange className="size-4" />}
               {loading ? "생성 중…" : `${days}일 플랜 생성`}
             </Button>
-            {error && <span className="text-sm text-destructive">{error}</span>}
+            {error && (
+              <span className="flex items-center gap-2 text-sm text-destructive">
+                {error}
+                {limited && (
+                  <Link to="/settings/account" className="bg-brand-gradient rounded-md px-2.5 py-1 text-xs font-semibold text-brand-foreground">
+                    업그레이드
+                  </Link>
+                )}
+              </span>
+            )}
           </div>
         </div>
       </Card>

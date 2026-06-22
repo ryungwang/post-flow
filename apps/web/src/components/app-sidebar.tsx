@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   CalendarClock,
@@ -8,10 +9,12 @@ import {
   Library,
   Link2,
   MessageSquareReply,
+  Rocket,
   Settings,
   Sparkles,
   Wand2,
 } from "lucide-react";
+import { accountApi } from "@/lib/account-api";
 import { cn } from "@/lib/utils";
 
 type Leaf = { label: string; to: string; icon?: React.ComponentType<{ className?: string }> };
@@ -103,8 +106,27 @@ export function AppSidebar() {
         )}
       </nav>
       <div className="border-t p-3">
+        <UpgradeCta />
         <p className="px-2 text-xs text-muted-foreground">Create Once. Grow Automatically.</p>
       </div>
     </aside>
+  );
+}
+
+const PLAN_LABEL: Record<string, string> = { FREE: "Free", STARTER: "Starter", PRO: "Pro", BUSINESS: "Business" };
+const NEXT_PLAN: Record<string, string> = { FREE: "Starter", STARTER: "Pro", PRO: "Business" };
+
+function UpgradeCta() {
+  const { data } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
+  if (!data || data.plan === "BUSINESS") return null; // 최상위 플랜이면 숨김
+  const next = NEXT_PLAN[data.plan] ?? "Pro";
+  return (
+    <Link
+      to="/settings/account"
+      className="bg-brand-gradient shadow-brand mb-3 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-brand-foreground transition-transform hover:scale-[1.02]"
+    >
+      <Rocket className="size-4 shrink-0" />
+      <span className="flex-1">{PLAN_LABEL[data.plan] ?? data.plan} → {next} 업그레이드</span>
+    </Link>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, Check, Copy, Eye, Loader2, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -45,6 +45,7 @@ export function GeneratePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limited, setLimited] = useState(false);
   const [cards, setCards] = useState<GeneratedCard[] | null>(null);
 
   const [sort, setSort] = useState<"score" | "original">("score");
@@ -69,12 +70,16 @@ export function GeneratePage() {
     if (!topic.trim()) return;
     setLoading(true);
     setError(null);
+    setLimited(false);
     try {
       const res = await contentApi.generate({ topic: topic.trim(), goal, tone, quantity });
       setCards(res.cards);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setError("로그인이 필요해요. 다시 로그인해 주세요.");
+      } else if (e instanceof ApiError && e.status === 402) {
+        setLimited(true); // 플랜 한도 → 업그레이드 유도
+        setError(e.message);
       } else if (e instanceof ApiError && e.message && !e.message.startsWith("Request failed")) {
         setError(e.message); // 백엔드 친절 메시지(예: 크레딧 부족)
       } else {
@@ -180,7 +185,16 @@ export function GeneratePage() {
             <Button variant="outline" onClick={compareHooks} disabled={!topic.trim()} className="gap-2">
               <Sparkles className="size-4" /> 훅 비교
             </Button>
-            {error && <span className="text-sm text-destructive">{error}</span>}
+            {error && (
+              <span className="flex items-center gap-2 text-sm text-destructive">
+                {error}
+                {limited && (
+                  <Link to="/settings/account" className="bg-brand-gradient rounded-md px-2.5 py-1 text-xs font-semibold text-brand-foreground">
+                    업그레이드
+                  </Link>
+                )}
+              </span>
+            )}
           </div>
         </div>
       </Card>
