@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GoogleSignInButton } from "@/auth/google-sign-in-button";
 import { authApi } from "@/lib/auth-api";
+import { LEGAL } from "@/lib/legal";
 import { useAuth } from "@/store/auth";
 
 export function LoginPage() {
@@ -92,7 +93,11 @@ export function LoginPage() {
           )}
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            로그인 시 서비스 약관과 개인정보 처리방침에 동의하게 됩니다.
+            로그인 시{" "}
+            <a href={LEGAL.terms} target="_blank" rel="noreferrer" className="underline hover:text-foreground">서비스 약관</a>
+            과{" "}
+            <a href={LEGAL.privacy} target="_blank" rel="noreferrer" className="underline hover:text-foreground">개인정보 처리방침</a>
+            에 동의하게 됩니다.
           </p>
 
           {import.meta.env.DEV && (

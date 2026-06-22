@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
 import { accountApi } from "@/lib/account-api";
+import { LEGAL } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 
 const PLANS = [
@@ -147,6 +148,12 @@ export function AccountPage() {
           </Card>
 
           <WebhookCard />
+
+          <p className="pt-2 text-center text-xs text-muted-foreground">
+            <a href={LEGAL.terms} target="_blank" rel="noreferrer" className="underline hover:text-foreground">이용약관</a>
+            {" · "}
+            <a href={LEGAL.privacy} target="_blank" rel="noreferrer" className="underline hover:text-foreground">개인정보처리방침</a>
+          </p>
         </div>
       </div>
     </div>
