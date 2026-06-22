@@ -45,6 +45,13 @@ export function AccountPage() {
       else window.location.reload(); // dev/local instant upgrade → refresh plan
     },
   });
+  const portal = useMutation({
+    mutationFn: () => billingApi.portal(),
+    onSuccess: (res) => {
+      if (res.url) window.location.href = res.url; // Stripe billing portal
+      else window.location.reload(); // dev/local instant cancel → refresh plan
+    },
+  });
 
   const logout = () => {
     window.google?.accounts.id.disableAutoSelect();
@@ -157,9 +164,24 @@ export function AccountPage() {
                   );
                 })}
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Stripe 결제 — 키 설정 시 실결제, 미설정(로컬) 시 바로 전환됩니다.
-              </p>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Stripe 결제 — 키 설정 시 실결제, 미설정(로컬) 시 바로 전환됩니다.
+                </p>
+                {currentPlan !== "FREE" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-muted-foreground"
+                    disabled={portal.isPending}
+                    onClick={() => {
+                      if (confirm("구독을 취소하고 무료 플랜으로 전환할까요?")) portal.mutate();
+                    }}
+                  >
+                    {portal.isPending ? <Loader2 className="size-4 animate-spin" /> : "구독 취소·관리"}
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
 

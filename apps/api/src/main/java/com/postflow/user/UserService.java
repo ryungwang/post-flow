@@ -55,6 +55,19 @@ public class UserService {
         getById(userId).changePlan(plan);
     }
 
+    @Transactional
+    public void linkStripeCustomer(Long userId, String customerId) {
+        if (customerId != null) {
+            getById(userId).setStripeCustomerId(customerId);
+        }
+    }
+
+    /** Downgrade the user owning this Stripe customer to FREE (subscription canceled). */
+    @Transactional
+    public void downgradeByStripeCustomer(String customerId) {
+        userRepository.findByStripeCustomerId(customerId).ifPresent(u -> u.changePlan(Plan.FREE));
+    }
+
     @Transactional(readOnly = true)
     public User getById(Long id) {
         return userRepository.findById(id)

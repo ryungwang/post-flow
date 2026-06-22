@@ -40,6 +40,10 @@ public class User extends BaseTimeEntity {
     @Column(name = "webhook_secret", length = 64)
     private String webhookSecret;
 
+    /** Stripe customer id (set after first checkout; used for the billing portal). */
+    @Column(name = "stripe_customer_id", length = 255)
+    private String stripeCustomerId;
+
     public static User create(String email, String name, String profileImage) {
         User u = new User();
         u.email = email;
@@ -63,5 +67,9 @@ public class User extends BaseTimeEntity {
 
     public void changePlan(Plan plan) {
         this.plan = plan;
+    }
+
+    public void setStripeCustomerId(String stripeCustomerId) {
+        this.stripeCustomerId = stripeCustomerId;
     }
 }

@@ -14,12 +14,15 @@ public interface PaymentProvider {
     /** Create a hosted checkout/subscription session; returns the redirect URL. */
     String createCheckoutUrl(Long userId, Plan plan, String successUrl, String cancelUrl);
 
-    /**
-     * Verify + handle a provider webhook. Returns the (userId, plan) to upgrade, or null if the
-     * event isn't a completed purchase.
-     */
-    PlanChange handleWebhook(String payload, String signature);
+    /** Create a hosted billing-portal session for managing/canceling the subscription. */
+    String createPortalUrl(String customerId, String returnUrl);
 
-    record PlanChange(Long userId, Plan plan) {
+    /** Verify + handle a provider webhook. Returns what to apply, or null if the event is ignored. */
+    WebhookResult handleWebhook(String payload, String signature);
+
+    enum Action { UPGRADE, CANCEL }
+
+    /** UPGRADE carries (userId, plan, customerId); CANCEL carries (customerId). */
+    record WebhookResult(Action action, Long userId, Plan plan, String customerId) {
     }
 }

@@ -50,13 +50,37 @@ public class BillingController {
         return Map.of("upgraded", true, "plan", plan.name());
     }
 
-    /** Stripe webhook (public). Verifies signature and upgrades the plan on completed checkout. */
+    /**
+     * Manage/cancel subscription. With Stripe → returns the billing-portal URL (user cancels there).
+     * Without Stripe (dev/local) → cancels directly by downgrading to FREE.
+     */
+    @PostMapping("/portal")
+    public Map<String, Object> portal(@AuthenticationPrincipal Long userId) {
+        if (payment.isConfigured()) {
+            String customerId = userService.getById(userId).getStripeCustomerId();
+            if (customerId == null || customerId.isBlank()) {
+                throw new IllegalStateException("결제 내역이 없어요.");
+            }
+            String url = payment.createPortalUrl(customerId, frontendBase + "/settings/account");
+            return Map.of("url", url);
+        }
+        userService.changePlan(userId, Plan.FREE);
+        return Map.of("canceled", true);
+    }
+
+    /** Stripe webhook (public). Upgrades on checkout, downgrades on subscription cancellation. */
     @PostMapping("/webhook")
     public ResponseEntity<String> webhook(@RequestHeader(name = "Stripe-Signature", required = false) String signature,
                                           @RequestBody String payload) {
-        PaymentProvider.PlanChange change = payment.handleWebhook(payload, signature);
-        if (change != null) {
-            userService.changePlan(change.userId(), change.plan());
+        PaymentProvider.WebhookResult result = payment.handleWebhook(payload, signature);
+        if (result != null) {
+            switch (result.action()) {
+                case UPGRADE -> {
+                    userService.changePlan(result.userId(), result.plan());
+                    userService.linkStripeCustomer(result.userId(), result.customerId());
+                }
+                case CANCEL -> userService.downgradeByStripeCustomer(result.customerId());
+            }
         }
         return ResponseEntity.ok("ok");
     }
