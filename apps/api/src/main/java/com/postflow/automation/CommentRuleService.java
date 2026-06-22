@@ -2,6 +2,7 @@ package com.postflow.automation;
 
 import com.postflow.automation.dto.CommentRuleDto;
 import com.postflow.automation.dto.CommentRuleRequest;
+import com.postflow.post.PostRepository;
 import com.postflow.roi.CtaLink;
 import com.postflow.roi.CtaLinkRepository;
 import com.postflow.roi.CtaLinkService;
@@ -16,13 +17,16 @@ public class CommentRuleService {
     private final CommentRuleRepository ruleRepository;
     private final CtaLinkRepository ctaLinkRepository;
     private final CtaLinkService ctaLinkService;
+    private final PostRepository postRepository;
 
     public CommentRuleService(CommentRuleRepository ruleRepository,
                               CtaLinkRepository ctaLinkRepository,
-                              CtaLinkService ctaLinkService) {
+                              CtaLinkService ctaLinkService,
+                              PostRepository postRepository) {
         this.ruleRepository = ruleRepository;
         this.ctaLinkRepository = ctaLinkRepository;
         this.ctaLinkService = ctaLinkService;
+        this.postRepository = postRepository;
     }
 
     @Transactional(readOnly = true)
@@ -32,6 +36,7 @@ public class CommentRuleService {
 
     @Transactional
     public CommentRuleDto create(Long userId, CommentRuleRequest req) {
+        assertRefsOwned(userId, req.postId(), req.ctaLinkId());
         CommentRule rule = CommentRule.create(userId, req.postId(), req.keyword(), req.replyTemplate(), req.ctaLinkId());
         return CommentRuleDto.from(ruleRepository.save(rule));
     }
@@ -39,8 +44,23 @@ public class CommentRuleService {
     @Transactional
     public CommentRuleDto update(Long userId, Long id, CommentRuleRequest req) {
         CommentRule rule = loadOwned(userId, id);
+        assertRefsOwned(userId, req.postId(), req.ctaLinkId());
         rule.update(req.keyword(), req.replyTemplate(), req.ctaLinkId(), req.active());
         return CommentRuleDto.from(rule);
+    }
+
+    /** Client-supplied post / CTA-link references must belong to the user. */
+    private void assertRefsOwned(Long userId, Long postId, Long ctaLinkId) {
+        if (postId != null) {
+            postRepository.findById(postId)
+                    .filter(p -> p.getUserId().equals(userId))
+                    .orElseThrow(() -> new IllegalArgumentException("post not found"));
+        }
+        if (ctaLinkId != null) {
+            ctaLinkRepository.findById(ctaLinkId)
+                    .filter(l -> l.getUserId().equals(userId))
+                    .orElseThrow(() -> new IllegalArgumentException("link not found"));
+        }
     }
 
     @Transactional

@@ -42,16 +42,33 @@ public class RoiService {
 
     @Transactional
     public PostCost setCost(Long userId, Long postId, java.math.BigDecimal amount, String currency, String note) {
+        assertPostOwned(userId, postId);
         return postCostRepository.findByPostId(postId)
+                .filter(c -> c.getUserId().equals(userId))
                 .map(c -> { c.update(amount, currency, note); return c; })
                 .orElseGet(() -> postCostRepository.save(PostCost.create(userId, postId, amount, currency, note)));
     }
 
     @Transactional
     public Conversion createConversion(Long userId, CreateConversionRequest req) {
+        if (req.postId() != null) {
+            assertPostOwned(userId, req.postId());
+        }
+        if (req.leadId() != null) {
+            leadRepository.findById(req.leadId())
+                    .filter(l -> l.getUserId().equals(userId))
+                    .orElseThrow(() -> new IllegalArgumentException("lead not found"));
+        }
         return conversionRepository.save(Conversion.manual(
                 userId, req.postId(), req.leadId(), req.amount(),
                 req.currency(), req.occurredAt(), req.note()));
+    }
+
+    /** A post id supplied by the client must belong to the authenticated user. */
+    private void assertPostOwned(Long userId, Long postId) {
+        postRepository.findById(postId)
+                .filter(p -> p.getUserId().equals(userId))
+                .orElseThrow(() -> new IllegalArgumentException("post not found"));
     }
 
     @Transactional

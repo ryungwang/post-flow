@@ -22,6 +22,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     },
   });
   if (!res.ok) {
+    // expired/invalid token on a data call → drop session so the route guard redirects to login
+    if (res.status === 401 && !path.startsWith("/auth/")) {
+      localStorage.removeItem("postflow-token");
+    }
     let message = `Request failed: ${res.status}`;
     try {
       const body = await res.json();

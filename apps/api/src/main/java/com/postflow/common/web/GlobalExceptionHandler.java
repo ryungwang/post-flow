@@ -46,4 +46,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(Map.of("error", "generation_failed", "message", "AI 응답 처리에 실패했어요. 다시 시도해 주세요."));
     }
+
+    /** Resource lookups / ownership checks throw IllegalArgumentException("... not found") → 404. */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> notFound(IllegalArgumentException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "not_found", "message", e.getMessage() != null ? e.getMessage() : "찾을 수 없어요."));
+    }
+
+    /** Other illegal states (e.g. payment not configured) → 400. */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> badState(IllegalStateException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", "bad_request", "message", e.getMessage() != null ? e.getMessage() : "요청을 처리할 수 없어요."));
+    }
 }

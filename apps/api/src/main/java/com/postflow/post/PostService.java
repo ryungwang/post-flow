@@ -22,15 +22,18 @@ public class PostService {
     private final PublishingProcessor publishingProcessor;
     private final ThreadsPublishService publishService;
     private final com.postflow.user.UsageService usageService;
+    private final com.postflow.social.SocialAccountRepository socialAccountRepository;
 
     public PostService(PostRepository postRepository,
                        PublishingProcessor publishingProcessor,
                        ThreadsPublishService publishService,
-                       com.postflow.user.UsageService usageService) {
+                       com.postflow.user.UsageService usageService,
+                       com.postflow.social.SocialAccountRepository socialAccountRepository) {
         this.postRepository = postRepository;
         this.publishingProcessor = publishingProcessor;
         this.publishService = publishService;
         this.usageService = usageService;
+        this.socialAccountRepository = socialAccountRepository;
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +82,11 @@ public class PostService {
     @Transactional
     public PostDto setAccount(Long userId, Long id, Long socialAccountId) {
         Post post = loadOwned(userId, id);
+        if (socialAccountId != null) {
+            socialAccountRepository.findById(socialAccountId)
+                    .filter(a -> a.getUserId().equals(userId))
+                    .orElseThrow(() -> new IllegalArgumentException("account not found"));
+        }
         post.updateSocialAccount(socialAccountId);
         return PostDto.from(post);
     }
@@ -89,6 +97,7 @@ public class PostService {
         post.updateContent(request.content());
         post.updateMeta(request.hashtags(), request.cta());
         if (request.scheduledAt() != null) {
+            usageService.assertCanSchedule(userId);
             post.schedule(request.scheduledAt());
         }
         return PostDto.from(post);

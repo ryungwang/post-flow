@@ -4,7 +4,7 @@ import {
   BarChart3, CalendarClock, Library, LayoutDashboard, Link2, MessageSquareReply,
   Search, Settings, Sparkles, Wand2,
 } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 type Cmd = { label: string; to: string; icon: React.ComponentType<{ className?: string }>; keywords?: string };
@@ -50,6 +50,7 @@ export function CommandPalette() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="top-[20%] max-w-lg translate-y-0 gap-0 p-0">
+        <DialogTitle className="sr-only">명령 팔레트</DialogTitle>
         <div className="flex items-center gap-2 border-b border-border/60 px-3">
           <Search className="size-4 text-muted-foreground" />
           <input

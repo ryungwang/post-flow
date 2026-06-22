@@ -127,6 +127,7 @@ export function RoiView({ days = 0 }: { days?: number }) {
 }
 
 function ActionsCard({ posts, onChanged }: { posts: { id: number; content: string }[]; onChanged: () => void }) {
+  const qc = useQueryClient();
   const [linkPost, setLinkPost] = useState<string>("");
   const [dest, setDest] = useState("https://");
   const [captureLead, setCaptureLead] = useState(false);
@@ -142,7 +143,11 @@ function ActionsCard({ posts, onChanged }: { posts: { id: number; content: strin
 
   const createLink = useMutation({
     mutationFn: () => roiApi.createCtaLink(Number(linkPost), dest, undefined, captureLead, captureLead ? headline : undefined),
-    onSuccess: (r) => setCreated(r.shortUrl),
+    onSuccess: (r) => {
+      setCreated(r.shortUrl);
+      qc.invalidateQueries({ queryKey: ["cta-links"] }); // 자동화 추적링크 드롭다운 갱신
+      onChanged();
+    },
   });
   const addRevenue = useMutation({
     mutationFn: () => roiApi.createConversion(Number(revPost), Number(amount)),

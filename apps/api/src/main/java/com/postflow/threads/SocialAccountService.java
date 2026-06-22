@@ -110,6 +110,7 @@ public class SocialAccountService {
                 .orElseThrow(() -> new IllegalArgumentException("account not found"));
         boolean wasDefault = account.isDefault();
         repository.delete(account);
+        repository.flush(); // ensure the deleted row isn't returned when re-selecting a default
         if (wasDefault) {
             repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS).stream()
                     .findFirst().ifPresent(a -> a.setDefault(true));

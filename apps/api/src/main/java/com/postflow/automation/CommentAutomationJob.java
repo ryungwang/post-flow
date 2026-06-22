@@ -65,8 +65,9 @@ public class CommentAutomationJob {
         }
     }
 
-    @Transactional
-    protected void processRule(CommentRule rule) {
+    // No @Transactional: invoked via self-call (proxy can't apply it) and contains external HTTP;
+    // each repository save is its own transaction, and dedup (existsByRuleIdAndThreadsReplyId) makes it idempotent.
+    private void processRule(CommentRule rule) {
         SocialAccount account = socialAccountRepository
                 .findFirstByUserIdAndProviderAndIsDefaultTrue(rule.getUserId(), SocialProvider.THREADS)
                 .or(() -> socialAccountRepository
