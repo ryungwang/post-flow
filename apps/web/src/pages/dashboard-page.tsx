@@ -73,7 +73,7 @@ function ApiBadge() {
 
 export function DashboardPage() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-7">
+    <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">대시보드</h1>

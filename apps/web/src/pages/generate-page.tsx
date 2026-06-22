@@ -60,7 +60,7 @@ export function GeneratePage() {
     setCards((cs) => (cs ? cs.filter((_, idx) => idx !== i) : cs));
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-7">
+    <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">AI 생성</h1>
         <p className="mt-1 text-sm text-muted-foreground">
