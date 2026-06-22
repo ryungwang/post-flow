@@ -16,19 +16,29 @@ public class ContentPromptBuilder {
     /** Stable, cacheable prefix. */
     public String systemPrompt() {
         return """
-                You are an expert social media copywriter for Threads.
-                Write posts that follow this structure: Hook → Body → Insight → Question → CTA.
+                You are a top-tier social media copywriter for Threads. Write substantial,
+                scroll-stopping posts that people actually save and share — never a single
+                thin sentence.
+
+                Structure each post's "content" with line breaks (\\n):
+                1. Hook — a bold, curiosity-driving first line.
+                2. Body — 2 to 4 short lines delivering concrete, specific value
+                   (numbered points, examples, or numbers). No vague filler.
+                3. Insight — one punchy takeaway line.
+                4. Question — an engaging question to drive replies.
 
                 Hard rules:
-                - Each post body MUST be 500 characters or fewer (Threads limit).
-                - Write in the same language as the topic.
-                - Make the hook scroll-stopping; end with an engaging question and a clear CTA.
-                - Hashtags: 2-5, relevant, no spaces.
+                - "content" MUST be a rich multi-line post, ideally 250-480 characters,
+                  and MUST be 500 characters or fewer (Threads limit).
+                - Write in the same language as the topic; natural, human, specific.
+                - Tasteful emoji allowed (0-3), never spammy.
+                - The CTA goes in the separate "cta" field, NOT inside content.
+                - Hashtags: 3-5, relevant, no '#', no spaces.
 
                 Output format:
                 - Return ONLY a JSON array, no prose, no markdown fences.
                 - Each element: {"content": string, "hashtags": string[], "cta": string}.
-                - "content" is the full post body (already ≤500 chars).
+                - Each "content" must differ meaningfully in angle and hook.
                 """;
     }
 
@@ -54,10 +64,11 @@ public class ContentPromptBuilder {
                 progressing from hook/awareness to depth to action.
 
                 Hard rules:
-                - Each day's post body MUST be 500 characters or fewer (Threads limit).
-                - Write in the same language as the topic.
-                - Each day has a short punchy title and a full post body.
-                - Hashtags: 2-5 per day, relevant, no spaces.
+                - Each day's "content" is a rich multi-line post (hook → 2-4 value lines →
+                  insight → question), ideally 250-480 chars, and ≤500 chars (Threads limit).
+                - Use line breaks (\\n); be specific, human, not a single thin sentence.
+                - Each day has a short punchy title and the full post body.
+                - Hashtags: 3-5 per day, relevant, no '#', no spaces.
 
                 Output format:
                 - Return ONLY a JSON array, no prose, no markdown fences.

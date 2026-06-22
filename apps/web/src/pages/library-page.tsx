@@ -85,7 +85,7 @@ export function LibraryPage() {
                     <tr key={p.id} className="border-b last:border-0 align-top hover:bg-accent/40">
                       <td className="px-6 py-3.5">
                         <div className="max-w-xl">
-                          <p className="line-clamp-2 font-medium">{p.content}</p>
+                          <p className="line-clamp-3 whitespace-pre-line font-medium">{p.content}</p>
                           {p.hashtags?.length > 0 && (
                             <div className="mt-1.5 flex flex-wrap gap-1">
                               {p.hashtags.map((h, i) => (
