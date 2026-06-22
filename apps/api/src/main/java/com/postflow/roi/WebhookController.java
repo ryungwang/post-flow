@@ -46,9 +46,16 @@ public class WebhookController {
         this.userRepository = userRepository;
     }
 
+    /** Reject signed payloads whose timestamp is older/newer than this (replay protection). */
+    private static final long MAX_SKEW_SECONDS = 300;
+
     @PostMapping("/api/webhooks/conversions")
     public ResponseEntity<?> conversion(@RequestHeader(name = "X-PostFlow-Signature", required = false) String signature,
+                                        @RequestHeader(name = "X-PostFlow-Timestamp", required = false) String timestamp,
                                         @RequestBody String rawBody) {
+        if (!freshTimestamp(timestamp)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "stale or missing timestamp"));
+        }
         Long userId;
         Long postId;
         BigDecimal amount;
@@ -75,12 +82,26 @@ public class WebhookController {
         }
 
         String secret = userRepository.findById(userId).map(User::getWebhookSecret).orElse(null);
-        if (secret == null || secret.isBlank() || !verify(rawBody, signature, secret)) {
+        // signature covers "timestamp.body" so the timestamp can't be tampered with
+        if (secret == null || secret.isBlank() || !verify(timestamp + "." + rawBody, signature, secret)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "invalid signature"));
         }
 
         Conversion c = roiService.recordWebhookConversion(userId, postId, amount, currency, note);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", c.getId()));
+    }
+
+    private boolean freshTimestamp(String timestamp) {
+        if (timestamp == null || timestamp.isBlank()) {
+            return false;
+        }
+        try {
+            long ts = Long.parseLong(timestamp.trim());
+            long now = java.time.Instant.now().getEpochSecond();
+            return Math.abs(now - ts) <= MAX_SKEW_SECONDS;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private boolean verify(String body, String signature, String secret) {

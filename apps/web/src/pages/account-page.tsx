@@ -337,7 +337,8 @@ function WebhookCard() {
             </div>
             <div className="flex items-center justify-between pt-1">
               <p className="text-xs text-muted-foreground">
-                헤더 <code className="rounded bg-muted px-1">X-PostFlow-Signature</code> 에 본문 HMAC 첨부
+                <code className="rounded bg-muted px-1">X-PostFlow-Timestamp</code>(epoch초) +{" "}
+                <code className="rounded bg-muted px-1">X-PostFlow-Signature</code> = HMAC(<code className="rounded bg-muted px-1">타임스탬프.본문</code>)
               </p>
               <Button variant="ghost" size="sm" className="gap-1.5" disabled={regen.isPending} onClick={() => regen.mutate()}>
                 {regen.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} 재발급

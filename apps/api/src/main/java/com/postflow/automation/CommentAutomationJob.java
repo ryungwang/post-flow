@@ -68,19 +68,13 @@ public class CommentAutomationJob {
     // No @Transactional: invoked via self-call (proxy can't apply it) and contains external HTTP;
     // each repository save is its own transaction, and dedup (existsByRuleIdAndThreadsReplyId) makes it idempotent.
     private void processRule(CommentRule rule) {
-        SocialAccount account = socialAccountRepository
-                .findFirstByUserIdAndProviderAndIsDefaultTrue(rule.getUserId(), SocialProvider.THREADS)
-                .or(() -> socialAccountRepository
-                        .findByUserIdAndProviderOrderByIdAsc(rule.getUserId(), SocialProvider.THREADS)
-                        .stream().findFirst())
-                .filter(a -> a.getStatus() == ConnectionStatus.CONNECTED && !isExpired(a))
-                .orElse(null);
-        if (account == null) {
-            return; // not connected (or keys absent) → skip silently
-        }
-
         String replyText = ruleService.resolveReply(rule);
         for (Post post : targetPosts(rule)) {
+            // each post may have been published from a different account → use that account's token
+            SocialAccount account = resolveAccount(post);
+            if (account == null) {
+                continue; // post's account not connected (or keys absent) → skip
+            }
             List<ThreadsReply> replies = apiClient.getReplies(post.getThreadsMediaId(), account.getAccessToken());
             for (ThreadsReply reply : replies) {
                 if (!rule.matches(reply.text())) {
@@ -98,6 +92,25 @@ public class CommentAutomationJob {
                 }
             }
         }
+    }
+
+    /** The post's chosen account (if owned + usable), else the user's default/first usable account. */
+    private SocialAccount resolveAccount(Post post) {
+        if (post.getSocialAccountId() != null) {
+            SocialAccount chosen = socialAccountRepository.findById(post.getSocialAccountId())
+                    .filter(a -> a.getUserId().equals(post.getUserId()))
+                    .orElse(null);
+            if (chosen != null && chosen.getStatus() == ConnectionStatus.CONNECTED && !isExpired(chosen)) {
+                return chosen;
+            }
+        }
+        return socialAccountRepository
+                .findFirstByUserIdAndProviderAndIsDefaultTrue(post.getUserId(), SocialProvider.THREADS)
+                .or(() -> socialAccountRepository
+                        .findByUserIdAndProviderOrderByIdAsc(post.getUserId(), SocialProvider.THREADS)
+                        .stream().findFirst())
+                .filter(a -> a.getStatus() == ConnectionStatus.CONNECTED && !isExpired(a))
+                .orElse(null);
     }
 
     private List<Post> targetPosts(CommentRule rule) {
