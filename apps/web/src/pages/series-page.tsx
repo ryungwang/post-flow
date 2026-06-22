@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookmarkPlus, CalendarRange, Check, Loader2, Sparkles } from "lucide-react";
+import { BookmarkPlus, CalendarRange, Check, Eye, Loader2, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { seriesApi, type SeriesItem } from "@/lib/series-api";
 import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
+import { ThreadsPreview } from "@/components/threads-preview";
+import { useAuth } from "@/store/auth";
 import { postsApi } from "@/lib/posts-api";
 import { ApiError } from "@/lib/api";
 
@@ -127,7 +129,9 @@ export function SeriesPage() {
 function SeriesRow({ item }: { item: SeriesItem }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [preview, setPreview] = useState(false);
   const qc = useQueryClient();
+  const user = useAuth((s) => s.user);
 
   const save = async () => {
     setSaving(true);
@@ -151,22 +155,35 @@ function SeriesRow({ item }: { item: SeriesItem }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-semibold">{item.title}</h3>
-          <ScoreBadge score={item.score} />
-        </div>
-        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-          {item.content}
-        </p>
-        {item.hashtags?.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {item.hashtags.map((h, i) => (
-              <Badge key={i} variant="secondary">#{h}</Badge>
-            ))}
+          <div className="flex items-center gap-2">
+            <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => setPreview((v) => !v)}>
+              <Eye className="size-3.5" /> {preview ? "내용" : "미리보기"}
+            </button>
+            <ScoreBadge score={item.score} />
           </div>
-        )}
-        {item.cta && <p className="mt-2 text-sm font-medium text-primary">{item.cta}</p>}
-        <div className="mt-3">
-          <ScoreAnalysisPanel content={item.content} hashtags={item.hashtags} cta={item.cta} score={item.score} />
         </div>
+        {preview ? (
+          <div className="mt-2">
+            <ThreadsPreview username={user?.name ?? "나"} avatarUrl={user?.profileImage} content={item.content} hashtags={item.hashtags} cta={item.cta} mediaUrl={null} />
+          </div>
+        ) : (
+          <>
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+              {item.content}
+            </p>
+            {item.hashtags?.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {item.hashtags.map((h, i) => (
+                  <Badge key={i} variant="secondary">#{h}</Badge>
+                ))}
+              </div>
+            )}
+            {item.cta && <p className="mt-2 text-sm font-medium text-primary">{item.cta}</p>}
+            <div className="mt-3">
+              <ScoreAnalysisPanel content={item.content} hashtags={item.hashtags} cta={item.cta} score={item.score} />
+            </div>
+          </>
+        )}
       </div>
       <Button variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={saving || saved} onClick={save}>
         {saving ? <Loader2 className="size-4 animate-spin" /> : saved ? <Check className="size-4" /> : <BookmarkPlus className="size-4" />}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookmarkPlus, Check, Copy, Loader2, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { BookmarkPlus, Check, Copy, Eye, Loader2, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ import {
 import { contentApi, type GeneratedCard, type HookVariant } from "@/lib/content-api";
 import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
+import { ThreadsPreview } from "@/components/threads-preview";
+import { useAuth } from "@/store/auth";
 import { ApiError } from "@/lib/api";
 
 const TOPIC_CHIPS = ["AI", "스타트업", "개발", "생산성", "여행", "음식", "운동", "육아"];
@@ -293,9 +295,11 @@ function GeneratedCardView({
   onDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [preview, setPreview] = useState(false);
   const [copied, setCopied] = useState(false);
   const [save, setSave] = useState<SaveState>("idle");
   const qc = useQueryClient();
+  const user = useAuth((s) => s.user);
 
   const fullText = () =>
     [card.content, card.hashtags.map((h) => `#${h}`).join(" "), card.cta]
@@ -336,33 +340,48 @@ function GeneratedCardView({
 
   return (
     <Card className="lift flex h-full flex-col p-5">
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex items-center justify-between">
+        <button
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setPreview((v) => !v)}
+        >
+          <Eye className="size-3.5" /> {preview ? "내용" : "미리보기"}
+        </button>
         <ScoreBadge score={card.score} />
       </div>
-      {editing ? (
-        <Textarea
-          value={card.content}
-          onChange={(e) => onChange({ content: e.target.value })}
-          className="min-h-32 flex-1"
-        />
+
+      {preview && !editing ? (
+        <div className="flex-1">
+          <ThreadsPreview username={user?.name ?? "나"} avatarUrl={user?.profileImage} content={card.content} hashtags={card.hashtags} cta={card.cta} mediaUrl={null} />
+        </div>
       ) : (
-        <p className="flex-1 whitespace-pre-wrap text-sm leading-relaxed">{card.content}</p>
-      )}
+        <>
+          {editing ? (
+            <Textarea
+              value={card.content}
+              onChange={(e) => onChange({ content: e.target.value })}
+              className="min-h-32 flex-1"
+            />
+          ) : (
+            <p className="flex-1 whitespace-pre-wrap text-sm leading-relaxed">{card.content}</p>
+          )}
 
-      {card.hashtags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
-          {card.hashtags.map((h, idx) => (
-            <Badge key={idx} variant="secondary">#{h}</Badge>
-          ))}
-        </div>
-      )}
+          {card.hashtags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1">
+              {card.hashtags.map((h, idx) => (
+                <Badge key={idx} variant="secondary">#{h}</Badge>
+              ))}
+            </div>
+          )}
 
-      {card.cta && <p className="mt-3 text-sm font-medium text-primary">{card.cta}</p>}
+          {card.cta && <p className="mt-3 text-sm font-medium text-primary">{card.cta}</p>}
 
-      {!editing && (
-        <div className="mt-3">
-          <ScoreAnalysisPanel content={card.content} hashtags={card.hashtags} cta={card.cta} score={card.score} />
-        </div>
+          {!editing && (
+            <div className="mt-3">
+              <ScoreAnalysisPanel content={card.content} hashtags={card.hashtags} cta={card.cta} score={card.score} />
+            </div>
+          )}
+        </>
       )}
 
       <div className="mt-4 flex items-center justify-between border-t pt-3">
