@@ -24,7 +24,13 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.62 0.22 280);
+
+  /* Brand accent (violet → fuchsia) */
+  --brand: oklch(0.62 0.22 280);
+  --brand-2: oklch(0.66 0.25 330);
+  --brand-foreground: oklch(0.99 0 0);
+  --gradient-brand: linear-gradient(135deg, oklch(0.62 0.22 280), oklch(0.66 0.25 330));
 }
 
 .dark {
@@ -46,7 +52,12 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.7 0.2 300);
+
+  --brand: oklch(0.7 0.2 300);
+  --brand-2: oklch(0.72 0.23 340);
+  --brand-foreground: oklch(0.99 0 0);
+  --gradient-brand: linear-gradient(135deg, oklch(0.7 0.2 300), oklch(0.72 0.23 340));
 }
 
 /* Map tokens into Tailwind's theme so `bg-background`, `text-foreground`, etc. work. */
@@ -70,10 +81,45 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-foreground: var(--brand-foreground);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-scale-in: scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-gradient: gradient-pan 6s ease infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(2%, -3%) scale(1.05); }
+}
+@keyframes gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 * {
@@ -86,4 +132,73 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Brand gradient helpers */
+.bg-brand-gradient {
+  background-image: var(--gradient-brand);
+}
+.text-gradient-brand {
+  background-image: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bg-brand-animated {
+  background-image: var(--gradient-brand);
+  background-size: 200% 200%;
+  animation: var(--animate-gradient);
+}
+.shadow-brand {
+  box-shadow: 0 8px 24px -8px color-mix(in oklab, var(--brand) 55%, transparent);
+}
+
+/* Hover lift for cards/interactive surfaces */
+.lift {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease,
+    border-color 0.2s ease;
+  will-change: transform;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px -12px color-mix(in oklab, var(--foreground) 22%, transparent);
+}
+
+/* Shimmer skeleton */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--muted) 70%, transparent) 25%,
+    color-mix(in oklab, var(--muted-foreground) 18%, transparent) 37%,
+    color-mix(in oklab, var(--muted) 70%, transparent) 63%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+/* Smooth theme + interaction transitions */
+button, a, input, textarea, [role="button"] {
+  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease,
+    box-shadow 0.18s ease, transform 0.12s ease;
+}
+button:active {
+  transform: scale(0.97);
+}
+
+/* Refined scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--foreground) 18%, transparent);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--foreground) 30%, transparent);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  .lift:hover { transform: none; }
 }

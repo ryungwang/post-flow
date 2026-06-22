@@ -171,12 +171,13 @@ export function GeneratePage() {
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {cards.map((card, i) => (
-                <GeneratedCardView
-                  key={i}
-                  card={card}
-                  onChange={(patch) => updateCard(i, patch)}
-                  onDelete={() => removeCard(i)}
-                />
+                <div key={i} className="animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
+                  <GeneratedCardView
+                    card={card}
+                    onChange={(patch) => updateCard(i, patch)}
+                    onDelete={() => removeCard(i)}
+                  />
+                </div>
               ))}
             </div>
           </>
@@ -259,7 +260,7 @@ function GeneratedCardView({
   const busy = save === "saving" || save === "publishing";
 
   return (
-    <Card className="flex flex-col p-5">
+    <Card className="lift flex h-full flex-col p-5">
       {editing ? (
         <Textarea
           value={card.content}

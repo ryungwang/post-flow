@@ -85,13 +85,19 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
-        {KPIS.map((kpi) => {
+        {KPIS.map((kpi, i) => {
           const positive = kpi.delta >= 0;
           return (
-            <Card key={kpi.label} className="p-5">
+            <Card
+              key={kpi.label}
+              className="lift animate-fade-up p-5"
+              style={{ animationDelay: `${i * 70}ms` }}
+            >
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{kpi.label}</span>
-                <kpi.icon className="size-4 text-muted-foreground" />
+                <span className="bg-brand/12 flex size-8 items-center justify-center rounded-lg text-brand">
+                  <kpi.icon className="size-4" />
+                </span>
               </div>
               <div className="mt-3 text-2xl font-semibold tabular-nums tracking-tight">
                 {nf.format(kpi.value)}

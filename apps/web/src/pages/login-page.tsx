@@ -49,23 +49,32 @@ export function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4">
+      {/* animated gradient blobs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="bg-brand-animated absolute -left-24 -top-24 size-96 rounded-full opacity-25 blur-3xl animate-float" />
+        <div
+          className="bg-brand-animated absolute -bottom-32 -right-24 size-[28rem] rounded-full opacity-20 blur-3xl animate-float"
+          style={{ animationDelay: "2s" }}
+        />
+      </div>
+
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-sm">
+      <div className="relative w-full max-w-sm animate-scale-in">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="size-6" />
+          <div className="bg-brand-gradient shadow-brand mb-4 flex size-14 items-center justify-center rounded-2xl text-brand-foreground">
+            <Sparkles className="size-7" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">PostFlow</h1>
+          <h1 className="text-gradient-brand text-3xl font-bold tracking-tight">PostFlow</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Create Once. Grow Automatically.
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-6 shadow-sm">
+        <div className="rounded-2xl border bg-card/80 p-6 shadow-xl backdrop-blur-sm">
           <h2 className="text-lg font-semibold">시작하기</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Google 계정으로 로그인하면 바로 콘텐츠를 만들 수 있어요.

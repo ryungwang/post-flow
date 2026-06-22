@@ -46,10 +46,10 @@ function isGroup(i: Item): i is Group {
 
 const leafClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+    "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all",
     isActive
-      ? "bg-accent text-accent-foreground font-medium"
-      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+      ? "bg-brand/10 font-medium text-foreground shadow-[inset_2px_0_0_0_var(--brand)]"
+      : "text-muted-foreground hover:translate-x-0.5 hover:bg-accent/60 hover:text-foreground",
   );
 
 function NavGroup({ group }: { group: Group }) {
@@ -83,10 +83,10 @@ export function AppSidebar() {
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-card/40">
       <div className="flex h-14 items-center gap-2 border-b px-5">
-        <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+        <div className="bg-brand-gradient shadow-brand flex size-7 items-center justify-center rounded-md text-brand-foreground">
           <Sparkles className="size-4" />
         </div>
-        <span className="text-base font-semibold tracking-tight">PostFlow</span>
+        <span className="text-gradient-brand text-base font-bold tracking-tight">PostFlow</span>
       </div>
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
         {NAV.map((item) =>
