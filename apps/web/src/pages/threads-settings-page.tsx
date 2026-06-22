@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AtSign, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,14 +19,53 @@ function fmt(iso: string | null) {
 }
 
 export function ThreadsSettingsPage() {
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["threads-status"], queryFn: threadsApi.status });
   const [connecting, setConnecting] = useState(false);
+
+  // If this page is loaded inside the OAuth popup (callback redirect), notify the opener & close.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get("threads");
+    if (result && window.opener) {
+      window.opener.postMessage({ type: "threads-oauth", result }, window.location.origin);
+      window.close();
+    }
+  }, []);
 
   const connect = async () => {
     setConnecting(true);
     try {
       const { authorizeUrl } = await threadsApi.connectUrl();
-      window.location.href = authorizeUrl;
+      const w = 600;
+      const h = 720;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      const popup = window.open(authorizeUrl, "threads-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+      if (!popup) {
+        // popup blocked → fall back to full-page redirect
+        window.location.href = authorizeUrl;
+        return;
+      }
+      const onMessage = (e: MessageEvent) => {
+        if (e.origin !== window.location.origin) return;
+        if (e.data?.type === "threads-oauth") {
+          window.removeEventListener("message", onMessage);
+          clearInterval(timer);
+          setConnecting(false);
+          qc.invalidateQueries({ queryKey: ["threads-status"] });
+        }
+      };
+      window.addEventListener("message", onMessage);
+      // safety: detect manual close
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          window.removeEventListener("message", onMessage);
+          setConnecting(false);
+          qc.invalidateQueries({ queryKey: ["threads-status"] });
+        }
+      }, 600);
     } catch {
       setConnecting(false);
     }
