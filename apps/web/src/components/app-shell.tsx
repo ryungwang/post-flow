@@ -1,8 +1,9 @@
 import { Outlet, useNavigate } from "react-router-dom";
-import { LogOut, Plus } from "lucide-react";
+import { LogOut, Plus, Search } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
+import { CommandPalette } from "@/components/command-palette";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/store/auth";
 
@@ -24,8 +25,16 @@ export function AppShell() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <AppSidebar />
+      <CommandPalette />
       <div className="app-ambient flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border/60 bg-background/70 px-6 backdrop-blur-xl">
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+            className="hidden items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent sm:flex"
+          >
+            <Search className="size-3.5" /> 검색·이동
+            <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+          </button>
           <div className="flex-1" />
           <Button size="sm" className="gap-1.5" onClick={() => navigate("/content/generate")}>
             <Plus className="size-4" />새 콘텐츠
