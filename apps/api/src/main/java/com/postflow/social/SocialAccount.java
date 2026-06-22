@@ -37,6 +37,10 @@ public class SocialAccount extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private SocialProvider provider = SocialProvider.THREADS;
 
+    /** Threads-side user id (returned at token exchange); used in publish endpoints. */
+    @Column(name = "threads_user_id")
+    private String threadsUserId;
+
     @Column(name = "access_token", nullable = false, length = 1024)
     private String accessToken;
 
@@ -49,4 +53,38 @@ public class SocialAccount extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ConnectionStatus status = ConnectionStatus.CONNECTED;
+
+    public static SocialAccount connect(Long userId, String threadsUserId,
+                                        String accessToken, Instant expiresAt) {
+        SocialAccount a = new SocialAccount();
+        a.userId = userId;
+        a.provider = SocialProvider.THREADS;
+        a.threadsUserId = threadsUserId;
+        a.accessToken = accessToken;
+        a.expiresAt = expiresAt;
+        a.lastRefreshedAt = Instant.now();
+        a.status = ConnectionStatus.CONNECTED;
+        return a;
+    }
+
+    /** Re-link on reconnect (new token + threads user id). */
+    public void reconnect(String threadsUserId, String accessToken, Instant expiresAt) {
+        this.threadsUserId = threadsUserId;
+        this.accessToken = accessToken;
+        this.expiresAt = expiresAt;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
+    }
+
+    /** In-place long-lived token renewal (Threads has no refresh_token). */
+    public void applyRefresh(String accessToken, Instant expiresAt) {
+        this.accessToken = accessToken;
+        this.expiresAt = expiresAt;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
+    }
+
+    public void markReconnectRequired() {
+        this.status = ConnectionStatus.RECONNECT_REQUIRED;
+    }
 }

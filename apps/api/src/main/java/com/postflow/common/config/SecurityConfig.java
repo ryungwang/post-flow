@@ -31,7 +31,8 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/api/ping", "/api/auth/google").permitAll()
+                        .requestMatchers("/actuator/health", "/api/ping",
+                                "/api/auth/google", "/api/threads/callback").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint))

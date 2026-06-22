@@ -49,4 +49,40 @@ public class Post extends BaseTimeEntity {
 
     @Column(name = "retry_count", nullable = false)
     private int retryCount = 0;
+
+    public void startPublishing() {
+        this.status = PostStatus.PUBLISHING;
+    }
+
+    public void markPublished(String threadsMediaId) {
+        this.status = PostStatus.PUBLISHED;
+        this.threadsMediaId = threadsMediaId;
+        this.publishedAt = java.time.Instant.now();
+        this.errorMessage = null;
+    }
+
+    /** Transient failure — stay SCHEDULED for the next cron tick, bump retry count. */
+    public void markRetry(String error) {
+        this.status = PostStatus.SCHEDULED;
+        this.errorMessage = truncate(error);
+        this.retryCount++;
+    }
+
+    /** Permanent failure after exhausting retries. */
+    public void markFailed(String error) {
+        this.status = PostStatus.FAILED;
+        this.errorMessage = truncate(error);
+        this.retryCount++;
+    }
+
+    public void markReconnectRequired() {
+        this.status = PostStatus.RECONNECT_REQUIRED;
+    }
+
+    private static String truncate(String s) {
+        if (s == null) {
+            return null;
+        }
+        return s.length() > 1000 ? s.substring(0, 1000) : s;
+    }
 }

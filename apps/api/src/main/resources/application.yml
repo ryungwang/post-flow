@@ -54,3 +54,16 @@ auth:
     # Dev default is non-secret; prod MUST inject AUTH_JWT_SECRET (>= 32 bytes).
     secret: ${AUTH_JWT_SECRET:dev-only-insecure-secret-change-me-32bytes!!}
     expiration: ${AUTH_JWT_EXPIRATION:7d}
+
+threads:
+  app-id: ${THREADS_APP_ID:}
+  app-secret: ${THREADS_APP_SECRET:}
+  redirect-uri: ${THREADS_REDIRECT_URI:http://localhost:8080/api/threads/callback}
+  scopes: threads_basic,threads_content_publish,threads_manage_insights
+  authorize-base-url: https://threads.net
+  graph-base-url: https://graph.threads.net
+  frontend-redirect-url: ${THREADS_FRONTEND_REDIRECT_URL:http://localhost:5173/settings?threads=connected}
+  publisher:
+    interval-ms: 60000
+  token-refresh:
+    cron: "0 0 3 * * *"

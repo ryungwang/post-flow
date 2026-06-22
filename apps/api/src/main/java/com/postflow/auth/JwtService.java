@@ -41,6 +41,18 @@ public class JwtService {
                 .compact();
     }
 
+    /** Short-lived signed state for the OAuth redirect (carries the initiating user id). */
+    public String issueState(Long userId) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .claim("typ", "oauth_state")
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(Duration.ofMinutes(10))))
+                .signWith(key)
+                .compact();
+    }
+
     /** Returns the user id from a valid token, or throws {@link InvalidTokenException}. */
     public Long parseUserId(String token) {
         try {
