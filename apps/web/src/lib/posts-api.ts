@@ -11,6 +11,8 @@ export type PostStatus =
 export type Post = {
   id: number;
   content: string;
+  hashtags: string[];
+  cta: string | null;
   status: PostStatus;
   scheduledAt: string | null;
   publishedAt: string | null;
@@ -20,6 +22,8 @@ export type Post = {
 
 export type CreatePost = {
   content: string;
+  hashtags?: string[];
+  cta?: string | null;
   scheduledAt?: string | null;
 };
 

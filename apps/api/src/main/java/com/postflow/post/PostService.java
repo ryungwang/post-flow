@@ -41,7 +41,7 @@ public class PostService {
 
     @Transactional
     public PostDto create(Long userId, CreatePostRequest request) {
-        Post post = Post.create(userId, request.content());
+        Post post = Post.create(userId, request.content(), request.hashtags(), request.cta());
         if (request.scheduledAt() != null) {
             post.schedule(request.scheduledAt());
         }
@@ -52,6 +52,7 @@ public class PostService {
     public PostDto update(Long userId, Long id, UpdatePostRequest request) {
         Post post = loadOwned(userId, id);
         post.updateContent(request.content());
+        post.updateMeta(request.hashtags(), request.cta());
         if (request.scheduledAt() != null) {
             post.schedule(request.scheduledAt());
         }

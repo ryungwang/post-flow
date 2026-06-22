@@ -236,7 +236,7 @@ function GeneratedCardView({
   const saveDraft = async () => {
     setSave("saving");
     try {
-      await postsApi.create({ content: card.content });
+      await postsApi.create({ content: card.content, hashtags: card.hashtags, cta: card.cta });
       qc.invalidateQueries({ queryKey: ["posts"] });
       setSave("saved");
     } catch {
@@ -247,7 +247,7 @@ function GeneratedCardView({
   const publish = async () => {
     setSave("publishing");
     try {
-      const post = await postsApi.create({ content: card.content });
+      const post = await postsApi.create({ content: card.content, hashtags: card.hashtags, cta: card.cta });
       await postsApi.publishNow(post.id);
       qc.invalidateQueries({ queryKey: ["posts"] });
       setSave("published");

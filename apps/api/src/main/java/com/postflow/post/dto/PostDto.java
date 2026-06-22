@@ -3,10 +3,13 @@ package com.postflow.post.dto;
 import com.postflow.post.Post;
 
 import java.time.Instant;
+import java.util.List;
 
 public record PostDto(
         Long id,
         String content,
+        List<String> hashtags,
+        String cta,
         String status,
         Instant scheduledAt,
         Instant publishedAt,
@@ -17,6 +20,8 @@ public record PostDto(
         return new PostDto(
                 post.getId(),
                 post.getContent(),
+                post.getHashtags(),
+                post.getCta(),
                 post.getStatus().name(),
                 post.getScheduledAt(),
                 post.getPublishedAt(),

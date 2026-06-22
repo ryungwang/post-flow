@@ -1,7 +1,9 @@
 package com.postflow.post;
 
 import com.postflow.common.entity.BaseTimeEntity;
+import com.postflow.common.jpa.StringListJsonConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -14,6 +16,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Entity
@@ -30,6 +34,13 @@ public class Post extends BaseTimeEntity {
 
     @Column(nullable = false, length = 1000)
     private String content;
+
+    @Convert(converter = StringListJsonConverter.class)
+    @Column(columnDefinition = "text")
+    private List<String> hashtags = new ArrayList<>();
+
+    @Column(length = 500)
+    private String cta;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -50,10 +61,12 @@ public class Post extends BaseTimeEntity {
     @Column(name = "retry_count", nullable = false)
     private int retryCount = 0;
 
-    public static Post create(Long userId, String content) {
+    public static Post create(Long userId, String content, List<String> hashtags, String cta) {
         Post p = new Post();
         p.userId = userId;
         p.content = content;
+        p.hashtags = hashtags != null ? hashtags : new ArrayList<>();
+        p.cta = cta;
         p.status = PostStatus.DRAFT;
         return p;
     }
@@ -61,6 +74,15 @@ public class Post extends BaseTimeEntity {
     public void updateContent(String content) {
         if (content != null && !content.isBlank()) {
             this.content = content;
+        }
+    }
+
+    public void updateMeta(List<String> hashtags, String cta) {
+        if (hashtags != null) {
+            this.hashtags = hashtags;
+        }
+        if (cta != null) {
+            this.cta = cta;
         }
     }
 

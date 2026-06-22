@@ -82,8 +82,20 @@ export function LibraryPage() {
                     (publish.isPending && publish.variables === p.id) ||
                     (remove.isPending && remove.variables === p.id);
                   return (
-                    <tr key={p.id} className="border-b last:border-0 hover:bg-accent/40">
-                      <td className="max-w-md truncate px-6 py-3.5 font-medium">{p.content}</td>
+                    <tr key={p.id} className="border-b last:border-0 align-top hover:bg-accent/40">
+                      <td className="px-6 py-3.5">
+                        <div className="max-w-xl">
+                          <p className="line-clamp-2 font-medium">{p.content}</p>
+                          {p.hashtags?.length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {p.hashtags.map((h, i) => (
+                                <Badge key={i} variant="secondary">#{h}</Badge>
+                              ))}
+                            </div>
+                          )}
+                          {p.cta && <p className="mt-1.5 text-xs font-medium text-brand">{p.cta}</p>}
+                        </div>
+                      </td>
                       <td className="px-4 py-3.5">
                         <Badge variant={meta.variant}>{meta.label}</Badge>
                       </td>

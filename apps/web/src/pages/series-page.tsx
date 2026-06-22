@@ -130,7 +130,7 @@ function SeriesRow({ item }: { item: SeriesItem }) {
   const save = async () => {
     setSaving(true);
     try {
-      await postsApi.create({ content: item.content });
+      await postsApi.create({ content: item.content, hashtags: item.hashtags, cta: item.cta });
       qc.invalidateQueries({ queryKey: ["posts"] });
       setSaved(true);
     } catch {
