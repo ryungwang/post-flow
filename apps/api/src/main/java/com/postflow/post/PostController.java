@@ -1,6 +1,7 @@
 package com.postflow.post;
 
 import com.postflow.post.dto.CreatePostRequest;
+import com.postflow.post.dto.ImprovementDto;
 import com.postflow.post.dto.PostDto;
 import com.postflow.post.dto.UpdatePostRequest;
 import jakarta.validation.Valid;
@@ -31,6 +32,12 @@ public class PostController {
     @GetMapping
     public List<PostDto> list(@AuthenticationPrincipal Long userId) {
         return postService.list(userId);
+    }
+
+    @GetMapping("/improvements")
+    public List<ImprovementDto> improvements(@AuthenticationPrincipal Long userId,
+                                             @org.springframework.web.bind.annotation.RequestParam(defaultValue = "60") int threshold) {
+        return postService.improvements(userId, threshold);
     }
 
     @GetMapping("/{id}")

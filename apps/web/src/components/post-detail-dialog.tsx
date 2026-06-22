@@ -56,7 +56,10 @@ export function PostDetailDialog({
     setEditing(false);
   }, [post?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["posts"] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["posts"] });
+    qc.invalidateQueries({ queryKey: ["improvements"] });
+  };
   const onSaved = (data: Post) => { setLocal(data); invalidate(); };
 
   const publish = useMutation({

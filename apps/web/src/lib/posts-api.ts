@@ -37,8 +37,17 @@ export type UpdatePost = {
   scheduledAt?: string | null;
 };
 
+export type Improvement = {
+  id: number;
+  content: string;
+  score: number;
+  status: PostStatus;
+  tips: string[];
+};
+
 export const postsApi = {
   list: () => api.get<Post[]>("/posts"),
+  improvements: (threshold = 60) => api.get<Improvement[]>(`/posts/improvements?threshold=${threshold}`),
   create: (body: CreatePost) => api.post<Post>("/posts", body),
   update: (id: number, body: UpdatePost) => api.put<Post>(`/posts/${id}`, body),
   publishNow: (id: number) => api.post<Post>(`/posts/${id}/publish`),

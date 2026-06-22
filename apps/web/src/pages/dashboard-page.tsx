@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Eye, FileText, Heart, Lightbulb, Loader2, MessageCircle, RefreshCw, Wand2 } from "lucide-react";
+import { Activity, Eye, FileText, Heart, Lightbulb, Loader2, MessageCircle, Pencil, RefreshCw, Sparkles, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -138,10 +138,58 @@ export function DashboardPage() {
         )}
       </Card>
 
+      <ImprovementsBoard posts={postsQ.data ?? []} onSelect={setSelected} />
+
       <IdeaBoard />
 
       <PostDetailDialog post={selected} onOpenChange={(o) => !o && setSelected(null)} />
     </div>
+  );
+}
+
+function ImprovementsBoard({ posts, onSelect }: { posts: Post[]; onSelect: (p: Post) => void }) {
+  const { data, isLoading } = useQuery({ queryKey: ["improvements"], queryFn: () => postsApi.improvements(60) });
+  const items = data ?? [];
+  if (!isLoading && items.length === 0) return null;
+  return (
+    <Card className="mt-6 p-6">
+      <div className="flex items-center gap-2">
+        <Sparkles className="size-4 text-amber-500" />
+        <h2 className="font-semibold">개선이 필요한 글</h2>
+      </div>
+      <p className="mt-0.5 text-sm text-muted-foreground">관심도 60 미만 — 한 번만 다듬으면 반응이 올라가요.</p>
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> 불러오는 중…
+        </div>
+      ) : (
+        <ul className="mt-4 divide-y divide-border/60">
+          {items.map((it) => {
+            const full = posts.find((p) => p.id === it.id);
+            return (
+              <li key={it.id} className="flex items-start gap-3 py-3">
+                <ScoreBadge score={it.score} />
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-1 text-sm font-medium">{it.content}</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {it.tips.map((t, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <Lightbulb className="mt-0.5 size-3 shrink-0 text-amber-500" /> {t}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {full && (
+                  <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={() => onSelect(full)}>
+                    <Pencil className="size-3.5" /> 편집
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
   );
 }
 

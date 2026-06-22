@@ -1,6 +1,8 @@
 package com.postflow.post;
 
+import com.postflow.ai.content.ContentScorer;
 import com.postflow.post.dto.CreatePostRequest;
+import com.postflow.post.dto.ImprovementDto;
 import com.postflow.post.dto.PostDto;
 import com.postflow.post.dto.UpdatePostRequest;
 import com.postflow.threads.PublishingProcessor;
@@ -37,6 +39,21 @@ public class PostService {
     @Transactional(readOnly = true)
     public PostDto get(Long userId, Long id) {
         return PostDto.from(loadOwned(userId, id));
+    }
+
+    /** Posts scoring below {@code threshold}, lowest first, each with top improvement tips. */
+    @Transactional(readOnly = true)
+    public List<ImprovementDto> improvements(Long userId, int threshold) {
+        return postRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(p -> {
+                    var a = ContentScorer.analyze(p.getContent(), p.getHashtags(), p.getCta());
+                    return new ImprovementDto(p.getId(), p.getContent(), a.total(),
+                            p.getStatus().name(), a.tips().stream().limit(3).toList());
+                })
+                .filter(d -> d.score() < threshold)
+                .sorted(java.util.Comparator.comparingInt(ImprovementDto::score))
+                .limit(10)
+                .toList();
     }
 
     @Transactional
