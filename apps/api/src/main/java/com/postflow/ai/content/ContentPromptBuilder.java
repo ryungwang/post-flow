@@ -45,4 +45,31 @@ public class ContentPromptBuilder {
                 request.toneOrDefault(),
                 request.quantity());
     }
+
+    /** Stable, cacheable prefix for a multi-day content series. */
+    public String seriesSystemPrompt() {
+        return """
+                You are an expert content strategist for Threads.
+                Design a coherent multi-day content series that builds on itself day by day,
+                progressing from hook/awareness to depth to action.
+
+                Hard rules:
+                - Each day's post body MUST be 500 characters or fewer (Threads limit).
+                - Write in the same language as the topic.
+                - Each day has a short punchy title and a full post body.
+                - Hashtags: 2-5 per day, relevant, no spaces.
+
+                Output format:
+                - Return ONLY a JSON array, no prose, no markdown fences.
+                - Exactly one element per day, in order.
+                - Each element: {"day": number, "title": string, "content": string, "hashtags": string[], "cta": string}.
+                """;
+    }
+
+    public String seriesUserPrompt(String topic, int days) {
+        return """
+                Topic: %s
+                Build a %d-day content series as a JSON array (day 1..%d).
+                """.formatted(topic, days, days);
+    }
 }

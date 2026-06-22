@@ -2,6 +2,8 @@ package com.postflow.ai.content;
 
 import com.postflow.ai.content.dto.GenerateContentRequest;
 import com.postflow.ai.content.dto.GenerateContentResponse;
+import com.postflow.ai.content.dto.GenerateSeriesRequest;
+import com.postflow.ai.content.dto.GenerateSeriesResponse;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,5 +26,12 @@ public class AiContentController {
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody GenerateContentRequest request) {
         return contentGenerationService.generate(userId, request);
+    }
+
+    @PostMapping("/series")
+    public GenerateSeriesResponse series(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody GenerateSeriesRequest request) {
+        return contentGenerationService.generateSeries(userId, request.topic(), request.days());
     }
 }

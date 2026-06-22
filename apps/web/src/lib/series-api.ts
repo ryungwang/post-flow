@@ -1,0 +1,20 @@
+import { api } from "@/lib/api";
+
+export type SeriesItem = {
+  day: number;
+  title: string;
+  content: string;
+  hashtags: string[];
+  cta: string;
+};
+
+export type SeriesResponse = {
+  items: SeriesItem[];
+  provider: string;
+  model: string;
+};
+
+export const seriesApi = {
+  generate: (topic: string, days: number) =>
+    api.post<SeriesResponse>("/ai/series", { topic, days }),
+};

@@ -7,7 +7,9 @@ import com.postflow.ai.LLMProvider;
 import com.postflow.ai.ModelTier;
 import com.postflow.ai.content.dto.GenerateContentRequest;
 import com.postflow.ai.content.dto.GenerateContentResponse;
+import com.postflow.ai.content.dto.GenerateSeriesResponse;
 import com.postflow.ai.content.dto.GeneratedCard;
+import com.postflow.ai.content.dto.SeriesItem;
 import com.postflow.ai.dto.GenerationRequest;
 import com.postflow.ai.dto.GenerationResult;
 import com.postflow.aigeneration.AiGeneration;
@@ -70,6 +72,50 @@ public class ContentGenerationService {
                 result.outputTokens()));
 
         return new GenerateContentResponse(cards, result.provider(), result.model());
+    }
+
+    @Transactional
+    public GenerateSeriesResponse generateSeries(Long userId, String topic, int days) {
+        String systemPrompt = promptBuilder.seriesSystemPrompt();
+        String userPrompt = promptBuilder.seriesUserPrompt(topic, days);
+
+        GenerationRequest llmRequest = GenerationRequest.builder()
+                .systemPrompt(systemPrompt)
+                .prompt(userPrompt)
+                .maxTokens(estimateMaxTokens(days))
+                .tier(ModelTier.PREMIUM) // series planning → Opus (PRD)
+                .cacheHint(true)
+                .build();
+
+        GenerationResult result = llmProvider.generate(llmRequest);
+
+        List<SeriesItem> items = parseSeries(result.text());
+
+        aiGenerationRepository.save(AiGeneration.record(
+                userId,
+                result.provider(),
+                result.model(),
+                userPrompt,
+                result.text(),
+                result.inputTokens(),
+                result.outputTokens()));
+
+        return new GenerateSeriesResponse(items, result.provider(), result.model());
+    }
+
+    private List<SeriesItem> parseSeries(String raw) {
+        String json = extractJsonArray(raw);
+        try {
+            List<SeriesItem> items = objectMapper.readValue(json, new TypeReference<>() {});
+            return items.stream()
+                    .map(it -> it.content() != null && it.content().length() > THREADS_MAX_CHARS
+                            ? new SeriesItem(it.day(), it.title(),
+                                    it.content().substring(0, THREADS_MAX_CHARS), it.hashtags(), it.cta())
+                            : it)
+                    .toList();
+        } catch (JsonProcessingException e) {
+            throw new ContentGenerationException("Failed to parse series as JSON", e);
+        }
     }
 
     private int estimateMaxTokens(int quantity) {

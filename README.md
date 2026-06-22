@@ -49,6 +49,8 @@ cd apps/api
 
 키가 없어도 앱은 뜨고, 해당 기능은 "설정 필요"·에러 처리로 동작한다. 키만 채우면 그 기능이 활성화된다.
 
+> 🔑 **키 발급 상세 절차는 [`docs/KEYS.md`](docs/KEYS.md)** (Anthropic / Google OAuth / Threads 단계별).
+
 **백엔드** — `apps/api/.env.example` → `apps/api/.env` 로 복사 후 값 입력 (Spring이 자동 로드):
 
 | 키 | 기능 |

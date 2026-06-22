@@ -5,6 +5,7 @@ import { useSession } from "@/auth/use-session";
 import { DashboardPage } from "@/pages/dashboard-page";
 import { GeneratePage } from "@/pages/generate-page";
 import { LibraryPage } from "@/pages/library-page";
+import { SeriesPage } from "@/pages/series-page";
 import { LoginPage } from "@/pages/login-page";
 import { PlaceholderPage } from "@/pages/placeholder-page";
 import { ThreadsSettingsPage } from "@/pages/threads-settings-page";
@@ -18,10 +19,7 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/content/generate" element={<GeneratePage />} />
-          <Route
-            path="/content/series"
-            element={<PlaceholderPage title="시리즈 생성" description="7·14·30일 콘텐츠 플랜을 자동 생성합니다." />}
-          />
+          <Route path="/content/series" element={<SeriesPage />} />
           <Route path="/content/library" element={<LibraryPage />} />
           <Route
             path="/schedule"
