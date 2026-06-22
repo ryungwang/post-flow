@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Heart, Loader2, MessageCircle, Repeat2, Quote, Share2, Activity } from "lucide-react";
+import { Activity, Download, Eye, Heart, Loader2, MessageCircle, Repeat2, Quote, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { analyticsApi, type AnalyticsDashboard } from "@/lib/analytics-api";
+import { roiApi } from "@/lib/roi-api";
 import { RoiView } from "@/components/roi-view";
+import { toCsv, downloadCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 
 const nf = new Intl.NumberFormat("ko-KR");
@@ -23,6 +26,24 @@ export function AnalyticsPage() {
     queryFn: () => analyticsApi.dashboard(days),
   });
 
+  const exportCsv = async () => {
+    if (tab === "roi") {
+      const r = await roiApi.dashboard(days);
+      const csv = toCsv(
+        ["게시물", "매출", "전환수", "비용", "ROI%"],
+        r.topByRevenue.map((p) => [p.content.replace(/\n/g, " "), p.revenue, p.conversions, p.cost, p.roiPercent ?? ""]),
+      );
+      downloadCsv(`postflow-roi-${days || "all"}.csv`, csv);
+    } else {
+      const d = data ?? (await analyticsApi.dashboard(days));
+      const csv = toCsv(
+        ["게시물", "조회수", "좋아요", "댓글"],
+        d.topPosts.map((p) => [p.content.replace(/\n/g, " "), p.views, p.likes, p.replies]),
+      );
+      downloadCsv(`postflow-analytics-${days || "all"}.csv`, csv);
+    }
+  };
+
   return (
     <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -31,6 +52,9 @@ export function AnalyticsPage() {
           <p className="mt-1 text-sm text-muted-foreground">게시물 성과를 한눈에 — 참여와 수익(ROI).</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCsv}>
+            <Download className="size-4" /> CSV
+          </Button>
           <div className="flex items-center rounded-lg border bg-background p-0.5">
             {PERIODS.map((pp) => (
               <button
