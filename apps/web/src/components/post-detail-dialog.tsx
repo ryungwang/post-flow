@@ -18,7 +18,10 @@ import { postsApi, type Post } from "@/lib/posts-api";
 import { uploadMedia } from "@/lib/media-api";
 import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
+import { ThreadsPreview } from "@/components/threads-preview";
+import { useAuth } from "@/store/auth";
 import { POST_STATUS_META } from "@/lib/post-status";
+import { cn } from "@/lib/utils";
 
 function fmt(iso: string | null) {
   if (!iso) return "—";
@@ -42,8 +45,10 @@ export function PostDetailDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const qc = useQueryClient();
+  const user = useAuth((s) => s.user);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [mode, setMode] = useState<"content" | "preview">("content");
   // local mirror so server-returned updates show without reopening
   const [local, setLocal] = useState<Post | null>(post);
   const [editing, setEditing] = useState(false);
@@ -54,6 +59,7 @@ export function PostDetailDialog({
   useEffect(() => {
     setLocal(post);
     setEditing(false);
+    setMode("content");
   }, [post?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const invalidate = () => {
@@ -139,6 +145,32 @@ export function PostDetailDialog({
                 </div>
               ) : (
                 <>
+                  <div className="mb-3 flex w-fit items-center rounded-lg border bg-background p-0.5 text-xs">
+                    {([["content", "내용"], ["preview", "미리보기"]] as const).map(([k, label]) => (
+                      <button
+                        key={k}
+                        onClick={() => setMode(k)}
+                        className={cn(
+                          "rounded-md px-2.5 py-1 transition-colors",
+                          mode === k ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {mode === "preview" ? (
+                    <ThreadsPreview
+                      username={user?.name ?? "나"}
+                      avatarUrl={user?.profileImage}
+                      content={p.content}
+                      hashtags={p.hashtags}
+                      cta={p.cta}
+                      mediaUrl={p.mediaUrl}
+                    />
+                  ) : (
+                  <>
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">{p.content}</p>
                   {p.hashtags?.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1">
@@ -190,6 +222,8 @@ export function PostDetailDialog({
                     {p.content.length}/500자
                     {p.threadsMediaId && <> · Threads ID {p.threadsMediaId}</>}
                   </div>
+                  </>
+                  )}
                 </>
               )}
             </div>
