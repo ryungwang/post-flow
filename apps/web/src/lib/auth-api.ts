@@ -7,4 +7,6 @@ export const authApi = {
   loginWithGoogle: (idToken: string) =>
     api.post<LoginResponse>("/auth/google", { idToken }),
   me: () => api.get<User>("/auth/me"),
+  // local-only convenience login (backend exposes it only under the local profile)
+  devLogin: () => api.post<LoginResponse>("/auth/dev-login"),
 };

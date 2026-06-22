@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GoogleSignInButton } from "@/auth/google-sign-in-button";
 import { authApi } from "@/lib/auth-api";
@@ -28,6 +29,20 @@ export function LoginPage() {
       navigate("/", { replace: true });
     } catch {
       setError("로그인에 실패했어요. 다시 시도해 주세요.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const devLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { token: jwt, user } = await authApi.devLogin();
+      setAuth(jwt, user);
+      navigate("/", { replace: true });
+    } catch {
+      setError("개발용 로그인에 실패했어요. 백엔드(local) 실행을 확인하세요.");
     } finally {
       setLoading(false);
     }
@@ -70,6 +85,17 @@ export function LoginPage() {
           <p className="mt-4 text-center text-xs text-muted-foreground">
             로그인 시 서비스 약관과 개인정보 처리방침에 동의하게 됩니다.
           </p>
+
+          {import.meta.env.DEV && (
+            <div className="mt-4 border-t pt-4">
+              <Button variant="secondary" className="w-full" onClick={devLogin} disabled={loading}>
+                개발용 로그인 (로컬)
+              </Button>
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                키 없이 화면을 둘러보기 위한 로컬 전용 로그인입니다.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
