@@ -10,6 +10,7 @@ import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
 import { accountApi } from "@/lib/account-api";
 import { billingApi } from "@/lib/billing-api";
+import { useConfirm } from "@/components/confirm-dialog";
 import { postsApi } from "@/lib/posts-api";
 import { toCsv, downloadCsv, download } from "@/lib/csv";
 import { LEGAL } from "@/lib/legal";
@@ -37,6 +38,7 @@ export function AccountPage() {
   const clear = useAuth((s) => s.clear);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const confirm = useConfirm();
 
   const upgrade = useMutation({
     mutationFn: (plan: string) => billingApi.checkout(plan),
@@ -133,7 +135,7 @@ export function AccountPage() {
                     <div
                       key={p.key}
                       className={cn(
-                        "rounded-xl border p-4 transition-all",
+                        "flex flex-col rounded-xl border p-4 transition-all",
                         active ? "border-brand/50 bg-brand/5 shadow-brand" : "hover:border-brand/30",
                       )}
                     >
@@ -142,7 +144,7 @@ export function AccountPage() {
                         {active && <Check className="size-4 text-brand" />}
                       </div>
                       <div className="mt-1 text-lg font-bold tabular-nums">{p.price}</div>
-                      <ul className="mt-3 space-y-1">
+                      <ul className="mt-3 flex-1 space-y-1">
                         {p.features.map((f) => (
                           <li key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Check className="size-3 text-brand" /> {f}
@@ -174,8 +176,14 @@ export function AccountPage() {
                     size="sm"
                     className="shrink-0 text-muted-foreground"
                     disabled={portal.isPending}
-                    onClick={() => {
-                      if (confirm("구독을 취소하고 무료 플랜으로 전환할까요?")) portal.mutate();
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: "구독 취소",
+                        description: "구독을 취소하고 무료 플랜으로 전환할까요? 유료 기능 잠금이 복원됩니다.",
+                        confirmText: "구독 취소",
+                        destructive: true,
+                      });
+                      if (ok) portal.mutate();
                     }}
                   >
                     {portal.isPending ? <Loader2 className="size-4 animate-spin" /> : "구독 취소·관리"}
