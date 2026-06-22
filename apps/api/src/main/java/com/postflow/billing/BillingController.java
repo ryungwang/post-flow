@@ -20,12 +20,15 @@ public class BillingController {
 
     private final PaymentProvider payment;
     private final UserService userService;
+    private final ProcessedStripeEventRepository processedEvents;
     private final String frontendBase;
 
     public BillingController(PaymentProvider payment, UserService userService,
+                            ProcessedStripeEventRepository processedEvents,
                             @Value("${roi.frontend-base-url:http://localhost:5173}") String frontendBase) {
         this.payment = payment;
         this.userService = userService;
+        this.processedEvents = processedEvents;
         this.frontendBase = frontendBase;
     }
 
@@ -76,12 +79,23 @@ public class BillingController {
                                           @RequestBody String payload) {
         PaymentProvider.WebhookResult result = payment.handleWebhook(payload, signature);
         if (result != null) {
+            // idempotency: skip events we've already applied (Stripe retries / out-of-order delivery)
+            if (result.eventId() != null && processedEvents.existsById(result.eventId())) {
+                return ResponseEntity.ok("duplicate");
+            }
             switch (result.action()) {
                 case UPGRADE -> userService.activateSubscription(
                         result.userId(), result.plan(), result.customerId(), result.periodEnd());
                 case SCHEDULE_CANCEL -> userService.scheduleCancelByCustomer(result.customerId(), result.periodEnd());
                 case RESUME -> userService.resumeByCustomer(result.customerId());
                 case CANCEL -> userService.downgradeByStripeCustomer(result.customerId());
+            }
+            if (result.eventId() != null) {
+                try {
+                    processedEvents.save(new ProcessedStripeEvent(result.eventId(), java.time.Instant.now()));
+                } catch (org.springframework.dao.DataIntegrityViolationException race) {
+                    // concurrent delivery already recorded it — fine
+                }
             }
         }
         return ResponseEntity.ok("ok");

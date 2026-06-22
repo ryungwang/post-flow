@@ -23,9 +23,10 @@ public interface PaymentProvider {
     enum Action { UPGRADE, SCHEDULE_CANCEL, RESUME, CANCEL }
 
     /**
-     * UPGRADE: (userId, plan, customerId, periodEnd). SCHEDULE_CANCEL: (customerId, periodEnd).
-     * RESUME / CANCEL: (customerId).
+     * eventId is the provider event id (for idempotency). UPGRADE: (userId, plan, customerId,
+     * periodEnd). SCHEDULE_CANCEL: (customerId, periodEnd). RESUME / CANCEL: (customerId).
      */
-    record WebhookResult(Action action, Long userId, Plan plan, String customerId, java.time.Instant periodEnd) {
+    record WebhookResult(String eventId, Action action, Long userId, Plan plan,
+                         String customerId, java.time.Instant periodEnd) {
     }
 }

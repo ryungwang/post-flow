@@ -84,10 +84,11 @@ public class StripePaymentProvider implements PaymentProvider {
     public WebhookResult handleWebhook(String payload, String signature) {
         try {
             Event event = Webhook.constructEvent(payload, signature, webhookSecret);
+            String eventId = event.getId();
             return switch (event.getType()) {
-                case "checkout.session.completed" -> onCheckoutCompleted(event);
-                case "customer.subscription.updated" -> onSubscriptionUpdated(event);
-                case "customer.subscription.deleted" -> onSubscriptionDeleted(event);
+                case "checkout.session.completed" -> onCheckoutCompleted(eventId, event);
+                case "customer.subscription.updated" -> onSubscriptionUpdated(eventId, event);
+                case "customer.subscription.deleted" -> onSubscriptionDeleted(eventId, event);
                 default -> null;
             };
         } catch (Exception e) {
@@ -95,7 +96,7 @@ public class StripePaymentProvider implements PaymentProvider {
         }
     }
 
-    private WebhookResult onCheckoutCompleted(Event event) {
+    private WebhookResult onCheckoutCompleted(String eventId, Event event) {
         com.stripe.model.checkout.Session session =
                 (com.stripe.model.checkout.Session) event.getDataObjectDeserializer().getObject().orElse(null);
         if (session == null || session.getMetadata() == null) {
@@ -106,28 +107,28 @@ public class StripePaymentProvider implements PaymentProvider {
         if (userId == null || plan == null) {
             return null;
         }
-        return new WebhookResult(Action.UPGRADE, Long.valueOf(userId), Plan.valueOf(plan),
+        return new WebhookResult(eventId, Action.UPGRADE, Long.valueOf(userId), Plan.valueOf(plan),
                 session.getCustomer(), periodEndOf(session.getSubscription()));
     }
 
     /** Cancel scheduled (cancel_at_period_end) or resumed. */
-    private WebhookResult onSubscriptionUpdated(Event event) {
+    private WebhookResult onSubscriptionUpdated(String eventId, Event event) {
         Subscription sub = (Subscription) event.getDataObjectDeserializer().getObject().orElse(null);
         if (sub == null || sub.getCustomer() == null) {
             return null;
         }
         if (Boolean.TRUE.equals(sub.getCancelAtPeriodEnd())) {
-            return new WebhookResult(Action.SCHEDULE_CANCEL, null, null, sub.getCustomer(), epoch(sub.getCurrentPeriodEnd()));
+            return new WebhookResult(eventId, Action.SCHEDULE_CANCEL, null, null, sub.getCustomer(), epoch(sub.getCurrentPeriodEnd()));
         }
-        return new WebhookResult(Action.RESUME, null, null, sub.getCustomer(), null);
+        return new WebhookResult(eventId, Action.RESUME, null, null, sub.getCustomer(), null);
     }
 
-    private WebhookResult onSubscriptionDeleted(Event event) {
+    private WebhookResult onSubscriptionDeleted(String eventId, Event event) {
         Subscription sub = (Subscription) event.getDataObjectDeserializer().getObject().orElse(null);
         if (sub == null || sub.getCustomer() == null) {
             return null;
         }
-        return new WebhookResult(Action.CANCEL, null, null, sub.getCustomer(), null);
+        return new WebhookResult(eventId, Action.CANCEL, null, null, sub.getCustomer(), null);
     }
 
     private java.time.Instant periodEndOf(String subscriptionId) {
