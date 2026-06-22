@@ -40,7 +40,7 @@ function ApiBadge() {
 }
 
 export function DashboardPage() {
-  const analytics = useQuery({ queryKey: ["analytics"], queryFn: analyticsApi.dashboard });
+  const analytics = useQuery({ queryKey: ["analytics", 0], queryFn: () => analyticsApi.dashboard() });
   const postsQ = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
   const [selected, setSelected] = useState<Post | null>(null);
 

@@ -23,5 +23,5 @@ export type AnalyticsDashboard = {
 };
 
 export const analyticsApi = {
-  dashboard: () => api.get<AnalyticsDashboard>("/analytics/dashboard"),
+  dashboard: (days = 0) => api.get<AnalyticsDashboard>(`/analytics/dashboard?days=${days}`),
 };

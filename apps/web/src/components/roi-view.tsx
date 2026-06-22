@@ -19,9 +19,9 @@ const nf = new Intl.NumberFormat("ko-KR");
 const won = (n: number) => "₩" + nf.format(Math.round(n));
 const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
 
-export function RoiView() {
+export function RoiView({ days = 0 }: { days?: number }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["roi"], queryFn: roiApi.dashboard });
+  const { data, isLoading } = useQuery({ queryKey: ["roi", days], queryFn: () => roiApi.dashboard(days) });
   const { data: posts } = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
 
   if (isLoading || !data) {

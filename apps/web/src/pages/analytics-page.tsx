@@ -8,11 +8,19 @@ import { cn } from "@/lib/utils";
 
 const nf = new Intl.NumberFormat("ko-KR");
 
+const PERIODS = [
+  { label: "7일", days: 7 },
+  { label: "30일", days: 30 },
+  { label: "90일", days: 90 },
+  { label: "전체", days: 0 },
+] as const;
+
 export function AnalyticsPage() {
   const [tab, setTab] = useState<"engagement" | "roi">("engagement");
+  const [days, setDays] = useState<number>(0);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["analytics"],
-    queryFn: analyticsApi.dashboard,
+    queryKey: ["analytics", days],
+    queryFn: () => analyticsApi.dashboard(days),
   });
 
   return (
@@ -22,24 +30,40 @@ export function AnalyticsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">분석</h1>
           <p className="mt-1 text-sm text-muted-foreground">게시물 성과를 한눈에 — 참여와 수익(ROI).</p>
         </div>
-        <div className="flex items-center rounded-lg border bg-background p-0.5">
-          {([["engagement", "참여"], ["roi", "수익·ROI"]] as const).map(([k, label]) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm transition-colors",
-                tab === k ? "bg-brand-gradient text-brand-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-lg border bg-background p-0.5">
+            {PERIODS.map((pp) => (
+              <button
+                key={pp.days}
+                onClick={() => setDays(pp.days)}
+                className={cn(
+                  "rounded-md px-2.5 py-1.5 text-xs transition-colors",
+                  days === pp.days ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {pp.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center rounded-lg border bg-background p-0.5">
+            {([["engagement", "참여"], ["roi", "수익·ROI"]] as const).map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setTab(k)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm transition-colors",
+                  tab === k ? "bg-brand-gradient text-brand-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {tab === "roi" ? (
-        <RoiView />
+        <RoiView days={days} />
       ) : isLoading ? (
         <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> 불러오는 중…

@@ -8,6 +8,8 @@ import com.postflow.post.PostStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -29,8 +31,11 @@ public class AnalyticsService {
     }
 
     @Transactional(readOnly = true)
-    public AnalyticsDashboardResponse dashboard(Long userId) {
-        List<Post> posts = postRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    public AnalyticsDashboardResponse dashboard(Long userId, int days) {
+        Instant cutoff = days > 0 ? Instant.now().minus(days, ChronoUnit.DAYS) : null;
+        List<Post> posts = postRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .filter(p -> cutoff == null || (p.getCreatedAt() != null && p.getCreatedAt().isAfter(cutoff)))
+                .toList();
         long total = posts.size();
         long published = posts.stream().filter(p -> p.getStatus() == PostStatus.PUBLISHED).count();
         long scheduled = posts.stream().filter(p -> p.getStatus() == PostStatus.SCHEDULED).count();

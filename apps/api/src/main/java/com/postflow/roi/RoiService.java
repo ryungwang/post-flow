@@ -68,9 +68,14 @@ public class RoiService {
     }
 
     @Transactional(readOnly = true)
-    public RoiDashboardResponse dashboard(Long userId) {
-        List<Post> posts = postRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    public RoiDashboardResponse dashboard(Long userId, int days) {
+        java.time.Instant cutoff = days > 0
+                ? java.time.Instant.now().minus(days, java.time.temporal.ChronoUnit.DAYS) : null;
+        List<Post> posts = postRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .filter(p -> cutoff == null || (p.getCreatedAt() != null && p.getCreatedAt().isAfter(cutoff)))
+                .toList();
         List<Long> ids = posts.stream().map(Post::getId).toList();
+        java.util.Set<Long> idSet = new java.util.HashSet<>(ids);
 
         long views = 0;
         long clicks = 0;
@@ -81,7 +86,9 @@ public class RoiService {
             leads = leadRepository.countByPostIdIn(ids);
         }
 
-        List<Conversion> convs = conversionRepository.findByUserId(userId);
+        List<Conversion> convs = conversionRepository.findByUserId(userId).stream()
+                .filter(c -> cutoff == null || (c.getPostId() != null && idSet.contains(c.getPostId())))
+                .toList();
         long conversions = convs.size();
         double revenue = convs.stream()
                 .map(Conversion::getAmount)
@@ -94,6 +101,9 @@ public class RoiService {
         Map<Long, Double> costByPost = new HashMap<>();
         double totalCost = 0.0;
         for (PostCost pc : postCostRepository.findByUserId(userId)) {
+            if (cutoff != null && !idSet.contains(pc.getPostId())) {
+                continue;
+            }
             double amt = pc.getAmount() != null ? pc.getAmount().doubleValue() : 0.0;
             costByPost.put(pc.getPostId(), amt);
             totalCost += amt;

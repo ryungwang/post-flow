@@ -37,7 +37,7 @@ export type CtaLink = {
 };
 
 export const roiApi = {
-  dashboard: () => api.get<RoiDashboard>("/roi/dashboard"),
+  dashboard: (days = 0) => api.get<RoiDashboard>(`/roi/dashboard?days=${days}`),
   listCtaLinks: () => api.get<CtaLink[]>("/cta-links"),
   createCtaLink: (postId: number, destinationUrl: string, label?: string, captureLead?: boolean, headline?: string) =>
     api.post<CtaLink>(`/posts/${postId}/cta-links`, { destinationUrl, label, captureLead: !!captureLead, headline }),
