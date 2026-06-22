@@ -8,8 +8,8 @@ import { LibraryPage } from "@/pages/library-page";
 import { SeriesPage } from "@/pages/series-page";
 import { SchedulePage } from "@/pages/schedule-page";
 import { AnalyticsPage } from "@/pages/analytics-page";
+import { AccountPage } from "@/pages/account-page";
 import { LoginPage } from "@/pages/login-page";
-import { PlaceholderPage } from "@/pages/placeholder-page";
 import { ThreadsSettingsPage } from "@/pages/threads-settings-page";
 
 export default function App() {
@@ -25,10 +25,7 @@ export default function App() {
           <Route path="/content/library" element={<LibraryPage />} />
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route
-            path="/settings/account"
-            element={<PlaceholderPage title="계정" description="프로필 및 플랜 설정." />}
-          />
+          <Route path="/settings/account" element={<AccountPage />} />
           <Route path="/settings/threads" element={<ThreadsSettingsPage />} />
         </Route>
       </Route>
