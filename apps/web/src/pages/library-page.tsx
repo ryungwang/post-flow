@@ -4,14 +4,7 @@ import { Library, Loader2, Send, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { PostDetailDialog } from "@/components/post-detail-dialog";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { POST_STATUS_META } from "@/lib/post-status";
 
@@ -135,50 +128,7 @@ export function LibraryPage() {
         )}
       </Card>
 
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent>
-          {selected && (
-            <>
-              <DialogHeader>
-                <DialogTitle>게시물 상세</DialogTitle>
-                <DialogDescription>
-                  <Badge variant={POST_STATUS_META[selected.status].variant}>
-                    {POST_STATUS_META[selected.status].label}
-                  </Badge>
-                  <span className="ml-2 text-xs tabular-nums">{fmt(selected.publishedAt ?? selected.scheduledAt)}</span>
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="max-h-[50vh] overflow-y-auto">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">{selected.content}</p>
-                {selected.hashtags?.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {selected.hashtags.map((h, i) => (
-                      <Badge key={i} variant="secondary">#{h}</Badge>
-                    ))}
-                  </div>
-                )}
-                {selected.cta && <p className="mt-3 text-sm font-medium text-brand">{selected.cta}</p>}
-                <div className="mt-4 text-xs text-muted-foreground tabular-nums">
-                  {selected.content.length}/500자
-                  {selected.threadsMediaId && <> · Threads ID {selected.threadsMediaId}</>}
-                </div>
-              </div>
-
-              <DialogFooter>
-                {selected.status !== "PUBLISHED" && (
-                  <Button variant="outline" className="gap-1.5" disabled={publish.isPending} onClick={() => publish.mutate(selected.id)}>
-                    <Send className="size-4" /> 즉시 발행
-                  </Button>
-                )}
-                <Button variant="destructive" className="gap-1.5" disabled={remove.isPending} onClick={() => remove.mutate(selected.id)}>
-                  <Trash2 className="size-4" /> 삭제
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <PostDetailDialog post={selected} onOpenChange={(o) => !o && setSelected(null)} />
     </div>
   );
 }

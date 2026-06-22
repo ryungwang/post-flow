@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, Eye, FileText, Heart, Loader2, MessageCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PostDetailDialog } from "@/components/post-detail-dialog";
 import { pingApi } from "@/lib/api";
 import { analyticsApi } from "@/lib/analytics-api";
 import { postsApi, type Post } from "@/lib/posts-api";
@@ -41,6 +42,7 @@ function ApiBadge() {
 export function DashboardPage() {
   const analytics = useQuery({ queryKey: ["analytics"], queryFn: analyticsApi.dashboard });
   const postsQ = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
+  const [selected, setSelected] = useState<Post | null>(null);
 
   const a = analytics.data;
   const kpis = [
@@ -111,7 +113,11 @@ export function DashboardPage() {
                 {recent.map((p: Post) => {
                   const meta = POST_STATUS_META[p.status];
                   return (
-                    <tr key={p.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
+                    <tr
+                      key={p.id}
+                      className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-accent/40"
+                      onClick={() => setSelected(p)}
+                    >
                       <td className="max-w-xl truncate px-6 py-3.5 font-medium">{p.content}</td>
                       <td className="px-4 py-3.5">
                         <Badge variant={meta.variant}>{meta.label}</Badge>
@@ -127,6 +133,8 @@ export function DashboardPage() {
           </div>
         )}
       </Card>
+
+      <PostDetailDialog post={selected} onOpenChange={(o) => !o && setSelected(null)} />
     </div>
   );
 }
