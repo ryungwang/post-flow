@@ -6,6 +6,7 @@ export type SeriesItem = {
   content: string;
   hashtags: string[];
   cta: string;
+  score: number;
 };
 
 export type SeriesResponse = {

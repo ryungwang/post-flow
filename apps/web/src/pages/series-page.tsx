@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { seriesApi, type SeriesItem } from "@/lib/series-api";
+import { ScoreBadge } from "@/components/score-badge";
+import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { postsApi } from "@/lib/posts-api";
 import { ApiError } from "@/lib/api";
 
@@ -147,7 +149,10 @@ function SeriesRow({ item }: { item: SeriesItem }) {
         <span className="text-lg font-semibold leading-none tabular-nums">{item.day}</span>
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="font-semibold">{item.title}</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold">{item.title}</h3>
+          <ScoreBadge score={item.score} />
+        </div>
         <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
           {item.content}
         </p>
@@ -158,6 +163,10 @@ function SeriesRow({ item }: { item: SeriesItem }) {
             ))}
           </div>
         )}
+        {item.cta && <p className="mt-2 text-sm font-medium text-primary">{item.cta}</p>}
+        <div className="mt-3">
+          <ScoreAnalysisPanel content={item.content} hashtags={item.hashtags} cta={item.cta} score={item.score} />
+        </div>
       </div>
       <Button variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={saving || saved} onClick={save}>
         {saving ? <Loader2 className="size-4 animate-spin" /> : saved ? <Check className="size-4" /> : <BookmarkPlus className="size-4" />}

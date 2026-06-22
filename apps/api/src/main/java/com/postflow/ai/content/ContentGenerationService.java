@@ -112,6 +112,7 @@ public class ContentGenerationService {
                             ? new SeriesItem(it.day(), it.title(),
                                     it.content().substring(0, THREADS_MAX_CHARS), it.hashtags(), it.cta())
                             : it)
+                    .map(it -> it.withScore(ContentScorer.score(it.content(), it.hashtags(), it.cta())))
                     .toList();
         } catch (JsonProcessingException e) {
             throw new ContentGenerationException("Failed to parse series as JSON", e);
