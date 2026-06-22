@@ -11,27 +11,36 @@ Create Once. Grow Automatically. — AI 콘텐츠 자동 생성·예약·발행 
 - AI: `LLMProvider` 추상화 (기본 구현 Claude / 교체 가능)
 - 파일 스토리지: `StorageService` 추상화 (local=파일시스템, prod=S3)
 
-## 구조
+## 모노레포 구조
+
+```
+post-flow/
+├─ apps/
+│  ├─ api/        Spring Boot 백엔드 (Gradle, 자체 빌드)
+│  └─ web/        React/Vite 프론트엔드 (예정, npm)
+├─ prd.md         제품 사양
+└─ README.md
+```
+
+각 앱은 자체 빌드(api=Gradle, web=npm)인 폴리글랏 모노레포. 루트 Gradle 통합 없음.
+
+### apps/api 패키지
 
 ```
 com.postflow
 ├─ common/        config(Security, Web/CORS, QueryDsl, JPA auditing), entity, web
-├─ ai/            LLMProvider, ModelTier, dto, provider/ClaudeProvider
+├─ ai/            LLMProvider, ModelTier, dto, provider/ClaudeProvider, content/
 ├─ storage/       StorageService, Local/S3 구현
 ├─ user/ social/ post/ analytics/ aigeneration/   도메인 엔티티
 ```
 
-## 로컬 실행
+## 로컬 실행 (apps/api)
 
 전제: 로컬 PostgreSQL(`postflow`/`postflow`)과 Redis 기동.
 
 ```bash
+cd apps/api
 ./gradlew bootRun          # 기본 프로파일 local
-```
-
-빌드 / 패키징:
-
-```bash
 ./gradlew build            # 테스트 포함
 ./gradlew bootJar          # 실행 가능 jar
 ```
