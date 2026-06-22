@@ -25,6 +25,8 @@ export type HookVariant = { hook: string; score: number };
 export type ScoreComponent = { label: string; score: number; max: number };
 export type ScoreAnalysis = { total: number; components: ScoreComponent[]; tips: string[] };
 
+export type Idea = { topic: string; topHook: HookVariant };
+
 export const contentApi = {
   generate: (req: GenerateRequest) =>
     api.post<GenerateResponse>("/ai/generate", req),
@@ -32,4 +34,5 @@ export const contentApi = {
     api.post<HookVariant[]>("/ai/hooks", { topic, count }),
   score: (content: string, hashtags: string[], cta: string | null) =>
     api.post<ScoreAnalysis>("/ai/score", { content, hashtags, cta }),
+  ideas: (count = 5) => api.get<Idea[]>(`/ai/ideas?count=${count}`),
 };

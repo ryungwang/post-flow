@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Eye, FileText, Heart, Loader2, MessageCircle } from "lucide-react";
+import { Activity, Eye, FileText, Heart, Lightbulb, Loader2, MessageCircle, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PostDetailDialog } from "@/components/post-detail-dialog";
+import { ScoreBadge } from "@/components/score-badge";
 import { pingApi } from "@/lib/api";
 import { analyticsApi } from "@/lib/analytics-api";
+import { contentApi } from "@/lib/content-api";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { POST_STATUS_META } from "@/lib/post-status";
 
@@ -134,7 +138,44 @@ export function DashboardPage() {
         )}
       </Card>
 
+      <IdeaBoard />
+
       <PostDetailDialog post={selected} onOpenChange={(o) => !o && setSelected(null)} />
     </div>
+  );
+}
+
+function IdeaBoard() {
+  const { data, isLoading } = useQuery({ queryKey: ["ideas"], queryFn: () => contentApi.ideas(5) });
+  return (
+    <Card className="mt-6 p-6">
+      <div className="flex items-center gap-2">
+        <Lightbulb className="size-4 text-amber-500" />
+        <h2 className="font-semibold">오늘의 게시글 추천</h2>
+      </div>
+      <p className="mt-0.5 text-sm text-muted-foreground">바로 쓸 만한 주제와 가장 관심을 끌 훅이에요.</p>
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> 불러오는 중…
+        </div>
+      ) : (
+        <ul className="mt-4 divide-y divide-border/60">
+          {(data ?? []).map((idea) => (
+            <li key={idea.topic} className="flex items-center gap-3 py-3">
+              <ScoreBadge score={idea.topHook.score} />
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium">{idea.topic}</div>
+                <div className="truncate text-xs text-muted-foreground">“{idea.topHook.hook}”</div>
+              </div>
+              <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5">
+                <Link to={`/content/generate?topic=${encodeURIComponent(idea.topic)}`}>
+                  <Wand2 className="size-3.5" /> 생성
+                </Link>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }

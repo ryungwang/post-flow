@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, Check, Copy, Loader2, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -33,7 +34,8 @@ const QUANTITIES = [5, 10, 30];
 const MAX = 500;
 
 export function GeneratePage() {
-  const [topic, setTopic] = useState("");
+  const [params] = useSearchParams();
+  const [topic, setTopic] = useState(params.get("topic") ?? "");
   const [goal, setGoal] = useState("Engagement");
   const [tone, setTone] = useState("Friendly");
   const [quantity, setQuantity] = useState(5);
