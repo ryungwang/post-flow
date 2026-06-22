@@ -5,6 +5,8 @@ export type PostRevenue = {
   content: string;
   revenue: number;
   conversions: number;
+  cost: number;
+  roiPercent: number | null;
 };
 
 export type RoiDashboard = {
@@ -13,6 +15,8 @@ export type RoiDashboard = {
   leads: number;
   conversions: number;
   revenue: number;
+  cost: number;
+  netRevenue: number;
   currency: string;
   ctr: number;
   leadRate: number;
@@ -38,4 +42,6 @@ export const roiApi = {
     api.post<CtaLink>(`/posts/${postId}/cta-links`, { destinationUrl, label, captureLead: !!captureLead, headline }),
   createConversion: (postId: number, amount: number, note?: string) =>
     api.post<{ id: number }>("/conversions", { postId, amount, note }),
+  setCost: (postId: number, amount: number, note?: string) =>
+    api.post<{ id: number }>("/post-costs", { postId, amount, note }),
 };

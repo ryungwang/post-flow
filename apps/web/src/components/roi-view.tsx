@@ -43,17 +43,26 @@ export function RoiView() {
 
   return (
     <div className="space-y-6">
-      {/* revenue KPIs */}
+      {/* revenue / cost KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
           { label: "귀속 매출", value: won(data.revenue) },
-          { label: "게시물당 매출", value: won(data.revenuePerPost) },
-          { label: "RPM (1K 조회당)", value: won(data.rpm) },
-          { label: "ROI", value: data.roiPercent != null ? `${data.roiPercent.toFixed(0)}%` : "비용 미입력" },
+          { label: "총 비용", value: won(data.cost) },
+          { label: "순이익", value: won(data.netRevenue), accent: data.netRevenue >= 0 },
+          { label: "ROI (수익률)", value: data.roiPercent != null ? `${data.roiPercent.toFixed(0)}%` : "비용 미입력", roi: true },
         ].map((k, i) => (
           <Card key={k.label} className="lift animate-fade-up p-5 hover:border-brand/40 hover:shadow-brand" style={{ animationDelay: `${i * 60}ms` }}>
             <div className="text-sm text-muted-foreground">{k.label}</div>
-            <div className="mt-2 text-2xl font-semibold tabular-nums tracking-tight">{k.value}</div>
+            <div
+              className={
+                "mt-2 text-2xl font-semibold tabular-nums tracking-tight " +
+                (k.roi && data.roiPercent != null
+                  ? data.roiPercent >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                  : k.accent === false ? "text-rose-600 dark:text-rose-400" : "")
+              }
+            >
+              {k.value}
+            </div>
           </Card>
         ))}
       </div>
@@ -93,6 +102,11 @@ export function RoiView() {
                   <div className="mb-1 flex items-center gap-2 text-sm">
                     <span className="text-gradient-brand w-5 shrink-0 font-bold tabular-nums">{i + 1}</span>
                     <span className="min-w-0 flex-1 truncate">{p.content}</span>
+                    {p.roiPercent != null && (
+                      <span className={`shrink-0 text-xs font-medium tabular-nums ${p.roiPercent >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                        ROI {p.roiPercent.toFixed(0)}%
+                      </span>
+                    )}
                     <span className="shrink-0 font-medium tabular-nums">{won(p.revenue)}</span>
                   </div>
                   <div className="ml-7 h-2 overflow-hidden rounded-full bg-muted">
@@ -123,6 +137,9 @@ function ActionsCard({ posts, onChanged }: { posts: { id: number; content: strin
   const [revPost, setRevPost] = useState<string>("");
   const [amount, setAmount] = useState("");
 
+  const [costPost, setCostPost] = useState<string>("");
+  const [cost, setCost] = useState("");
+
   const createLink = useMutation({
     mutationFn: () => roiApi.createCtaLink(Number(linkPost), dest, undefined, captureLead, captureLead ? headline : undefined),
     onSuccess: (r) => setCreated(r.shortUrl),
@@ -131,6 +148,13 @@ function ActionsCard({ posts, onChanged }: { posts: { id: number; content: strin
     mutationFn: () => roiApi.createConversion(Number(revPost), Number(amount)),
     onSuccess: () => {
       setAmount("");
+      onChanged();
+    },
+  });
+  const addCost = useMutation({
+    mutationFn: () => roiApi.setCost(Number(costPost), Number(cost)),
+    onSuccess: () => {
+      setCost("");
       onChanged();
     },
   });
@@ -187,6 +211,21 @@ function ActionsCard({ posts, onChanged }: { posts: { id: number; content: strin
         <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="금액 (원)" />
         <Button variant="outline" className="w-full gap-1.5" disabled={!revPost || !amount || Number(amount) <= 0 || addRevenue.isPending} onClick={() => addRevenue.mutate()}>
           {addRevenue.isPending ? <Loader2 className="size-4 animate-spin" /> : <DollarSign className="size-4" />} 매출 추가
+        </Button>
+      </div>
+
+      {/* set cost (ROI denominator) */}
+      <div className="mt-5 space-y-2 border-t border-border/60 pt-5">
+        <Label>비용 입력 (광고·프로모션 → ROI%)</Label>
+        <Select value={costPost} onValueChange={setCostPost}>
+          <SelectTrigger><SelectValue placeholder="게시물 선택" /></SelectTrigger>
+          <SelectContent>
+            {posts.map((p) => <SelectItem key={p.id} value={String(p.id)}>{label(p.id)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input type="number" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="비용 (원)" />
+        <Button variant="outline" className="w-full gap-1.5" disabled={!costPost || cost === "" || Number(cost) < 0 || addCost.isPending} onClick={() => addCost.mutate()}>
+          {addCost.isPending ? <Loader2 className="size-4 animate-spin" /> : <DollarSign className="size-4" />} 비용 저장
         </Button>
       </div>
     </Card>

@@ -3,9 +3,9 @@ package com.postflow.roi.dto;
 import java.util.List;
 
 /**
- * ROI funnel + revenue aggregate. Views come from Threads Insights; clicks/leads/
- * conversions/revenue from our own tracking. {@code roiPercent} is null when no cost
- * is recorded (MVP) — revenue / conversion-rate are the headline instead.
+ * ROI funnel + revenue/cost aggregate. Views come from Threads Insights; clicks/leads/
+ * conversions/revenue/cost from our own tracking. {@code roiPercent} is null when no cost
+ * is recorded.
  */
 public record RoiDashboardResponse(
         long views,
@@ -13,6 +13,8 @@ public record RoiDashboardResponse(
         long leads,
         long conversions,
         double revenue,
+        double cost,
+        double netRevenue,
         String currency,
         double ctr,
         double leadRate,
@@ -22,6 +24,13 @@ public record RoiDashboardResponse(
         Double roiPercent,
         List<PostRevenueDto> topByRevenue
 ) {
-    public record PostRevenueDto(Long postId, String content, double revenue, long conversions) {
+    public record PostRevenueDto(
+            Long postId,
+            String content,
+            double revenue,
+            long conversions,
+            double cost,
+            Double roiPercent
+    ) {
     }
 }
