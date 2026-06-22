@@ -29,9 +29,17 @@ export type CreatePost = {
   scheduledAt?: string | null;
 };
 
+export type UpdatePost = {
+  content?: string;
+  hashtags?: string[];
+  cta?: string | null;
+  scheduledAt?: string | null;
+};
+
 export const postsApi = {
   list: () => api.get<Post[]>("/posts"),
   create: (body: CreatePost) => api.post<Post>("/posts", body),
+  update: (id: number, body: UpdatePost) => api.put<Post>(`/posts/${id}`, body),
   publishNow: (id: number) => api.post<Post>(`/posts/${id}/publish`),
   setMedia: (id: number, mediaUrl: string | null) => api.put<Post>(`/posts/${id}/media`, { mediaUrl }),
   remove: (id: number) => api.del<void>(`/posts/${id}`),
