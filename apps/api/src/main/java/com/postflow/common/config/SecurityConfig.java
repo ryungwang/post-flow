@@ -1,6 +1,9 @@
 package com.postflow.common.config;
 
 import com.postflow.auth.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
+import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -31,8 +34,11 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/api/ping",
-                                "/api/auth/google", "/api/threads/callback").permitAll()
+                        // error dispatch must be open, or any 4xx/404 re-dispatches to /error
+                        // and gets masked as 401
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
+                        .requestMatchers("/api/ping", "/api/auth/google", "/api/threads/callback").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint))

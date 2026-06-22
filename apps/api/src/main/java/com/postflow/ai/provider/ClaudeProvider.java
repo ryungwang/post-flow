@@ -42,12 +42,11 @@ public class ClaudeProvider implements LLMProvider {
     public ClaudeProvider(AiProperties properties) {
         this.properties = properties;
         String apiKey = properties.claude() != null ? properties.claude().apiKey() : null;
-        AnthropicOkHttpClient.Builder builder = AnthropicOkHttpClient.builder();
-        if (StringUtils.hasText(apiKey)) {
-            builder.apiKey(apiKey);
-        }
-        // No key here just defers failure to the first call (e.g. local dev without a key).
-        this.client = builder.build();
+        // Placeholder when unset so the client builds at startup (local dev without a key);
+        // any real generate() call then fails with 401 rather than blocking boot.
+        this.client = AnthropicOkHttpClient.builder()
+                .apiKey(StringUtils.hasText(apiKey) ? apiKey : "missing-anthropic-api-key")
+                .build();
     }
 
     @Override
