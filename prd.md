@@ -472,7 +472,7 @@ Top 10 Posts
 
 ---
 
-# Lead Collection
+# Lead Collection & Content ROI
 
 CTA Templates
 
@@ -485,6 +485,18 @@ Get Free Checklist
 Join Waitlist
 
 Download Guide
+
+## Content ROI (수익 귀속)
+
+> Threads Insights는 **참여 지표만** 제공(매출 없음). 게시물별 수익은 자체 추적으로 귀속한다.
+> 상세 설계: [`docs/CONTENT_ROI.md`](docs/CONTENT_ROI.md).
+
+* 퍼널: **조회(Insights) → 클릭(자체 단축링크 `/r/{slug}`) → 리드 → 전환(매출)**
+* 신규 테이블: `cta_links`, `link_clicks`, `leads`, `conversions` (+옵션 `post_cost`)
+* 지표: CTR, 리드/구매 전환율, 귀속 매출, 게시물당 매출, RPM, **ROI%**(=（매출−비용)/비용; 비용 없으면 매출·전환율 대표)
+* API: `POST /api/posts/{id}/cta-links`, `GET /r/{slug}`(공개·리다이렉트), `POST /api/conversions`, `GET /api/roi/dashboard`
+* 단계: **MVP=단축링크 클릭추적 + 매출 수동등록 + ROI 탭** → 호스티드 리드폼·전환 웹훅 → 캠페인/비용
+* 프라이버시: 클릭 IP는 해시만, 리드 PII 동의·보존정책, 오픈 리다이렉트 방지
 
 ---
 
