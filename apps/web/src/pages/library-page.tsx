@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Library, Loader2, Send, Trash2 } from "lucide-react";
+import { Copy, Library, Loader2, Search, Send, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -46,6 +47,10 @@ export function LibraryPage() {
       setSelected(null);
     },
   });
+  const duplicate = useMutation({
+    mutationFn: (p: Post) => postsApi.create({ content: p.content, hashtags: p.hashtags, cta: p.cta ?? undefined }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
+  });
 
   const bulk = useMutation({
     mutationFn: async (action: "publish" | "delete") => {
@@ -63,20 +68,26 @@ export function LibraryPage() {
   const [sort, setSort] = useState<SortKey>("recent");
   const [statusFilter, setStatusFilter] = useState<PostStatus | "ALL">("ALL");
   const [scoreFilter, setScoreFilter] = useState<"ALL" | "80" | "60" | "low">("ALL");
+  const [q, setQ] = useState("");
 
   const posts = useMemo(() => {
+    const query = q.trim().toLowerCase();
     let list = allPosts.filter((p) => {
       if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
       if (scoreFilter === "80" && p.score < 80) return false;
       if (scoreFilter === "60" && (p.score < 60 || p.score >= 80)) return false;
       if (scoreFilter === "low" && p.score >= 60) return false;
+      if (query) {
+        const hay = (p.content + " " + (p.hashtags ?? []).join(" ") + " " + (p.cta ?? "")).toLowerCase();
+        if (!hay.includes(query)) return false;
+      }
       return true;
     });
     if (sort === "score-desc") list = [...list].sort((a, b) => b.score - a.score);
     else if (sort === "score-asc") list = [...list].sort((a, b) => a.score - b.score);
     // recent = backend order (createdAt desc)
     return list;
-  }, [allPosts, sort, statusFilter, scoreFilter]);
+  }, [allPosts, sort, statusFilter, scoreFilter, q]);
 
   const toggle = (id: number) =>
     setChecked((prev) => {
@@ -119,6 +130,10 @@ export function LibraryPage() {
 
         {!isLoading && !isError && allPosts.length > 0 && checked.size === 0 && (
           <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-6 py-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="검색…" className="h-8 w-[180px] pl-8 text-xs" />
+            </div>
             <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
               <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -230,6 +245,9 @@ export function LibraryPage() {
                               <Send className="size-4" />
                             </Button>
                           )}
+                          <Button variant="ghost" size="icon" title="복제" disabled={duplicate.isPending} onClick={() => duplicate.mutate(p)}>
+                            <Copy className="size-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" title="삭제" disabled={busy} onClick={() => remove.mutate(p.id)}>
                             <Trash2 className="size-4" />
                           </Button>
