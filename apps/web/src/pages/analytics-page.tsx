@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, Heart, Loader2, MessageCircle, Repeat2, Quote, Share2, Activity } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { analyticsApi, type AnalyticsDashboard } from "@/lib/analytics-api";
+import { RoiView } from "@/components/roi-view";
+import { cn } from "@/lib/utils";
 
 const nf = new Intl.NumberFormat("ko-KR");
 
 export function AnalyticsPage() {
+  const [tab, setTab] = useState<"engagement" | "roi">("engagement");
   const { data, isLoading, isError } = useQuery({
     queryKey: ["analytics"],
     queryFn: analyticsApi.dashboard,
@@ -13,12 +17,30 @@ export function AnalyticsPage() {
 
   return (
     <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">분석</h1>
-        <p className="mt-1 text-sm text-muted-foreground">게시물 성과를 한눈에 — 조회·참여·상위 콘텐츠.</p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">분석</h1>
+          <p className="mt-1 text-sm text-muted-foreground">게시물 성과를 한눈에 — 참여와 수익(ROI).</p>
+        </div>
+        <div className="flex items-center rounded-lg border bg-background p-0.5">
+          {([["engagement", "참여"], ["roi", "수익·ROI"]] as const).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm transition-colors",
+                tab === k ? "bg-brand-gradient text-brand-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {isLoading ? (
+      {tab === "roi" ? (
+        <RoiView />
+      ) : isLoading ? (
         <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> 불러오는 중…
         </div>
