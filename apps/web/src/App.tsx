@@ -4,8 +4,10 @@ import { RequireAuth } from "@/auth/require-auth";
 import { useSession } from "@/auth/use-session";
 import { DashboardPage } from "@/pages/dashboard-page";
 import { GeneratePage } from "@/pages/generate-page";
+import { LibraryPage } from "@/pages/library-page";
 import { LoginPage } from "@/pages/login-page";
 import { PlaceholderPage } from "@/pages/placeholder-page";
+import { ThreadsSettingsPage } from "@/pages/threads-settings-page";
 
 export default function App() {
   useSession();
@@ -20,10 +22,7 @@ export default function App() {
             path="/content/series"
             element={<PlaceholderPage title="시리즈 생성" description="7·14·30일 콘텐츠 플랜을 자동 생성합니다." />}
           />
-          <Route
-            path="/content/library"
-            element={<PlaceholderPage title="라이브러리" description="생성·저장된 콘텐츠 모음." />}
-          />
+          <Route path="/content/library" element={<LibraryPage />} />
           <Route
             path="/schedule"
             element={<PlaceholderPage title="스케줄" description="예약·자동 발행 관리." />}
@@ -36,10 +35,7 @@ export default function App() {
             path="/settings/account"
             element={<PlaceholderPage title="계정" description="프로필 및 플랜 설정." />}
           />
-          <Route
-            path="/settings/threads"
-            element={<PlaceholderPage title="Threads 연결" description="Threads 계정 연결 및 상태." />}
-          />
+          <Route path="/settings/threads" element={<ThreadsSettingsPage />} />
         </Route>
       </Route>
     </Routes>

@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Check, Copy, Loader2, Pencil, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { BookmarkPlus, Check, Copy, Loader2, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { postsApi } from "@/lib/posts-api";
 import {
   Select,
   SelectContent,
@@ -203,6 +205,8 @@ function EmptyHint({ text }: { text: string }) {
   );
 }
 
+type SaveState = "idle" | "saving" | "saved" | "publishing" | "published" | "error";
+
 function GeneratedCardView({
   card,
   onChange,
@@ -214,17 +218,45 @@ function GeneratedCardView({
 }) {
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [save, setSave] = useState<SaveState>("idle");
+  const qc = useQueryClient();
 
-  const copy = async () => {
-    const text = [card.content, card.hashtags.map((h) => `#${h}`).join(" "), card.cta]
+  const fullText = () =>
+    [card.content, card.hashtags.map((h) => `#${h}`).join(" "), card.cta]
       .filter(Boolean)
       .join("\n\n");
-    await navigator.clipboard.writeText(text);
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(fullText());
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
 
+  const saveDraft = async () => {
+    setSave("saving");
+    try {
+      await postsApi.create({ content: card.content });
+      qc.invalidateQueries({ queryKey: ["posts"] });
+      setSave("saved");
+    } catch {
+      setSave("error");
+    }
+  };
+
+  const publish = async () => {
+    setSave("publishing");
+    try {
+      const post = await postsApi.create({ content: card.content });
+      await postsApi.publishNow(post.id);
+      qc.invalidateQueries({ queryKey: ["posts"] });
+      setSave("published");
+    } catch {
+      setSave("error");
+    }
+  };
+
   const over = card.content.length > MAX;
+  const busy = save === "saving" || save === "publishing";
 
   return (
     <Card className="flex flex-col p-5">
@@ -269,6 +301,30 @@ function GeneratedCardView({
           </Button>
         </div>
       </div>
+      <div className="mt-2 flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 gap-1.5"
+          disabled={busy || save === "saved"}
+          onClick={saveDraft}
+        >
+          {save === "saving" ? <Loader2 className="size-4 animate-spin" /> : <BookmarkPlus className="size-4" />}
+          {save === "saved" ? "저장됨" : "저장"}
+        </Button>
+        <Button
+          size="sm"
+          className="flex-1 gap-1.5"
+          disabled={busy || save === "published"}
+          onClick={publish}
+        >
+          {save === "publishing" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+          {save === "published" ? "발행됨" : "발행"}
+        </Button>
+      </div>
+      {save === "error" && (
+        <p className="mt-2 text-xs text-destructive">처리에 실패했어요. (Threads 연결/키 확인)</p>
+      )}
     </Card>
   );
 }
