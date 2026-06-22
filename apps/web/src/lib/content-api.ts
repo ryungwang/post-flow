@@ -4,6 +4,7 @@ export type GeneratedCard = {
   content: string;
   hashtags: string[];
   cta: string;
+  score: number;
 };
 
 export type GenerateResponse = {

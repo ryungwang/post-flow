@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { contentApi, type GeneratedCard } from "@/lib/content-api";
+import { ScoreBadge } from "@/components/score-badge";
 import { ApiError } from "@/lib/api";
 
 const TOPIC_CHIPS = ["AI", "스타트업", "개발", "생산성", "여행", "음식", "운동", "육아"];
@@ -261,6 +262,9 @@ function GeneratedCardView({
 
   return (
     <Card className="lift flex h-full flex-col p-5">
+      <div className="mb-3 flex justify-end">
+        <ScoreBadge score={card.score} />
+      </div>
       {editing ? (
         <Textarea
           value={card.content}

@@ -126,7 +126,11 @@ public class ContentGenerationService {
         String json = extractJsonArray(raw);
         try {
             List<GeneratedCard> cards = objectMapper.readValue(json, new TypeReference<>() {});
-            return cards.stream().map(this::clampContent).toList();
+            return cards.stream()
+                    .map(this::clampContent)
+                    .map(c -> c.withScore(ContentScorer.score(c.content(), c.hashtags(), c.cta())))
+                    .sorted(java.util.Comparator.comparingInt(GeneratedCard::score).reversed())
+                    .toList();
         } catch (JsonProcessingException e) {
             throw new ContentGenerationException("Failed to parse generated cards as JSON", e);
         }

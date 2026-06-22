@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PostDetailDialog } from "@/components/post-detail-dialog";
+import { ScoreBadge } from "@/components/score-badge";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { POST_STATUS_META } from "@/lib/post-status";
 
@@ -154,7 +155,10 @@ export function LibraryPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <Badge variant={meta.variant}>{meta.label}</Badge>
+                        <div className="flex flex-col items-start gap-1.5">
+                          <Badge variant={meta.variant}>{meta.label}</Badge>
+                          <ScoreBadge score={p.score} />
+                        </div>
                       </td>
                       <td className="px-4 py-3.5 text-muted-foreground">{fmt(when)}</td>
                       <td className="px-6 py-3.5" onClick={(e) => e.stopPropagation()}>

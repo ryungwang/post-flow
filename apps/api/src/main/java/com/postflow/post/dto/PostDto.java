@@ -1,5 +1,6 @@
 package com.postflow.post.dto;
 
+import com.postflow.ai.content.ContentScorer;
 import com.postflow.post.Post;
 
 import java.time.Instant;
@@ -11,6 +12,7 @@ public record PostDto(
         List<String> hashtags,
         String cta,
         String mediaUrl,
+        int score,
         String status,
         Instant scheduledAt,
         Instant publishedAt,
@@ -24,6 +26,7 @@ public record PostDto(
                 post.getHashtags(),
                 post.getCta(),
                 post.getMediaUrl(),
+                ContentScorer.score(post.getContent(), post.getHashtags(), post.getCta()),
                 post.getStatus().name(),
                 post.getScheduledAt(),
                 post.getPublishedAt(),

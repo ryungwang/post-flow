@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { uploadMedia } from "@/lib/media-api";
+import { ScoreBadge } from "@/components/score-badge";
 import { POST_STATUS_META } from "@/lib/post-status";
 
 function fmt(iso: string | null) {
@@ -106,11 +107,12 @@ export function PostDetailDialog({
           <>
             <DialogHeader>
               <DialogTitle>{editing ? "게시물 편집" : "게시물 상세"}</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="flex items-center gap-2">
                 <Badge variant={POST_STATUS_META[p.status].variant}>
                   {POST_STATUS_META[p.status].label}
                 </Badge>
-                <span className="ml-2 text-xs tabular-nums">{fmt(p.publishedAt ?? p.scheduledAt)}</span>
+                <ScoreBadge score={p.score} />
+                <span className="text-xs tabular-nums">{fmt(p.publishedAt ?? p.scheduledAt)}</span>
               </DialogDescription>
             </DialogHeader>
 

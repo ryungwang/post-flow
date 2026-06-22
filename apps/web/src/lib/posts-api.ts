@@ -14,6 +14,7 @@ export type Post = {
   hashtags: string[];
   cta: string | null;
   mediaUrl: string | null;
+  score: number;
   status: PostStatus;
   scheduledAt: string | null;
   publishedAt: string | null;
