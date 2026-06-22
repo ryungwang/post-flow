@@ -1,8 +1,17 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Library, Loader2, Send, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { POST_STATUS_META } from "@/lib/post-status";
 
@@ -19,10 +28,8 @@ function fmt(iso: string | null) {
 
 export function LibraryPage() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["posts"],
-    queryFn: postsApi.list,
-  });
+  const { data, isLoading, isError } = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
+  const [selected, setSelected] = useState<Post | null>(null);
 
   const publish = useMutation({
     mutationFn: (id: number) => postsApi.publishNow(id),
@@ -30,7 +37,10 @@ export function LibraryPage() {
   });
   const remove = useMutation({
     mutationFn: (id: number) => postsApi.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["posts"] });
+      setSelected(null);
+    },
   });
 
   const posts = data ?? [];
@@ -39,11 +49,11 @@ export function LibraryPage() {
     <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">라이브러리</h1>
-        <p className="mt-1 text-sm text-muted-foreground">생성·저장된 콘텐츠를 관리합니다.</p>
+        <p className="mt-1 text-sm text-muted-foreground">생성·저장된 콘텐츠를 관리합니다. (행을 클릭하면 상세보기)</p>
       </div>
 
       <Card>
-        <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
           <h2 className="font-semibold">콘텐츠</h2>
           {!isLoading && <span className="text-sm text-muted-foreground">{posts.length}개</span>}
         </div>
@@ -67,7 +77,7 @@ export function LibraryPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-6 py-3 font-medium">콘텐츠</th>
                   <th className="px-4 py-3 font-medium">상태</th>
                   <th className="px-4 py-3 font-medium">예약/발행</th>
@@ -82,7 +92,11 @@ export function LibraryPage() {
                     (publish.isPending && publish.variables === p.id) ||
                     (remove.isPending && remove.variables === p.id);
                   return (
-                    <tr key={p.id} className="border-b last:border-0 align-top hover:bg-accent/40">
+                    <tr
+                      key={p.id}
+                      className="cursor-pointer border-b border-border/60 align-top last:border-0 hover:bg-accent/40"
+                      onClick={() => setSelected(p)}
+                    >
                       <td className="px-6 py-3.5">
                         <div className="max-w-xl">
                           <p className="line-clamp-3 whitespace-pre-line font-medium">{p.content}</p>
@@ -100,26 +114,14 @@ export function LibraryPage() {
                         <Badge variant={meta.variant}>{meta.label}</Badge>
                       </td>
                       <td className="px-4 py-3.5 text-muted-foreground">{fmt(when)}</td>
-                      <td className="px-6 py-3.5">
+                      <td className="px-6 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           {p.status !== "PUBLISHED" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="즉시 발행"
-                              disabled={busy}
-                              onClick={() => publish.mutate(p.id)}
-                            >
+                            <Button variant="ghost" size="icon" title="즉시 발행" disabled={busy} onClick={() => publish.mutate(p.id)}>
                               <Send className="size-4" />
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="삭제"
-                            disabled={busy}
-                            onClick={() => remove.mutate(p.id)}
-                          >
+                          <Button variant="ghost" size="icon" title="삭제" disabled={busy} onClick={() => remove.mutate(p.id)}>
                             <Trash2 className="size-4" />
                           </Button>
                         </div>
@@ -132,6 +134,51 @@ export function LibraryPage() {
           </div>
         )}
       </Card>
+
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent>
+          {selected && (
+            <>
+              <DialogHeader>
+                <DialogTitle>게시물 상세</DialogTitle>
+                <DialogDescription>
+                  <Badge variant={POST_STATUS_META[selected.status].variant}>
+                    {POST_STATUS_META[selected.status].label}
+                  </Badge>
+                  <span className="ml-2 text-xs tabular-nums">{fmt(selected.publishedAt ?? selected.scheduledAt)}</span>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="max-h-[50vh] overflow-y-auto">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">{selected.content}</p>
+                {selected.hashtags?.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {selected.hashtags.map((h, i) => (
+                      <Badge key={i} variant="secondary">#{h}</Badge>
+                    ))}
+                  </div>
+                )}
+                {selected.cta && <p className="mt-3 text-sm font-medium text-brand">{selected.cta}</p>}
+                <div className="mt-4 text-xs text-muted-foreground tabular-nums">
+                  {selected.content.length}/500자
+                  {selected.threadsMediaId && <> · Threads ID {selected.threadsMediaId}</>}
+                </div>
+              </div>
+
+              <DialogFooter>
+                {selected.status !== "PUBLISHED" && (
+                  <Button variant="outline" className="gap-1.5" disabled={publish.isPending} onClick={() => publish.mutate(selected.id)}>
+                    <Send className="size-4" /> 즉시 발행
+                  </Button>
+                )}
+                <Button variant="destructive" className="gap-1.5" disabled={remove.isPending} onClick={() => remove.mutate(selected.id)}>
+                  <Trash2 className="size-4" /> 삭제
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
