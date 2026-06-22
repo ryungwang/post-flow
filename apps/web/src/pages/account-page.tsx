@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Eye, EyeOff, Loader2, LogOut, Monitor, Moon, RefreshCw, Sun, Webhook } from "lucide-react";
+import { Check, Copy, Download, Eye, EyeOff, Loader2, LogOut, Monitor, Moon, RefreshCw, Sun, Webhook } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,8 @@ import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
 import { accountApi } from "@/lib/account-api";
 import { billingApi } from "@/lib/billing-api";
+import { postsApi } from "@/lib/posts-api";
+import { toCsv, downloadCsv, download } from "@/lib/csv";
 import { LEGAL } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 
@@ -163,6 +165,8 @@ export function AccountPage() {
 
           <WebhookCard />
 
+          <ExportCard />
+
           <p className="pt-2 text-center text-xs text-muted-foreground">
             <a href={LEGAL.terms} target="_blank" rel="noreferrer" className="underline hover:text-foreground">이용약관</a>
             {" · "}
@@ -205,6 +209,41 @@ function UsageBar() {
       </div>
     </div>
   );
+}
+
+function ExportCard() {
+  const exportData = async (format: "json" | "csv") => {
+    const posts = await postsApi.list();
+    if (format === "json") {
+      download(`postflow-posts-${today()}.json`, JSON.stringify(posts, null, 2), "application/json");
+    } else {
+      const csv = toCsv(
+        ["id", "content", "hashtags", "cta", "status", "score", "scheduledAt", "publishedAt", "createdAt"],
+        posts.map((p) => [p.id, p.content, (p.hashtags ?? []).join(" "), p.cta, p.status, p.score, p.scheduledAt, p.publishedAt, p.createdAt]),
+      );
+      downloadCsv(`postflow-posts-${today()}.csv`, csv);
+    }
+  };
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>데이터 내보내기</CardTitle>
+        <CardDescription>내 게시물 전체를 파일로 백업합니다.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex gap-2">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => exportData("csv")}>
+          <Download className="size-4" /> CSV
+        </Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => exportData("json")}>
+          <Download className="size-4" /> JSON
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function WebhookCard() {

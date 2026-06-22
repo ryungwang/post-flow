@@ -11,7 +11,11 @@ export function toCsv(headers: string[], rows: (string | number | null | undefin
 }
 
 export function downloadCsv(filename: string, csv: string) {
-  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  download(filename, "﻿" + csv, "text/csv;charset=utf-8;");
+}
+
+export function download(filename: string, content: string, mime = "application/octet-stream") {
+  const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
