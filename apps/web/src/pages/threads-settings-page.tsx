@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { threadsApi } from "@/lib/threads-api";
 import { accountApi } from "@/lib/account-api";
+import { useConfirm } from "@/components/confirm-dialog";
 
 const STATUS_META: Record<string, { label: string; variant: "success" | "warning" | "muted" }> = {
   CONNECTED: { label: "연결됨", variant: "success" },
@@ -115,7 +116,9 @@ export function ThreadsSettingsPage() {
             {connected ? "다시 연결" : "Threads 연결하기"}
           </Button>
           <p className="mt-3 text-xs text-muted-foreground">
-            연결에는 Threads 앱 설정(서버 키)이 필요합니다. 키 미설정 시 연결이 진행되지 않을 수 있어요.
+            {connected
+              ? "다른 계정으로 바꾸려면 아래에서 연결 해제 후 다시 연결하세요. (다른 계정으로 인증하면 현재 연결이 교체됩니다.)"
+              : "연결에는 Threads 앱 설정(서버 키)이 필요합니다. 키 미설정 시 연결이 진행되지 않을 수 있어요."}
           </p>
         </CardContent>
       </Card>
@@ -127,14 +130,24 @@ export function ThreadsSettingsPage() {
 
 function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean }) {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { data: accounts } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
   const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["threads-accounts"] });
-    qc.invalidateQueries({ queryKey: ["threads-status"] }); qc.invalidateQueries({ queryKey: ["threads-accounts"] });
+    qc.invalidateQueries({ queryKey: ["threads-status"] });
   };
   const setDefault = useMutation({ mutationFn: (id: number) => threadsApi.setDefault(id), onSuccess: invalidate });
   const disconnect = useMutation({ mutationFn: (id: number) => threadsApi.disconnect(id), onSuccess: invalidate });
+  const askDisconnect = async (username: string, id: number) => {
+    const ok = await confirm({
+      title: "연결 해제",
+      description: `@${username} 연결을 해제할까요? 해제 후 다른 Threads 계정으로 다시 연결할 수 있어요.`,
+      confirmText: "연결 해제",
+      destructive: true,
+    });
+    if (ok) disconnect.mutate(id);
+  };
   const list = accounts ?? [];
   if (list.length === 0) return null;
 
@@ -168,7 +181,7 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
               {!a.isDefault && (
                 <Button variant="ghost" size="sm" disabled={setDefault.isPending} onClick={() => setDefault.mutate(a.id)}>기본으로</Button>
               )}
-              <Button variant="ghost" size="sm" className="text-destructive" disabled={disconnect.isPending} onClick={() => disconnect.mutate(a.id)}>연결 해제</Button>
+              <Button variant="ghost" size="sm" className="text-destructive" disabled={disconnect.isPending} onClick={() => askDisconnect(a.username, a.id)}>연결 해제</Button>
             </li>
           ))}
         </ul>
