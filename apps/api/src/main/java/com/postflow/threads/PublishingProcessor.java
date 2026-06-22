@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Transactional state transitions for publishing, split so external HTTP (which can poll
@@ -32,11 +34,25 @@ public class PublishingProcessor {
         this.socialAccountRepository = socialAccountRepository;
     }
 
-    /** Validate + mark PUBLISHING. Returns a publish task, or empty if not publishable. */
+    private static final Set<PostStatus> DUE = EnumSet.of(PostStatus.SCHEDULED);
+    private static final Set<PostStatus> IMMEDIATE = EnumSet.of(
+            PostStatus.DRAFT, PostStatus.SCHEDULED, PostStatus.FAILED, PostStatus.RECONNECT_REQUIRED);
+
+    /** Claim a due (SCHEDULED) post for the cron publisher. */
     @Transactional
     public Optional<PublishTask> claim(Long postId) {
+        return claim(postId, DUE);
+    }
+
+    /** Claim a post for immediate publish (publish-now): allows DRAFT/SCHEDULED/retry states. */
+    @Transactional
+    public Optional<PublishTask> claimImmediate(Long postId) {
+        return claim(postId, IMMEDIATE);
+    }
+
+    private Optional<PublishTask> claim(Long postId, Set<PostStatus> allowed) {
         Post post = postRepository.findById(postId).orElse(null);
-        if (post == null || post.getStatus() != PostStatus.SCHEDULED) {
+        if (post == null || !allowed.contains(post.getStatus())) {
             return Optional.empty();
         }
         SocialAccount account = socialAccountRepository

@@ -50,6 +50,30 @@ public class Post extends BaseTimeEntity {
     @Column(name = "retry_count", nullable = false)
     private int retryCount = 0;
 
+    public static Post create(Long userId, String content) {
+        Post p = new Post();
+        p.userId = userId;
+        p.content = content;
+        p.status = PostStatus.DRAFT;
+        return p;
+    }
+
+    public void updateContent(String content) {
+        if (content != null && !content.isBlank()) {
+            this.content = content;
+        }
+    }
+
+    public void schedule(Instant at) {
+        this.scheduledAt = at;
+        this.status = PostStatus.SCHEDULED;
+    }
+
+    public void unschedule() {
+        this.scheduledAt = null;
+        this.status = PostStatus.DRAFT;
+    }
+
     public void startPublishing() {
         this.status = PostStatus.PUBLISHING;
     }

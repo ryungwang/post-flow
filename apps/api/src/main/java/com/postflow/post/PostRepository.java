@@ -9,4 +9,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     /** Due posts to publish: scheduled and the scheduled time has arrived. */
     List<Post> findByStatusAndScheduledAtLessThanEqual(PostStatus status, Instant now);
+
+    List<Post> findByUserIdOrderByCreatedAtDesc(Long userId);
 }
