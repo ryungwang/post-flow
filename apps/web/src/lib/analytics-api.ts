@@ -22,6 +22,9 @@ export type AnalyticsDashboard = {
   topPosts: TopPost[];
 };
 
+export type BestTime = { label: string; score: number };
+
 export const analyticsApi = {
   dashboard: (days = 0) => api.get<AnalyticsDashboard>(`/analytics/dashboard?days=${days}`),
+  bestTimes: () => api.get<BestTime[]>("/analytics/best-times"),
 };

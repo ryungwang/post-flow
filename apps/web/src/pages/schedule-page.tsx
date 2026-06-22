@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, ChevronLeft, ChevronRight, List } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, List } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 import { PostDetailDialog } from "@/components/post-detail-dialog";
 import { ScoreBadge } from "@/components/score-badge";
 import { postsApi, type Post } from "@/lib/posts-api";
+import { analyticsApi } from "@/lib/analytics-api";
 import { POST_STATUS_META } from "@/lib/post-status";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +108,8 @@ export function SchedulePage() {
           </div>
         </div>
       </div>
+
+      <BestTimesPanel />
 
       {view === "calendar" ? (
         <Card className="overflow-hidden p-0">
@@ -249,5 +252,32 @@ export function SchedulePage() {
 
       <PostDetailDialog post={selectedPost} onOpenChange={(o) => !o && setSelectedPost(null)} />
     </div>
+  );
+}
+
+function BestTimesPanel() {
+  const { data } = useQuery({ queryKey: ["best-times"], queryFn: analyticsApi.bestTimes });
+  const slots = data ?? [];
+  if (slots.length === 0) return null;
+  const max = Math.max(...slots.map((s) => s.score));
+  return (
+    <Card className="mb-6 p-5">
+      <div className="flex items-center gap-2">
+        <Clock className="size-4 text-brand" />
+        <h2 className="font-semibold">추천 발행 시간대</h2>
+      </div>
+      <p className="mt-0.5 text-sm text-muted-foreground">반응이 좋은 시간에 예약하면 도달이 올라가요. (Threads 일반 패턴 기준)</p>
+      <div className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+        {slots.map((s) => (
+          <div key={s.label} className="flex items-center gap-2 text-sm">
+            <span className="w-28 shrink-0 text-muted-foreground">{s.label}</span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+              <div className="bg-brand-gradient h-full rounded-full" style={{ width: `${(s.score / max) * 100}%` }} />
+            </div>
+            <span className="w-8 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{s.score}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
