@@ -1,5 +1,6 @@
 package com.postflow.account;
 
+import com.postflow.user.UsageService;
 import com.postflow.user.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -10,18 +11,26 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/** Account settings: conversion-webhook secret management. */
+/** Account settings: webhook secret + plan usage. */
 @RestController
 @RequestMapping("/api/account")
 public class AccountController {
 
     private final UserService userService;
+    private final UsageService usageService;
     private final String apiBaseUrl;
 
     public AccountController(UserService userService,
+                            UsageService usageService,
                             @Value("${roi.short-link-base-url:http://localhost:8080}") String apiBaseUrl) {
         this.userService = userService;
+        this.usageService = usageService;
         this.apiBaseUrl = apiBaseUrl;
+    }
+
+    @GetMapping("/usage")
+    public UsageService.UsageDto usage(@AuthenticationPrincipal Long userId) {
+        return usageService.usage(userId);
     }
 
     @GetMapping("/webhook")

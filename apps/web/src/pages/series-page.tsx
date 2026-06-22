@@ -32,8 +32,8 @@ export function SeriesPage() {
       setItems(res.items);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setError("로그인이 필요해요.");
-      else if (e instanceof ApiError && e.status >= 500)
-        setError("생성 중 오류가 발생했어요. AI 키 설정 또는 잠시 후 다시 시도해 주세요.");
+      else if (e instanceof ApiError && e.message && !e.message.startsWith("Request failed"))
+        setError(e.message); // 백엔드 친절 메시지(플랜 잠금/크레딧 등)
       else setError("생성에 실패했어요. 다시 시도해 주세요.");
     } finally {
       setLoading(false);

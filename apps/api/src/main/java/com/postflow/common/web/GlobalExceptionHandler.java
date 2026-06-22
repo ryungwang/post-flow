@@ -2,6 +2,7 @@ package com.postflow.common.web;
 
 import com.anthropic.errors.AnthropicException;
 import com.postflow.ai.content.ContentGenerationException;
+import com.postflow.user.PlanLimitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,12 @@ public class GlobalExceptionHandler {
         }
         log.warn("Anthropic error: {}", raw.split("\n")[0]);
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "llm_error", "message", message));
+    }
+
+    @ExceptionHandler(PlanLimitException.class)
+    public ResponseEntity<Map<String, String>> planLimit(PlanLimitException e) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                .body(Map.of("error", "plan_limit", "message", e.getMessage()));
     }
 
     @ExceptionHandler(ContentGenerationException.class)

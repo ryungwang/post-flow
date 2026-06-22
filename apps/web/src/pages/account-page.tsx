@@ -106,6 +106,7 @@ export function AccountPage() {
               <CardDescription>현재 플랜: {currentPlan}</CardDescription>
             </CardHeader>
             <CardContent>
+              <UsageBar />
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {PLANS.map((p) => {
                   const active = p.key === currentPlan;
@@ -147,6 +148,39 @@ export function AccountPage() {
 
           <WebhookCard />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function UsageBar() {
+  const { data } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
+  if (!data) return null;
+  const unlimited = data.limit < 0;
+  const pct = unlimited ? 100 : Math.min(100, Math.round((data.used / Math.max(1, data.limit)) * 100));
+  return (
+    <div className="mb-5 rounded-xl border border-border/60 p-4">
+      <div className="flex items-center justify-between text-sm">
+        <span className="font-medium">이번 달 AI 생성</span>
+        <span className="tabular-nums text-muted-foreground">
+          {unlimited ? `${data.used} / 무제한` : `${data.used} / ${data.limit}`}
+        </span>
+      </div>
+      {!unlimited && (
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+          <div className={cn("h-full rounded-full", pct >= 100 ? "bg-rose-500" : "bg-brand-gradient")} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {[
+          { label: "예약 발행", on: data.canSchedule },
+          { label: "시리즈 생성", on: data.canSeries },
+          { label: "다중 계정", on: data.canMultiAccount },
+        ].map((f) => (
+          <Badge key={f.label} variant={f.on ? "success" : "secondary"}>
+            {f.on ? "✓" : "🔒"} {f.label}
+          </Badge>
+        ))}
       </div>
     </div>
   );

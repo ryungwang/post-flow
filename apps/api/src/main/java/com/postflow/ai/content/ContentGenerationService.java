@@ -14,6 +14,7 @@ import com.postflow.ai.dto.GenerationRequest;
 import com.postflow.ai.dto.GenerationResult;
 import com.postflow.aigeneration.AiGeneration;
 import com.postflow.aigeneration.AiGenerationRepository;
+import com.postflow.user.UsageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,19 +35,23 @@ public class ContentGenerationService {
     private final ContentPromptBuilder promptBuilder;
     private final AiGenerationRepository aiGenerationRepository;
     private final ObjectMapper objectMapper;
+    private final UsageService usageService;
 
     public ContentGenerationService(LLMProvider llmProvider,
                                     ContentPromptBuilder promptBuilder,
                                     AiGenerationRepository aiGenerationRepository,
-                                    ObjectMapper objectMapper) {
+                                    ObjectMapper objectMapper,
+                                    UsageService usageService) {
         this.llmProvider = llmProvider;
         this.promptBuilder = promptBuilder;
         this.aiGenerationRepository = aiGenerationRepository;
         this.objectMapper = objectMapper;
+        this.usageService = usageService;
     }
 
     @Transactional
     public GenerateContentResponse generate(Long userId, GenerateContentRequest request) {
+        usageService.assertCanGenerate(userId);
         String systemPrompt = promptBuilder.systemPrompt();
         String userPrompt = promptBuilder.userPrompt(request);
 
@@ -76,6 +81,8 @@ public class ContentGenerationService {
 
     @Transactional
     public GenerateSeriesResponse generateSeries(Long userId, String topic, int days) {
+        usageService.assertCanSeries(userId);
+        usageService.assertCanGenerate(userId);
         String systemPrompt = promptBuilder.seriesSystemPrompt();
         String userPrompt = promptBuilder.seriesUserPrompt(topic, days);
 

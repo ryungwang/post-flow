@@ -21,13 +21,16 @@ public class PostService {
     private final PostRepository postRepository;
     private final PublishingProcessor publishingProcessor;
     private final ThreadsPublishService publishService;
+    private final com.postflow.user.UsageService usageService;
 
     public PostService(PostRepository postRepository,
                        PublishingProcessor publishingProcessor,
-                       ThreadsPublishService publishService) {
+                       ThreadsPublishService publishService,
+                       com.postflow.user.UsageService usageService) {
         this.postRepository = postRepository;
         this.publishingProcessor = publishingProcessor;
         this.publishService = publishService;
+        this.usageService = usageService;
     }
 
     @Transactional(readOnly = true)
@@ -60,6 +63,7 @@ public class PostService {
     public PostDto create(Long userId, CreatePostRequest request) {
         Post post = Post.create(userId, request.content(), request.hashtags(), request.cta(), request.mediaUrl());
         if (request.scheduledAt() != null) {
+            usageService.assertCanSchedule(userId);
             post.schedule(request.scheduledAt());
         }
         return PostDto.from(postRepository.save(post));
