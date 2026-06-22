@@ -28,6 +28,14 @@ public final class ContentScorer {
         return Math.max(0, Math.min(100, total));
     }
 
+    /** Hook strength of a single line, normalized to 0-100 (for ranking hook variants). */
+    public static int hookScore(String line) {
+        if (line == null || line.isBlank()) {
+            return 0;
+        }
+        return Math.min(100, Math.round(hook(line.trim()) * 100f / 35f));
+    }
+
     private static String firstLine(String content) {
         for (String line : content.split("\n")) {
             if (!line.isBlank()) {

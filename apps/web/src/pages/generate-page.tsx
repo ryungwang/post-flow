@@ -15,7 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { contentApi, type GeneratedCard } from "@/lib/content-api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { contentApi, type GeneratedCard, type HookVariant } from "@/lib/content-api";
 import { ScoreBadge } from "@/components/score-badge";
 import { ApiError } from "@/lib/api";
 
@@ -34,6 +41,22 @@ export function GeneratePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cards, setCards] = useState<GeneratedCard[] | null>(null);
+
+  const [hookOpen, setHookOpen] = useState(false);
+  const [hooks, setHooks] = useState<HookVariant[] | null>(null);
+  const [hooksLoading, setHooksLoading] = useState(false);
+  const [copiedHook, setCopiedHook] = useState<string | null>(null);
+
+  const compareHooks = async () => {
+    setHookOpen(true);
+    setHooksLoading(true);
+    setHooks(null);
+    try {
+      setHooks(await contentApi.hooks(topic.trim(), 8));
+    } finally {
+      setHooksLoading(false);
+    }
+  };
 
   const generate = async () => {
     if (!topic.trim()) return;
@@ -147,10 +170,42 @@ export function GeneratePage() {
               {loading ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
               {loading ? "생성 중…" : `${quantity}개 생성`}
             </Button>
+            <Button variant="outline" onClick={compareHooks} disabled={!topic.trim()} className="gap-2">
+              <Sparkles className="size-4" /> 훅 비교
+            </Button>
             {error && <span className="text-sm text-destructive">{error}</span>}
           </div>
         </div>
       </Card>
+
+      <Dialog open={hookOpen} onOpenChange={setHookOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>훅 변형 비교</DialogTitle>
+            <DialogDescription>"{topic}" 주제의 첫 문장(훅) 후보를 관심도 점수로 랭킹했어요. 마음에 드는 훅을 복사해 쓰세요.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[55vh] space-y-2 overflow-y-auto">
+            {hooksLoading ? (
+              <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> 불러오는 중…
+              </div>
+            ) : (
+              (hooks ?? []).map((h, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg border border-border/60 px-3 py-2.5 hover:bg-accent/40">
+                  <ScoreBadge score={h.score} />
+                  <span className="min-w-0 flex-1 text-sm font-medium">{h.hook}</span>
+                  <button
+                    className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={async () => { await navigator.clipboard.writeText(h.hook); setCopiedHook(h.hook); setTimeout(() => setCopiedHook(null), 1500); }}
+                  >
+                    {copiedHook === h.hook ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />} 복사
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="mt-6">
         {loading && (

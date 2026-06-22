@@ -20,7 +20,11 @@ export type GenerateRequest = {
   quantity: number;
 };
 
+export type HookVariant = { hook: string; score: number };
+
 export const contentApi = {
   generate: (req: GenerateRequest) =>
     api.post<GenerateResponse>("/ai/generate", req),
+  hooks: (topic: string, count = 6) =>
+    api.post<HookVariant[]>("/ai/hooks", { topic, count }),
 };
