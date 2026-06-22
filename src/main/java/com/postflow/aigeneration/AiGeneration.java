@@ -45,4 +45,18 @@ public class AiGeneration extends BaseTimeEntity {
 
     @Column(name = "output_tokens", nullable = false)
     private long outputTokens = 0;
+
+    public static AiGeneration record(Long userId, String provider, String model,
+                                      String prompt, String result,
+                                      long inputTokens, long outputTokens) {
+        AiGeneration g = new AiGeneration();
+        g.userId = userId;
+        g.provider = provider;
+        g.model = model;
+        g.prompt = prompt;
+        g.result = result;
+        g.inputTokens = inputTokens;
+        g.outputTokens = outputTokens;
+        return g;
+    }
 }

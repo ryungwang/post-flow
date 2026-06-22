@@ -1,5 +1,12 @@
 package com.postflow.ai.provider;
 
+import com.anthropic.client.AnthropicClient;
+import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+import com.anthropic.models.messages.CacheControlEphemeral;
+import com.anthropic.models.messages.ContentBlock;
+import com.anthropic.models.messages.Message;
+import com.anthropic.models.messages.MessageCreateParams;
+import com.anthropic.models.messages.TextBlockParam;
 import com.postflow.ai.AiProperties;
 import com.postflow.ai.LLMProvider;
 import com.postflow.ai.ModelTier;
@@ -7,7 +14,9 @@ import com.postflow.ai.dto.GenerationRequest;
 import com.postflow.ai.dto.GenerationResult;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -16,9 +25,6 @@ import java.util.Map;
  * <p>Active when {@code ai.provider=claude} (also the matchIfMissing default). An
  * {@code OpenAIProvider} can be added behind the same interface and selected via
  * {@code ai.provider=openai}.
- *
- * <p>STUB: the actual Anthropic SDK call is wired in a follow-up. Tier→model resolution,
- * config, and the contract are in place so feature code can compile against the interface.
  */
 @Component
 @ConditionalOnProperty(name = "ai.provider", havingValue = "claude", matchIfMissing = true)
@@ -31,9 +37,17 @@ public class ClaudeProvider implements LLMProvider {
     );
 
     private final AiProperties properties;
+    private final AnthropicClient client;
 
     public ClaudeProvider(AiProperties properties) {
         this.properties = properties;
+        String apiKey = properties.claude() != null ? properties.claude().apiKey() : null;
+        AnthropicOkHttpClient.Builder builder = AnthropicOkHttpClient.builder();
+        if (StringUtils.hasText(apiKey)) {
+            builder.apiKey(apiKey);
+        }
+        // No key here just defers failure to the first call (e.g. local dev without a key).
+        this.client = builder.build();
     }
 
     @Override
@@ -44,11 +58,48 @@ public class ClaudeProvider implements LLMProvider {
     @Override
     public GenerationResult generate(GenerationRequest request) {
         String model = resolveModel(request.tier());
-        // TODO: call Anthropic Java SDK (com.anthropic) — messages.create with
-        //  system prefix (cacheHint -> cache_control), output_config.format for schema,
-        //  max_tokens, adaptive thinking. Map usage to GenerationResult.
-        throw new UnsupportedOperationException(
-                "ClaudeProvider.generate not yet wired to Anthropic SDK (model=" + model + ")");
+
+        MessageCreateParams.Builder params = MessageCreateParams.builder()
+                .model(model)
+                .maxTokens(request.maxTokens())
+                .addUserMessage(request.prompt());
+
+        applySystem(params, request);
+
+        Message response = client.messages().create(params.build());
+
+        String text = response.content().stream()
+                .map(ContentBlock::text)
+                .flatMap(java.util.Optional::stream)
+                .map(textBlock -> textBlock.text())
+                .reduce("", String::concat);
+
+        return GenerationResult.builder()
+                .text(text)
+                .provider(id())
+                .model(model)
+                .inputTokens(response.usage().inputTokens())
+                .outputTokens(response.usage().outputTokens())
+                .build();
+    }
+
+    /**
+     * Place the stable system prompt as a cacheable prefix when {@code cacheHint} is set
+     * (brand voice / style guide reused across the session → ~90% cheaper on cache reads).
+     */
+    private void applySystem(MessageCreateParams.Builder params, GenerationRequest request) {
+        if (!StringUtils.hasText(request.systemPrompt())) {
+            return;
+        }
+        if (request.cacheHint()) {
+            params.systemOfTextBlockParams(List.of(
+                    TextBlockParam.builder()
+                            .text(request.systemPrompt())
+                            .cacheControl(CacheControlEphemeral.builder().build())
+                            .build()));
+        } else {
+            params.system(request.systemPrompt());
+        }
     }
 
     private String resolveModel(ModelTier tier) {

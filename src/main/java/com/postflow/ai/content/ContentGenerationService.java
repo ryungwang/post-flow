@@ -1,0 +1,112 @@
+package com.postflow.ai.content;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.postflow.ai.LLMProvider;
+import com.postflow.ai.ModelTier;
+import com.postflow.ai.content.dto.GenerateContentRequest;
+import com.postflow.ai.content.dto.GenerateContentResponse;
+import com.postflow.ai.content.dto.GeneratedCard;
+import com.postflow.ai.dto.GenerationRequest;
+import com.postflow.ai.dto.GenerationResult;
+import com.postflow.aigeneration.AiGeneration;
+import com.postflow.aigeneration.AiGenerationRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+/**
+ * Orchestrates content generation: build prompts → call the active {@link LLMProvider}
+ * → parse JSON cards → persist an audit record. Vendor-agnostic (depends only on the
+ * LLMProvider abstraction + ModelTier).
+ */
+@Service
+public class ContentGenerationService {
+
+    private static final int THREADS_MAX_CHARS = 500;
+    private static final int MAX_OUTPUT_TOKENS = 16000;
+
+    private final LLMProvider llmProvider;
+    private final ContentPromptBuilder promptBuilder;
+    private final AiGenerationRepository aiGenerationRepository;
+    private final ObjectMapper objectMapper;
+
+    public ContentGenerationService(LLMProvider llmProvider,
+                                    ContentPromptBuilder promptBuilder,
+                                    AiGenerationRepository aiGenerationRepository,
+                                    ObjectMapper objectMapper) {
+        this.llmProvider = llmProvider;
+        this.promptBuilder = promptBuilder;
+        this.aiGenerationRepository = aiGenerationRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    @Transactional
+    public GenerateContentResponse generate(Long userId, GenerateContentRequest request) {
+        String systemPrompt = promptBuilder.systemPrompt();
+        String userPrompt = promptBuilder.userPrompt(request);
+
+        GenerationRequest llmRequest = GenerationRequest.builder()
+                .systemPrompt(systemPrompt)
+                .prompt(userPrompt)
+                .maxTokens(estimateMaxTokens(request.quantity()))
+                .tier(ModelTier.STANDARD)
+                .cacheHint(true)
+                .build();
+
+        GenerationResult result = llmProvider.generate(llmRequest);
+
+        List<GeneratedCard> cards = parseCards(result.text());
+
+        aiGenerationRepository.save(AiGeneration.record(
+                userId,
+                result.provider(),
+                result.model(),
+                userPrompt,
+                result.text(),
+                result.inputTokens(),
+                result.outputTokens()));
+
+        return new GenerateContentResponse(cards, result.provider(), result.model());
+    }
+
+    private int estimateMaxTokens(int quantity) {
+        return Math.min(MAX_OUTPUT_TOKENS, 500 + quantity * 300);
+    }
+
+    private List<GeneratedCard> parseCards(String raw) {
+        String json = extractJsonArray(raw);
+        try {
+            List<GeneratedCard> cards = objectMapper.readValue(json, new TypeReference<>() {});
+            return cards.stream().map(this::clampContent).toList();
+        } catch (JsonProcessingException e) {
+            throw new ContentGenerationException("Failed to parse generated cards as JSON", e);
+        }
+    }
+
+    /** Defensive ≤500-char guard in case the model overruns the instruction. */
+    private GeneratedCard clampContent(GeneratedCard card) {
+        if (card.content() != null && card.content().length() > THREADS_MAX_CHARS) {
+            return new GeneratedCard(
+                    card.content().substring(0, THREADS_MAX_CHARS),
+                    card.hashtags(),
+                    card.cta());
+        }
+        return card;
+    }
+
+    /** Strip markdown fences / prose and isolate the JSON array. */
+    private String extractJsonArray(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new ContentGenerationException("Empty generation result", null);
+        }
+        int start = raw.indexOf('[');
+        int end = raw.lastIndexOf(']');
+        if (start < 0 || end <= start) {
+            throw new ContentGenerationException("No JSON array found in generation result", null);
+        }
+        return raw.substring(start, end + 1);
+    }
+}
