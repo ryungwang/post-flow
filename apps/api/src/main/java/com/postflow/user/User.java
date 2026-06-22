@@ -36,6 +36,10 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private Plan plan = Plan.FREE;
 
+    /** Per-user HMAC secret for the conversion webhook (null until first issued). */
+    @Column(name = "webhook_secret", length = 64)
+    private String webhookSecret;
+
     public static User create(String email, String name, String profileImage) {
         User u = new User();
         u.email = email;
@@ -51,5 +55,9 @@ public class User extends BaseTimeEntity {
             this.name = name;
         }
         this.profileImage = profileImage;
+    }
+
+    public void setWebhookSecret(String webhookSecret) {
+        this.webhookSecret = webhookSecret;
     }
 }

@@ -1,10 +1,14 @@
-import { Check, LogOut, Monitor, Moon, Sun } from "lucide-react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Copy, Eye, EyeOff, Loader2, LogOut, Monitor, Moon, RefreshCw, Sun, Webhook } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
+import { accountApi } from "@/lib/account-api";
 import { cn } from "@/lib/utils";
 
 const PLANS = [
@@ -140,8 +144,79 @@ export function AccountPage() {
               <p className="mt-3 text-xs text-muted-foreground">결제 연동은 준비 중입니다.</p>
             </CardContent>
           </Card>
+
+          <WebhookCard />
         </div>
       </div>
     </div>
+  );
+}
+
+function WebhookCard() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({ queryKey: ["account", "webhook"], queryFn: accountApi.webhook });
+  const [reveal, setReveal] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  const regen = useMutation({
+    mutationFn: accountApi.regenerateWebhook,
+    onSuccess: (d) => qc.setQueryData(["account", "webhook"], d),
+  });
+
+  const copy = async (text: string, which: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(which);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  const mask = (s: string) => (reveal ? s : "•".repeat(Math.min(s.length, 32)));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Webhook className="size-4 text-brand" /> 전환 웹훅
+        </CardTitle>
+        <CardDescription>외부 결제·스토어의 매출을 자동 귀속하려면 이 시크릿으로 요청에 서명하세요.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading || !data ? (
+          <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> 불러오는 중…
+          </div>
+        ) : (
+          <>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">엔드포인트</label>
+              <div className="flex gap-2">
+                <Input readOnly value={data.endpoint} className="font-mono text-xs" />
+                <Button variant="outline" size="icon" title="복사" onClick={() => copy(data.endpoint, "ep")}>
+                  {copied === "ep" ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">시크릿 (HMAC-SHA256)</label>
+              <div className="flex gap-2">
+                <Input readOnly value={mask(data.secret)} className="font-mono text-xs" />
+                <Button variant="outline" size="icon" title={reveal ? "숨기기" : "보기"} onClick={() => setReveal((v) => !v)}>
+                  {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </Button>
+                <Button variant="outline" size="icon" title="복사" onClick={() => copy(data.secret, "sec")}>
+                  {copied === "sec" ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-xs text-muted-foreground">
+                헤더 <code className="rounded bg-muted px-1">X-PostFlow-Signature</code> 에 본문 HMAC 첨부
+              </p>
+              <Button variant="ghost" size="sm" className="gap-1.5" disabled={regen.isPending} onClick={() => regen.mutate()}>
+                {regen.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} 재발급
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

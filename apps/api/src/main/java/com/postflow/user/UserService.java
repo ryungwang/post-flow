@@ -3,13 +3,40 @@ package com.postflow.user;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.util.HexFormat;
+
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
+    private final SecureRandom random = new SecureRandom();
 
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
+    }
+
+    /** Return the user's webhook secret, generating one on first access. */
+    @Transactional
+    public String getOrCreateWebhookSecret(Long userId) {
+        User user = getById(userId);
+        if (user.getWebhookSecret() == null || user.getWebhookSecret().isBlank()) {
+            user.setWebhookSecret(generateSecret());
+        }
+        return user.getWebhookSecret();
+    }
+
+    @Transactional
+    public String regenerateWebhookSecret(Long userId) {
+        User user = getById(userId);
+        user.setWebhookSecret(generateSecret());
+        return user.getWebhookSecret();
+    }
+
+    private String generateSecret() {
+        byte[] bytes = new byte[24];
+        random.nextBytes(bytes);
+        return HexFormat.of().formatHex(bytes);
     }
 
     /** Upsert a user from a verified Google identity (create on first login, else refresh profile). */

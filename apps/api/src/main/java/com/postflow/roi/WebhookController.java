@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.postflow.post.Post;
 import com.postflow.post.PostRepository;
-import org.springframework.beans.factory.annotation.Value;
+import com.postflow.user.User;
+import com.postflow.user.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,39 +21,41 @@ import java.security.MessageDigest;
 import java.util.Map;
 
 /**
- * External conversion webhook (store/payment). Body is HMAC-SHA256 signed with the shared
- * secret; signature in the {@code X-PostFlow-Signature} header (hex, optional "sha256=" prefix).
- * Attribution: {@code slug} (preferred) or {@code postId}; userId is derived, never trusted from body.
+ * External conversion webhook (store/payment). The body is HMAC-SHA256 signed with the
+ * recipient's <b>per-user</b> webhook secret (managed in account settings); the signature is in
+ * the {@code X-PostFlow-Signature} header (hex, optional "sha256=" prefix). The body is parsed
+ * (untrusted) only to route to a user via {@code slug}/{@code postId}; the signature is then
+ * verified with that user's secret before anything is recorded.
  */
 @RestController
 public class WebhookController {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final String secret;
     private final RoiService roiService;
     private final CtaLinkService ctaLinkService;
     private final PostRepository postRepository;
+    private final UserRepository userRepository;
 
-    public WebhookController(@Value("${roi.webhook-secret:dev-webhook-secret-change-me}") String secret,
-                             RoiService roiService,
+    public WebhookController(RoiService roiService,
                              CtaLinkService ctaLinkService,
-                             PostRepository postRepository) {
-        this.secret = secret;
+                             PostRepository postRepository,
+                             UserRepository userRepository) {
         this.roiService = roiService;
         this.ctaLinkService = ctaLinkService;
         this.postRepository = postRepository;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/api/webhooks/conversions")
     public ResponseEntity<?> conversion(@RequestHeader(name = "X-PostFlow-Signature", required = false) String signature,
                                         @RequestBody String rawBody) {
-        if (!verify(rawBody, signature)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "invalid signature"));
-        }
+        Long userId;
+        Long postId;
+        BigDecimal amount;
+        String currency;
+        String note;
         try {
             JsonNode b = objectMapper.readTree(rawBody);
-            Long userId;
-            Long postId;
             if (b.hasNonNull("slug")) {
                 CtaLink link = ctaLinkService.getBySlug(b.get("slug").asText());
                 userId = link.getUserId();
@@ -64,17 +67,23 @@ public class WebhookController {
             } else {
                 return ResponseEntity.badRequest().body(Map.of("error", "slug or postId required"));
             }
-            BigDecimal amount = new BigDecimal(b.get("amount").asText());
-            String currency = b.hasNonNull("currency") ? b.get("currency").asText() : "KRW";
-            String note = b.hasNonNull("note") ? b.get("note").asText() : null;
-            Conversion c = roiService.recordWebhookConversion(userId, postId, amount, currency, note);
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", c.getId()));
+            amount = new BigDecimal(b.get("amount").asText());
+            currency = b.hasNonNull("currency") ? b.get("currency").asText() : "KRW";
+            note = b.hasNonNull("note") ? b.get("note").asText() : null;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", "invalid payload"));
         }
+
+        String secret = userRepository.findById(userId).map(User::getWebhookSecret).orElse(null);
+        if (secret == null || secret.isBlank() || !verify(rawBody, signature, secret)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "invalid signature"));
+        }
+
+        Conversion c = roiService.recordWebhookConversion(userId, postId, amount, currency, note);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", c.getId()));
     }
 
-    private boolean verify(String body, String signature) {
+    private boolean verify(String body, String signature, String secret) {
         if (signature == null || signature.isBlank()) {
             return false;
         }

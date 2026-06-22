@@ -59,17 +59,37 @@ public class CtaLinkService {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown link"));
     }
 
+    private static final java.util.regex.Pattern BOT_UA = java.util.regex.Pattern.compile(
+            "bot|crawl|spider|slurp|preview|facebookexternalhit|embedly|quora|outbrain|pinterest|"
+                    + "whatsapp|telegram|twitterbot|discord|slack|headless|curl|wget|python-requests|"
+                    + "go-http-client|okhttp|java/|ahrefs|semrush",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /** Don't count a second click from the same hashed IP for the same link within this window. */
+    private static final java.time.Duration DEDUP_WINDOW = java.time.Duration.ofMinutes(30);
+
     /**
-     * Resolve a slug, record the click, and return the redirect target.
-     * For lead-capture links the target is the hosted landing page; otherwise the destination.
+     * Resolve a slug, record the click (unless bot or recent duplicate), and return the redirect
+     * target. For lead-capture links the target is the hosted landing page; otherwise the
+     * destination (which must be an http(s) URL).
      */
     @Transactional
     public String resolveAndRecordClick(String slug, String referrer, String ua, String ip) {
         CtaLink link = getBySlug(slug);
-        linkClickRepository.save(LinkClick.of(link.getId(), link.getPostId(), referrer, ua, hash(ip)));
-        return link.isCaptureLead()
-                ? frontendBaseUrl + "/lp/" + slug
-                : link.getDestinationUrl();
+
+        String ipHash = hash(ip);
+        boolean bot = ua == null || ua.isBlank() || BOT_UA.matcher(ua).find();
+        boolean duplicate = ipHash != null && linkClickRepository
+                .existsByCtaLinkIdAndIpHashAndClickedAtAfter(link.getId(), ipHash, java.time.Instant.now().minus(DEDUP_WINDOW));
+        if (!bot && !duplicate) {
+            linkClickRepository.save(LinkClick.of(link.getId(), link.getPostId(), referrer, ua, ipHash));
+        }
+
+        if (link.isCaptureLead()) {
+            return frontendBaseUrl + "/lp/" + slug;
+        }
+        // redirect-safety: only ever 302 to an http(s) destination
+        return isHttpUrl(link.getDestinationUrl()) ? link.getDestinationUrl() : frontendBaseUrl;
     }
 
     private boolean isHttpUrl(String url) {
