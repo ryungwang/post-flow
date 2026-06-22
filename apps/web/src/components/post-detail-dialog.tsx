@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Loader2, Pencil, Save, Send, Sparkles, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ThreadsPreview } from "@/components/threads-preview";
 import { contentApi } from "@/lib/content-api";
+import { threadsApi } from "@/lib/threads-api";
 import { CTA_TEMPLATES } from "@/lib/cta-templates";
 import { useAuth } from "@/store/auth";
 import { POST_STATUS_META } from "@/lib/post-status";
@@ -80,6 +81,11 @@ export function PostDetailDialog({
   });
   const setMedia = useMutation({
     mutationFn: ({ id, url }: { id: number; url: string | null }) => postsApi.setMedia(id, url),
+    onSuccess: onSaved,
+  });
+  const { data: accountsList } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
+  const setAccount = useMutation({
+    mutationFn: ({ id, accId }: { id: number; accId: number | null }) => postsApi.setAccount(id, accId),
     onSuccess: onSaved,
   });
   const save = useMutation({
@@ -261,6 +267,23 @@ export function PostDetailDialog({
                       onChange={(e) => onPickFile(p.id, e.target.files?.[0])}
                     />
                   </div>
+
+                  {/* publish target account (multi-account) */}
+                  {(accountsList?.length ?? 0) > 1 && (
+                    <div className="mt-4 flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">발행 계정</span>
+                      <select
+                        className="rounded-md border bg-background px-2 py-1 text-sm"
+                        value={p.socialAccountId ?? ""}
+                        onChange={(e) => setAccount.mutate({ id: p.id, accId: e.target.value ? Number(e.target.value) : null })}
+                      >
+                        <option value="">기본 계정</option>
+                        {accountsList!.map((acc) => (
+                          <option key={acc.id} value={acc.id}>@{acc.username}{acc.isDefault ? " (기본)" : ""}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {/* attention analysis */}
                   <div className="mt-4">

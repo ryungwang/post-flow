@@ -69,6 +69,16 @@ public class PostController {
         return postService.setMedia(userId, id, request.mediaUrl());
     }
 
+    public record AccountRequest(Long socialAccountId) {
+    }
+
+    @PutMapping("/{id}/account")
+    public PostDto setAccount(@AuthenticationPrincipal Long userId,
+                              @PathVariable Long id,
+                              @RequestBody AccountRequest request) {
+        return postService.setAccount(userId, id, request.socialAccountId());
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal Long userId, @PathVariable Long id) {

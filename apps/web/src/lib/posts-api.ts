@@ -14,6 +14,7 @@ export type Post = {
   hashtags: string[];
   cta: string | null;
   mediaUrl: string | null;
+  socialAccountId: number | null;
   score: number;
   status: PostStatus;
   scheduledAt: string | null;
@@ -52,5 +53,6 @@ export const postsApi = {
   update: (id: number, body: UpdatePost) => api.put<Post>(`/posts/${id}`, body),
   publishNow: (id: number) => api.post<Post>(`/posts/${id}/publish`),
   setMedia: (id: number, mediaUrl: string | null) => api.put<Post>(`/posts/${id}/media`, { mediaUrl }),
+  setAccount: (id: number, socialAccountId: number | null) => api.put<Post>(`/posts/${id}/account`, { socialAccountId }),
   remove: (id: number) => api.del<void>(`/posts/${id}`),
 };

@@ -55,12 +55,7 @@ public class PublishingProcessor {
         if (post == null || !allowed.contains(post.getStatus())) {
             return Optional.empty();
         }
-        SocialAccount account = socialAccountRepository
-                .findFirstByUserIdAndProviderAndIsDefaultTrue(post.getUserId(), SocialProvider.THREADS)
-                .or(() -> socialAccountRepository
-                        .findByUserIdAndProviderOrderByIdAsc(post.getUserId(), SocialProvider.THREADS)
-                        .stream().findFirst())
-                .orElse(null);
+        SocialAccount account = resolveAccount(post);
         if (account == null || account.getStatus() != ConnectionStatus.CONNECTED || isExpired(account)) {
             post.markReconnectRequired();
             return Optional.empty();
@@ -85,6 +80,22 @@ public class PublishingProcessor {
                 p.markRetry(error);
             }
         });
+    }
+
+    /** The post's chosen account (if owned), else the user's default/first account. */
+    private SocialAccount resolveAccount(Post post) {
+        if (post.getSocialAccountId() != null) {
+            SocialAccount chosen = socialAccountRepository.findById(post.getSocialAccountId()).orElse(null);
+            if (chosen != null && chosen.getUserId().equals(post.getUserId())) {
+                return chosen;
+            }
+        }
+        return socialAccountRepository
+                .findFirstByUserIdAndProviderAndIsDefaultTrue(post.getUserId(), SocialProvider.THREADS)
+                .or(() -> socialAccountRepository
+                        .findByUserIdAndProviderOrderByIdAsc(post.getUserId(), SocialProvider.THREADS)
+                        .stream().findFirst())
+                .orElse(null);
     }
 
     private boolean isExpired(SocialAccount account) {

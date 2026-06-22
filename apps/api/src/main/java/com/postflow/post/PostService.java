@@ -77,6 +77,13 @@ public class PostService {
     }
 
     @Transactional
+    public PostDto setAccount(Long userId, Long id, Long socialAccountId) {
+        Post post = loadOwned(userId, id);
+        post.updateSocialAccount(socialAccountId);
+        return PostDto.from(post);
+    }
+
+    @Transactional
     public PostDto update(Long userId, Long id, UpdatePostRequest request) {
         Post post = loadOwned(userId, id);
         post.updateContent(request.content());

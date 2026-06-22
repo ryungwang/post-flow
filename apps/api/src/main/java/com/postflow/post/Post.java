@@ -45,6 +45,10 @@ public class Post extends BaseTimeEntity {
     @Column(name = "media_url", length = 2048)
     private String mediaUrl;
 
+    /** Target Threads account for publishing; null = user's default account. */
+    @Column(name = "social_account_id")
+    private Long socialAccountId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private PostStatus status = PostStatus.DRAFT;
@@ -78,6 +82,11 @@ public class Post extends BaseTimeEntity {
     /** Set or clear the attached media URL (null clears). */
     public void updateMedia(String mediaUrl) {
         this.mediaUrl = mediaUrl;
+    }
+
+    /** Set or clear the target publishing account (null = default). */
+    public void updateSocialAccount(Long socialAccountId) {
+        this.socialAccountId = socialAccountId;
     }
 
     public void updateContent(String content) {
