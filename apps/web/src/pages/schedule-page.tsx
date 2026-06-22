@@ -4,6 +4,14 @@ import { CalendarDays, ChevronLeft, ChevronRight, List } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { PostDetailDialog } from "@/components/post-detail-dialog";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { POST_STATUS_META } from "@/lib/post-status";
 import { cn } from "@/lib/utils";
@@ -33,6 +41,8 @@ export function SchedulePage() {
   const { data } = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
   const [cursor, setCursor] = useState(() => new Date());
   const [view, setView] = useState<"calendar" | "list">("calendar");
+  const [dayDate, setDayDate] = useState<Date | null>(null);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   const today = new Date();
   const posts = data ?? [];
@@ -125,12 +135,15 @@ export function SchedulePage() {
               const inMonth = sameMonth(d, cursor);
               const isToday = key(d) === key(today);
               const items = byDay.get(key(d)) ?? [];
+              const hasItems = items.length > 0;
               return (
                 <div
                   key={i}
+                  onClick={() => hasItems && setDayDate(d)}
                   className={cn(
                     "min-h-28 border-b border-r border-border/50 p-1.5 last:border-r-0 [&:nth-child(7n)]:border-r-0",
                     !inMonth && "bg-muted/30 text-muted-foreground",
+                    hasItems && "cursor-pointer transition-colors hover:bg-accent/40",
                   )}
                 >
                   <div className="mb-1 flex justify-end px-1">
@@ -179,7 +192,11 @@ export function SchedulePage() {
           ) : (
             <ul className="divide-y divide-border/60">
               {upcoming.map((p) => (
-                <li key={p.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-accent/40">
+                <li
+                  key={p.id}
+                  onClick={() => setSelectedPost(p)}
+                  className="flex cursor-pointer items-center gap-4 px-6 py-3.5 hover:bg-accent/40"
+                >
                   <div className="w-32 shrink-0 text-sm tabular-nums text-muted-foreground">
                     {new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(p.scheduledAt!))}
                   </div>
@@ -191,6 +208,44 @@ export function SchedulePage() {
           )}
         </Card>
       )}
+
+      {/* day list modal */}
+      <Dialog open={!!dayDate} onOpenChange={(o) => !o && setDayDate(null)}>
+        <DialogContent>
+          {dayDate && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" }).format(dayDate)}
+                </DialogTitle>
+                <DialogDescription>{(byDay.get(key(dayDate)) ?? []).length}개 게시물 · 클릭하면 상세보기</DialogDescription>
+              </DialogHeader>
+              <ul className="max-h-[55vh] divide-y divide-border/60 overflow-y-auto">
+                {(byDay.get(key(dayDate)) ?? []).map((p) => (
+                  <li
+                    key={p.id}
+                    onClick={() => { setDayDate(null); setSelectedPost(p); }}
+                    className="flex cursor-pointer items-start gap-3 py-3 hover:bg-accent/40"
+                  >
+                    <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", DOT[p.status] ?? "bg-muted-foreground")} />
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-medium">{p.content}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Badge variant={POST_STATUS_META[p.status].variant}>{POST_STATUS_META[p.status].label}</Badge>
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {(() => { const d = p.scheduledAt ?? p.publishedAt; return d ? new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(new Date(d)) : ""; })()}
+                        </span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <PostDetailDialog post={selectedPost} onOpenChange={(o) => !o && setSelectedPost(null)} />
     </div>
   );
 }
