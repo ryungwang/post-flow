@@ -7,21 +7,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { commentRulesApi, type CommentRule, type TestResult } from "@/lib/comment-rules-api";
+import { postsApi } from "@/lib/posts-api";
+import { roiApi } from "@/lib/roi-api";
 import { cn } from "@/lib/utils";
+
+const ALL = "__all__";
+const NONE = "__none__";
 
 export function AutomationPage() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["comment-rules"], queryFn: commentRulesApi.list });
+  const { data: posts } = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
+  const { data: links } = useQuery({ queryKey: ["cta-links"], queryFn: roiApi.listCtaLinks });
   const rules = data ?? [];
 
   const [keyword, setKeyword] = useState("");
   const [template, setTemplate] = useState("관심 가져주셔서 감사해요! 여기서 받아보세요 👉 {link}");
+  const [postId, setPostId] = useState<string>(ALL);
+  const [ctaLinkId, setCtaLinkId] = useState<string>(NONE);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["comment-rules"] });
 
   const create = useMutation({
-    mutationFn: () => commentRulesApi.create({ keyword, replyTemplate: template }),
+    mutationFn: () => commentRulesApi.create({
+      keyword,
+      replyTemplate: template,
+      postId: postId === ALL ? null : Number(postId),
+      ctaLinkId: ctaLinkId === NONE ? null : Number(ctaLinkId),
+    }),
     onSuccess: () => { setKeyword(""); invalidate(); },
   });
   const toggle = useMutation({
@@ -52,13 +73,37 @@ export function AutomationPage() {
               <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="예: CHECK" />
             </div>
             <div className="space-y-1.5">
+              <Label>대상 게시물</Label>
+              <Select value={postId} onValueChange={setPostId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>전체 발행 게시물</SelectItem>
+                  {(posts ?? []).map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>{p.content.slice(0, 24)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>추적 링크 ({"{link}"} 치환)</Label>
+              <Select value={ctaLinkId} onValueChange={setCtaLinkId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>없음</SelectItem>
+                  {(links ?? []).map((l) => (
+                    <SelectItem key={l.id} value={String(l.id)}>{l.label || l.slug} · {l.shortUrl}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
               <Label>자동 답글 템플릿</Label>
               <Textarea rows={3} value={template} onChange={(e) => setTemplate(e.target.value)} />
             </div>
             <Button className="w-full gap-1.5" disabled={!keyword || !template || create.isPending} onClick={() => create.mutate()}>
               {create.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} 규칙 추가
             </Button>
-            <p className="text-xs text-muted-foreground">전체 발행 게시물에 적용됩니다. (게시물 지정·추적 링크 연결은 곧 추가)</p>
+            <p className="text-xs text-muted-foreground">추적 링크를 고르면 답글의 <code className="rounded bg-muted px-1">{"{link}"}</code> 가 단축 URL로 치환돼요.</p>
           </div>
         </Card>
 

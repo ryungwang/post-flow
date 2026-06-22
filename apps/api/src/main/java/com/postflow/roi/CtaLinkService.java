@@ -59,6 +59,13 @@ public class CtaLinkService {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown link"));
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<com.postflow.roi.dto.CtaLinkDto> list(Long userId) {
+        return ctaLinkRepository.findByUserIdOrderByIdDesc(userId).stream()
+                .map(l -> com.postflow.roi.dto.CtaLinkDto.from(l, baseUrl))
+                .toList();
+    }
+
     private static final java.util.regex.Pattern BOT_UA = java.util.regex.Pattern.compile(
             "bot|crawl|spider|slurp|preview|facebookexternalhit|embedly|quora|outbrain|pinterest|"
                     + "whatsapp|telegram|twitterbot|discord|slack|headless|curl|wget|python-requests|"
