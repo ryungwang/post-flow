@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, Loader2, Pencil, Save, Send, Trash2, X } from "lucide-react";
+import { ImagePlus, Loader2, Pencil, Save, Send, Sparkles, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { uploadMedia } from "@/lib/media-api";
 import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ThreadsPreview } from "@/components/threads-preview";
+import { contentApi } from "@/lib/content-api";
 import { useAuth } from "@/store/auth";
 import { POST_STATUS_META } from "@/lib/post-status";
 import { cn } from "@/lib/utils";
@@ -89,6 +90,10 @@ export function PostDetailDialog({
     onSuccess: (data) => { onSaved(data); setEditing(false); },
   });
 
+  const suggestTags = useMutation({
+    mutationFn: () => contentApi.hashtags("", draftContent || local?.content || ""),
+  });
+
   const startEdit = () => {
     if (!local) return;
     setDraftContent(local.content);
@@ -135,8 +140,37 @@ export function PostDetailDialog({
                     <div className="text-right text-xs text-muted-foreground tabular-nums">{draftContent.length}/500</div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>해시태그 (쉼표/공백 구분)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>해시태그 (쉼표/공백 구분)</Label>
+                      <button
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                        disabled={suggestTags.isPending}
+                        onClick={() => suggestTags.mutate()}
+                      >
+                        {suggestTags.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} 추천
+                      </button>
+                    </div>
                     <Input value={draftHashtags} onChange={(e) => setDraftHashtags(e.target.value)} placeholder="AI, 콘텐츠자동화" />
+                    {(suggestTags.data ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {suggestTags.data!.map((t) => {
+                          const has = parseHashtags(draftHashtags).includes(t);
+                          return (
+                            <button
+                              key={t}
+                              disabled={has}
+                              onClick={() => setDraftHashtags((cur) => (cur.trim() ? `${cur.trim()}, ${t}` : t))}
+                              className={cn(
+                                "rounded-full border px-2 py-0.5 text-xs transition-colors",
+                                has ? "border-border bg-muted text-muted-foreground" : "border-brand/40 text-brand hover:bg-brand/10",
+                              )}
+                            >
+                              #{t}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label>CTA</Label>

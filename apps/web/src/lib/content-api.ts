@@ -35,4 +35,5 @@ export const contentApi = {
   score: (content: string, hashtags: string[], cta: string | null) =>
     api.post<ScoreAnalysis>("/ai/score", { content, hashtags, cta }),
   ideas: (count = 5, page = 0) => api.get<Idea[]>(`/ai/ideas?count=${count}&page=${page}`),
+  hashtags: (topic: string, content: string) => api.post<string[]>("/ai/hashtags", { topic, content }),
 };
