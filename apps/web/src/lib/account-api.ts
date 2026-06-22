@@ -9,6 +9,8 @@ export type Usage = {
   canSchedule: boolean;
   canSeries: boolean;
   canMultiAccount: boolean;
+  cancelScheduled: boolean;
+  currentPeriodEnd: string | null;
 };
 
 export const accountApi = {

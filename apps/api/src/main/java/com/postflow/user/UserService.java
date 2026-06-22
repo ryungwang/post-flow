@@ -62,10 +62,39 @@ public class UserService {
         }
     }
 
-    /** Downgrade the user owning this Stripe customer to FREE (subscription canceled). */
+    /** Activate a paid subscription (upgrade) with its period end. */
+    @Transactional
+    public void activateSubscription(Long userId, Plan plan, String customerId, java.time.Instant periodEnd) {
+        User user = getById(userId);
+        user.activateSubscription(plan, periodEnd);
+        if (customerId != null) {
+            user.setStripeCustomerId(customerId);
+        }
+    }
+
+    /** Schedule end-of-period cancellation; plan stays until periodEnd. */
+    @Transactional
+    public void scheduleCancelByCustomer(String customerId, java.time.Instant periodEnd) {
+        userRepository.findByStripeCustomerId(customerId).ifPresent(u -> u.scheduleCancel(periodEnd));
+    }
+
+    @Transactional
+    public java.time.Instant scheduleCancel(Long userId, java.time.Instant fallbackPeriodEnd) {
+        User user = getById(userId);
+        java.time.Instant end = user.getCurrentPeriodEnd() != null ? user.getCurrentPeriodEnd() : fallbackPeriodEnd;
+        user.scheduleCancel(end);
+        return end;
+    }
+
+    @Transactional
+    public void resumeByCustomer(String customerId) {
+        userRepository.findByStripeCustomerId(customerId).ifPresent(User::resumeSubscription);
+    }
+
+    /** Period ended → downgrade the user owning this Stripe customer to FREE. */
     @Transactional
     public void downgradeByStripeCustomer(String customerId) {
-        userRepository.findByStripeCustomerId(customerId).ifPresent(u -> u.changePlan(Plan.FREE));
+        userRepository.findByStripeCustomerId(customerId).ifPresent(User::endSubscription);
     }
 
     @Transactional(readOnly = true)

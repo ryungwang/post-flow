@@ -215,6 +215,11 @@ function UsageBar() {
   const pct = unlimited ? 100 : Math.min(100, Math.round((data.used / Math.max(1, data.limit)) * 100));
   return (
     <div className="mb-5 rounded-xl border border-border/60 p-4">
+      {data.cancelScheduled && (
+        <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+          구독 취소 예약됨 — {data.currentPeriodEnd ? new Date(data.currentPeriodEnd).toLocaleDateString("ko-KR") + "까지" : "기간 말까지"} 현재 플랜을 이용할 수 있어요. 이후 자동으로 무료 전환됩니다.
+        </div>
+      )}
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">이번 달 AI 생성</span>
         <span className="tabular-nums text-muted-foreground">

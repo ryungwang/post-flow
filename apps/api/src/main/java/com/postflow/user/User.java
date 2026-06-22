@@ -44,6 +44,14 @@ public class User extends BaseTimeEntity {
     @Column(name = "stripe_customer_id", length = 255)
     private String stripeCustomerId;
 
+    /** End of the current paid period; plan stays active until this instant. */
+    @Column(name = "current_period_end")
+    private java.time.Instant currentPeriodEnd;
+
+    /** True when cancellation is scheduled — keep plan until currentPeriodEnd, then downgrade. */
+    @Column(name = "cancel_scheduled", nullable = false)
+    private boolean cancelScheduled = false;
+
     public static User create(String email, String name, String profileImage) {
         User u = new User();
         u.email = email;
@@ -71,5 +79,31 @@ public class User extends BaseTimeEntity {
 
     public void setStripeCustomerId(String stripeCustomerId) {
         this.stripeCustomerId = stripeCustomerId;
+    }
+
+    /** Active paid subscription: set plan, period end, clear any scheduled cancel. */
+    public void activateSubscription(Plan plan, java.time.Instant periodEnd) {
+        this.plan = plan;
+        this.currentPeriodEnd = periodEnd;
+        this.cancelScheduled = false;
+    }
+
+    /** Cancellation scheduled: keep current plan until periodEnd, then it downgrades. */
+    public void scheduleCancel(java.time.Instant periodEnd) {
+        this.cancelScheduled = true;
+        if (periodEnd != null) {
+            this.currentPeriodEnd = periodEnd;
+        }
+    }
+
+    public void resumeSubscription() {
+        this.cancelScheduled = false;
+    }
+
+    /** Period ended (or hard cancel): back to FREE. */
+    public void endSubscription() {
+        this.plan = Plan.FREE;
+        this.cancelScheduled = false;
+        this.currentPeriodEnd = null;
     }
 }

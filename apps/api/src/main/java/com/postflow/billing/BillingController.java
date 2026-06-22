@@ -45,8 +45,8 @@ public class BillingController {
                     frontendBase + "/settings/account?canceled=1");
             return Map.of("url", url);
         }
-        // not configured → dev/local convenience upgrade
-        userService.changePlan(userId, plan);
+        // not configured → dev/local convenience upgrade (30일 기간 부여)
+        userService.activateSubscription(userId, plan, null, java.time.Instant.now().plus(30, java.time.temporal.ChronoUnit.DAYS));
         return Map.of("upgraded", true, "plan", plan.name());
     }
 
@@ -64,8 +64,10 @@ public class BillingController {
             String url = payment.createPortalUrl(customerId, frontendBase + "/settings/account");
             return Map.of("url", url);
         }
-        userService.changePlan(userId, Plan.FREE);
-        return Map.of("canceled", true);
+        // dev/local: 즉시 강등이 아니라 기간 말 취소 예약(결제한 기간은 유지)
+        java.time.Instant end = userService.scheduleCancel(userId,
+                java.time.Instant.now().plus(30, java.time.temporal.ChronoUnit.DAYS));
+        return Map.of("scheduled", true, "periodEnd", end.toString());
     }
 
     /** Stripe webhook (public). Upgrades on checkout, downgrades on subscription cancellation. */
@@ -75,10 +77,10 @@ public class BillingController {
         PaymentProvider.WebhookResult result = payment.handleWebhook(payload, signature);
         if (result != null) {
             switch (result.action()) {
-                case UPGRADE -> {
-                    userService.changePlan(result.userId(), result.plan());
-                    userService.linkStripeCustomer(result.userId(), result.customerId());
-                }
+                case UPGRADE -> userService.activateSubscription(
+                        result.userId(), result.plan(), result.customerId(), result.periodEnd());
+                case SCHEDULE_CANCEL -> userService.scheduleCancelByCustomer(result.customerId(), result.periodEnd());
+                case RESUME -> userService.resumeByCustomer(result.customerId());
                 case CANCEL -> userService.downgradeByStripeCustomer(result.customerId());
             }
         }

@@ -86,6 +86,7 @@ public class StripePaymentProvider implements PaymentProvider {
             Event event = Webhook.constructEvent(payload, signature, webhookSecret);
             return switch (event.getType()) {
                 case "checkout.session.completed" -> onCheckoutCompleted(event);
+                case "customer.subscription.updated" -> onSubscriptionUpdated(event);
                 case "customer.subscription.deleted" -> onSubscriptionDeleted(event);
                 default -> null;
             };
@@ -105,7 +106,20 @@ public class StripePaymentProvider implements PaymentProvider {
         if (userId == null || plan == null) {
             return null;
         }
-        return new WebhookResult(Action.UPGRADE, Long.valueOf(userId), Plan.valueOf(plan), session.getCustomer());
+        return new WebhookResult(Action.UPGRADE, Long.valueOf(userId), Plan.valueOf(plan),
+                session.getCustomer(), periodEndOf(session.getSubscription()));
+    }
+
+    /** Cancel scheduled (cancel_at_period_end) or resumed. */
+    private WebhookResult onSubscriptionUpdated(Event event) {
+        Subscription sub = (Subscription) event.getDataObjectDeserializer().getObject().orElse(null);
+        if (sub == null || sub.getCustomer() == null) {
+            return null;
+        }
+        if (Boolean.TRUE.equals(sub.getCancelAtPeriodEnd())) {
+            return new WebhookResult(Action.SCHEDULE_CANCEL, null, null, sub.getCustomer(), epoch(sub.getCurrentPeriodEnd()));
+        }
+        return new WebhookResult(Action.RESUME, null, null, sub.getCustomer(), null);
     }
 
     private WebhookResult onSubscriptionDeleted(Event event) {
@@ -113,6 +127,21 @@ public class StripePaymentProvider implements PaymentProvider {
         if (sub == null || sub.getCustomer() == null) {
             return null;
         }
-        return new WebhookResult(Action.CANCEL, null, null, sub.getCustomer());
+        return new WebhookResult(Action.CANCEL, null, null, sub.getCustomer(), null);
+    }
+
+    private java.time.Instant periodEndOf(String subscriptionId) {
+        if (subscriptionId == null) {
+            return null;
+        }
+        try {
+            return epoch(Subscription.retrieve(subscriptionId).getCurrentPeriodEnd());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private java.time.Instant epoch(Long seconds) {
+        return seconds == null ? null : java.time.Instant.ofEpochSecond(seconds);
     }
 }

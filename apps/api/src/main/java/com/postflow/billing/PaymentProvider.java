@@ -20,9 +20,12 @@ public interface PaymentProvider {
     /** Verify + handle a provider webhook. Returns what to apply, or null if the event is ignored. */
     WebhookResult handleWebhook(String payload, String signature);
 
-    enum Action { UPGRADE, CANCEL }
+    enum Action { UPGRADE, SCHEDULE_CANCEL, RESUME, CANCEL }
 
-    /** UPGRADE carries (userId, plan, customerId); CANCEL carries (customerId). */
-    record WebhookResult(Action action, Long userId, Plan plan, String customerId) {
+    /**
+     * UPGRADE: (userId, plan, customerId, periodEnd). SCHEDULE_CANCEL: (customerId, periodEnd).
+     * RESUME / CANCEL: (customerId).
+     */
+    record WebhookResult(Action action, Long userId, Plan plan, String customerId, java.time.Instant periodEnd) {
     }
 }

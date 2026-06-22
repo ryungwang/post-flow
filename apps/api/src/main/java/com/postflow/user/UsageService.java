@@ -57,18 +57,22 @@ public class UsageService {
         }
     }
 
-    public record UsageDto(String plan, long used, int limit, boolean canSchedule, boolean canSeries, boolean canMultiAccount) {
+    public record UsageDto(String plan, long used, int limit, boolean canSchedule, boolean canSeries,
+                           boolean canMultiAccount, boolean cancelScheduled, java.time.Instant currentPeriodEnd) {
     }
 
     @Transactional(readOnly = true)
     public UsageDto usage(Long userId) {
-        Plan plan = userService.getById(userId).getPlan();
+        var user = userService.getById(userId);
+        Plan plan = user.getPlan();
         return new UsageDto(
                 plan.name(),
                 monthlyGenerations(userId),
                 PlanPolicy.monthlyGenerations(plan),
                 PlanPolicy.canSchedule(plan),
                 PlanPolicy.canSeries(plan),
-                PlanPolicy.canMultiAccount(plan));
+                PlanPolicy.canMultiAccount(plan),
+                user.isCancelScheduled(),
+                user.getCurrentPeriodEnd());
     }
 }
