@@ -23,6 +23,7 @@ export function LibraryPage() {
   const qc = useQueryClient();
   const { data, isLoading, isError } = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
   const [selected, setSelected] = useState<Post | null>(null);
+  const [checked, setChecked] = useState<Set<number>>(new Set());
 
   const publish = useMutation({
     mutationFn: (id: number) => postsApi.publishNow(id),
@@ -36,7 +37,28 @@ export function LibraryPage() {
     },
   });
 
+  const bulk = useMutation({
+    mutationFn: async (action: "publish" | "delete") => {
+      const ids = [...checked];
+      const fn = action === "delete" ? postsApi.remove : postsApi.publishNow;
+      await Promise.allSettled(ids.map((id) => fn(id)));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["posts"] });
+      setChecked(new Set());
+    },
+  });
+
   const posts = data ?? [];
+
+  const toggle = (id: number) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const allChecked = posts.length > 0 && checked.size === posts.length;
+  const toggleAll = () => setChecked(allChecked ? new Set() : new Set(posts.map((p) => p.id)));
 
   return (
     <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
@@ -47,8 +69,25 @@ export function LibraryPage() {
 
       <Card>
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
-          <h2 className="font-semibold">콘텐츠</h2>
-          {!isLoading && <span className="text-sm text-muted-foreground">{posts.length}개</span>}
+          {checked.size > 0 ? (
+            <>
+              <span className="text-sm font-medium">{checked.size}개 선택됨</span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="gap-1.5" disabled={bulk.isPending} onClick={() => bulk.mutate("publish")}>
+                  <Send className="size-4" /> 즉시 발행
+                </Button>
+                <Button variant="destructive" size="sm" className="gap-1.5" disabled={bulk.isPending} onClick={() => bulk.mutate("delete")}>
+                  <Trash2 className="size-4" /> 삭제
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setChecked(new Set())}>선택 해제</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="font-semibold">콘텐츠</h2>
+              {!isLoading && <span className="text-sm text-muted-foreground">{posts.length}개</span>}
+            </>
+          )}
         </div>
 
         {isLoading ? (
@@ -71,6 +110,9 @@ export function LibraryPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="w-10 px-4 py-3">
+                    <input type="checkbox" className="size-4 accent-[var(--brand)]" checked={allChecked} onChange={toggleAll} />
+                  </th>
                   <th className="px-6 py-3 font-medium">콘텐츠</th>
                   <th className="px-4 py-3 font-medium">상태</th>
                   <th className="px-4 py-3 font-medium">예약/발행</th>
@@ -90,6 +132,9 @@ export function LibraryPage() {
                       className="cursor-pointer border-b border-border/60 align-top last:border-0 hover:bg-accent/40"
                       onClick={() => setSelected(p)}
                     >
+                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" className="mt-1 size-4 accent-[var(--brand)]" checked={checked.has(p.id)} onChange={() => toggle(p.id)} />
+                      </td>
                       <td className="px-6 py-3.5">
                         <div className="flex max-w-xl gap-3">
                           {p.mediaUrl && (
