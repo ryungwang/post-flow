@@ -1,6 +1,9 @@
 spring:
   application:
     name: postflow-api
+  # Local dev: drop keys into apps/api/.env (gitignored). Auto-imported as properties.
+  config:
+    import: "optional:file:.env[.properties]"
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
   jpa:

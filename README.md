@@ -45,6 +45,28 @@ cd apps/api
 ./gradlew bootJar          # 실행 가능 jar
 ```
 
+## 환경변수 / 키 (나중에 채우면 바로 작동)
+
+키가 없어도 앱은 뜨고, 해당 기능은 "설정 필요"·에러 처리로 동작한다. 키만 채우면 그 기능이 활성화된다.
+
+**백엔드** — `apps/api/.env.example` → `apps/api/.env` 로 복사 후 값 입력 (Spring이 자동 로드):
+
+| 키 | 기능 |
+|---|---|
+| `ANTHROPIC_API_KEY` | AI 콘텐츠 생성 (`/api/ai/generate`) |
+| `GOOGLE_CLIENT_ID` | Google 로그인 ID토큰 검증 (프론트와 동일 값) |
+| `THREADS_APP_ID` / `THREADS_APP_SECRET` | Threads 연동·발행 |
+| `AUTH_JWT_SECRET` (선택) | JWT 서명 (prod 필수) |
+
+**프론트** — `apps/web/.env.example` → `apps/web/.env.local` 로 복사 (Vite 자동 로드):
+
+| 키 | 기능 |
+|---|---|
+| `VITE_GOOGLE_CLIENT_ID` | Google 로그인 버튼 (백엔드와 동일 값) |
+| `VITE_API_PROXY_TARGET` | API 프록시 대상 (기본 `http://localhost:8080`) |
+
+> Google 로그인은 FE/BE **동일 Client ID** 필요 + Google Cloud OAuth 클라이언트의 Authorized JS origin 에 `http://localhost:5173` 등록.
+
 ## 배포
 
 - `Dockerfile`은 내부 8080 expose. HTTPS·도메인 라우팅은 서버의 **Caddy**가 담당.
