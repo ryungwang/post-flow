@@ -35,10 +35,12 @@ public class IdeaController {
     }
 
     @GetMapping
-    public List<Idea> ideas(@RequestParam(defaultValue = "5") int count) {
+    public List<Idea> ideas(@RequestParam(defaultValue = "5") int count,
+                            @RequestParam(defaultValue = "0") int page) {
         int n = Math.max(1, Math.min(count, TOPIC_POOL.size()));
-        // rotate by day-of-year so the board feels fresh daily, deterministic for caching
-        int offset = LocalDate.now(ZoneId.of("Asia/Seoul")).getDayOfYear() % TOPIC_POOL.size();
+        // rotate by day-of-year (fresh daily) + page (새로고침/더보기), deterministic
+        int day = LocalDate.now(ZoneId.of("Asia/Seoul")).getDayOfYear();
+        int offset = Math.floorMod(day + page * n, TOPIC_POOL.size());
         List<Idea> ideas = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             String topic = TOPIC_POOL.get((offset + i) % TOPIC_POOL.size());

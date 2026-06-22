@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Eye, FileText, Heart, Lightbulb, Loader2, MessageCircle, Wand2 } from "lucide-react";
+import { Activity, Eye, FileText, Heart, Lightbulb, Loader2, MessageCircle, RefreshCw, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -146,12 +146,21 @@ export function DashboardPage() {
 }
 
 function IdeaBoard() {
-  const { data, isLoading } = useQuery({ queryKey: ["ideas"], queryFn: () => contentApi.ideas(5) });
+  const [page, setPage] = useState(0);
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["ideas", page],
+    queryFn: () => contentApi.ideas(5, page),
+  });
   return (
     <Card className="mt-6 p-6">
-      <div className="flex items-center gap-2">
-        <Lightbulb className="size-4 text-amber-500" />
-        <h2 className="font-semibold">오늘의 게시글 추천</h2>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="size-4 text-amber-500" />
+          <h2 className="font-semibold">오늘의 게시글 추천</h2>
+        </div>
+        <Button variant="ghost" size="sm" className="gap-1.5" disabled={isFetching} onClick={() => setPage((p) => p + 1)}>
+          <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} /> 다른 주제
+        </Button>
       </div>
       <p className="mt-0.5 text-sm text-muted-foreground">바로 쓸 만한 주제와 가장 관심을 끌 훅이에요.</p>
       {isLoading ? (

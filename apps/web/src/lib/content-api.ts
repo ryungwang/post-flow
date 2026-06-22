@@ -34,5 +34,5 @@ export const contentApi = {
     api.post<HookVariant[]>("/ai/hooks", { topic, count }),
   score: (content: string, hashtags: string[], cta: string | null) =>
     api.post<ScoreAnalysis>("/ai/score", { content, hashtags, cta }),
-  ideas: (count = 5) => api.get<Idea[]>(`/ai/ideas?count=${count}`),
+  ideas: (count = 5, page = 0) => api.get<Idea[]>(`/ai/ideas?count=${count}&page=${page}`),
 };
