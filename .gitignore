@@ -1,0 +1,25 @@
+# Build
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.gradle/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Local runtime
+var/
+*.log
+
+# Env / secrets
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# Infra managed on the server, NOT in this repo (global convention)
+docker-compose.yml
+docker-compose.*.yml
+Caddyfile

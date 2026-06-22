@@ -1,0 +1,18 @@
+# Production profile. Secrets are injected via env with NO defaults (fail fast if missing).
+# Reverse proxy / HTTPS is handled by Caddy; app exposes plain 8080 internally.
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+
+storage:
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION}
+    prefix: ${AWS_S3_PREFIX:postflow}
+    public-base-url: ${AWS_S3_PUBLIC_BASE_URL}
