@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/auth/require-auth";
 import { useSession } from "@/auth/use-session";
 import { DashboardPage } from "@/pages/dashboard-page";
+import { GeneratePage } from "@/pages/generate-page";
 import { LoginPage } from "@/pages/login-page";
 import { PlaceholderPage } from "@/pages/placeholder-page";
 
@@ -14,10 +15,7 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<DashboardPage />} />
-          <Route
-            path="/content/generate"
-            element={<PlaceholderPage title="AI 생성" description="주제만 입력하면 AI가 게시물을 만들어 줍니다." />}
-          />
+          <Route path="/content/generate" element={<GeneratePage />} />
           <Route
             path="/content/series"
             element={<PlaceholderPage title="시리즈 생성" description="7·14·30일 콘텐츠 플랜을 자동 생성합니다." />}
