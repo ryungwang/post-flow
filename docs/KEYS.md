@@ -8,6 +8,7 @@ PostFlow를 실제로 동작시키려면 3종의 외부 키가 필요하다. 키
 | Anthropic API Key | AI 콘텐츠/시리즈 생성 | `apps/api/.env` → `ANTHROPIC_API_KEY` |
 | Google OAuth Client ID | Google 로그인 | `apps/api/.env` → `GOOGLE_CLIENT_ID` + `apps/web/.env.local` → `VITE_GOOGLE_CLIENT_ID` (동일 값) |
 | Threads(Meta) App ID/Secret | Threads 연결·발행·분석 | `apps/api/.env` → `THREADS_APP_ID`, `THREADS_APP_SECRET` |
+| Stripe(PG) Secret/Webhook/Price | 유료 플랜 결제·구독 | `apps/api/.env` → `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` |
 
 설정 절차: 각 앱의 `.env.example`을 복사(`apps/api/.env`, `apps/web/.env.local`) → 값 입력 →
 백엔드 재시작(`./gradlew bootRun`), 프론트는 Vite가 자동 반영(필요 시 재시작).
@@ -98,6 +99,58 @@ PostFlow를 실제로 동작시키려면 3종의 외부 키가 필요하다. 키
 
 > 토큰은 long-lived(60일)로 저장되고 만료 7일 전 자동 갱신된다(서버 cron). refresh_token은 없다.
 > 발행 한도: 사용자당 250건/24h. 네이티브 예약 없음 → 서버 스케줄러가 발행 시점에 처리.
+
+---
+
+## 4. Stripe (PG) — 유료 플랜 결제·구독
+
+> 결제는 **PaymentProvider 추상화 + Stripe 구현**이라, 키가 없으면 결제 비활성(로컬은 즉시 전환으로 테스트)되고
+> **키를 채우면 실제 구독 결제가 동작**한다. Toss 등 다른 PG는 같은 인터페이스 구현으로 교체 가능.
+
+### 4-1. 계정·키 발급
+1. https://dashboard.stripe.com → 가입/로그인 (사업자/개인 모두 가능, 테스트 모드는 즉시 사용).
+2. 우상단 **테스트 모드** 토글로 시작 권장(`sk_test_...`). 실서비스 전환 시 라이브 키(`sk_live_...`)로 교체.
+3. **Developers → API keys**에서 **Secret key** 복사 → `STRIPE_SECRET_KEY`.
+   - Publishable key는 이 서버 연동(Checkout 리다이렉트 방식)에서는 불필요.
+
+### 4-2. 상품·가격(Price) 만들기 — 플랜별 1개씩
+1. **Product catalog → Add product** 로 플랜 3개 생성: Starter / Pro / Business.
+2. 각 상품에 **반복 결제(Recurring) 가격**을 추가(월간, 통화 KRW 등):
+   - Starter ₩9,900/월, Pro ₩29,000/월, Business ₩49,000/월 (원하는 금액으로).
+3. 생성된 각 가격의 **Price ID**(`price_...`) 복사 → 아래 env에 매핑.
+   ```
+   STRIPE_PRICE_STARTER=price_...
+   STRIPE_PRICE_PRO=price_...
+   STRIPE_PRICE_BUSINESS=price_...
+   ```
+   > Free는 결제 상품이 아니므로 Price 불필요.
+
+### 4-3. 웹훅(결제·구독 이벤트 수신) 등록
+1. **Developers → Webhooks → Add endpoint**.
+2. **Endpoint URL**: `https://<백엔드 도메인>/api/billing/webhook`
+   - 로컬 테스트는 Stripe CLI 사용: `stripe listen --forward-to localhost:8080/api/billing/webhook` → 출력되는 `whsec_...` 사용.
+3. 구독할 **이벤트 선택**:
+   - `checkout.session.completed` (업그레이드 확정)
+   - `customer.subscription.updated` (취소 예약/재개)
+   - `customer.subscription.deleted` (기간 종료 → 무료 강등)
+4. 생성 후 표시되는 **Signing secret**(`whsec_...`) 복사 → `STRIPE_WEBHOOK_SECRET`.
+   > 서명 검증 + 이벤트 ID 멱등 처리로 재전송/위조를 막는다.
+
+### 4-4. .env 입력 + 확인
+```
+# apps/api/.env
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_STARTER=price_...
+STRIPE_PRICE_PRO=price_...
+STRIPE_PRICE_BUSINESS=price_...
+```
+1. 백엔드 재시작.
+2. 계정 화면 → 플랜에서 **업그레이드** → Stripe Checkout으로 이동 → 테스트 카드(`4242 4242 4242 4242`, 미래 만료일, 임의 CVC)로 결제.
+3. 결제 완료 시 웹훅으로 플랜이 자동 반영되는지 확인. **구독 취소·관리**는 같은 화면의 버튼 → Stripe Billing Portal에서 처리.
+
+> 키 미설정(로컬)일 때는 업그레이드/취소가 DB에서 즉시 처리되어 게이팅을 테스트할 수 있다(실결제 아님).
+> 결제한 기간은 끝까지 유지되고, 기간 종료 시 `subscription.deleted` 웹훅(또는 안전망 잡)으로 무료 전환된다.
 
 ---
 
