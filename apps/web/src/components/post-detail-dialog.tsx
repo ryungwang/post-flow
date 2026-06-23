@@ -240,7 +240,7 @@ export function PostDetailDialog({
                   <div className="mt-4">
                     {p.mediaUrl ? (
                       <div className="group relative w-fit">
-                        <img src={p.mediaUrl} alt="첨부 이미지" className="max-h-56 rounded-lg border object-cover" />
+                        <img src={p.mediaUrl} alt="첨부 이미지" className="max-h-56 rounded-lg border object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                         <button
                           onClick={() => setMedia.mutate({ id: p.id, url: null })}
                           className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"

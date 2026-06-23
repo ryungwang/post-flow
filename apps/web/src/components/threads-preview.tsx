@@ -45,7 +45,7 @@ export function ThreadsPreview({
           )}
 
           {mediaUrl && (
-            <img src={mediaUrl} alt="" className="mt-3 max-h-72 w-full rounded-xl border object-cover" />
+            <img src={mediaUrl} alt="" className="mt-3 max-h-72 w-full rounded-xl border object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
           )}
 
           <div className="mt-3 flex items-center gap-5 text-muted-foreground">
