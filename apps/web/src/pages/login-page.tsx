@@ -76,14 +76,17 @@ export function LoginPage() {
         </div>
 
         <div className="rounded-2xl border bg-card/80 p-6 shadow-xl backdrop-blur-sm">
-          <h2 className="text-lg font-semibold">시작하기</h2>
+          <h2 className="text-lg font-semibold">로그인 / 회원가입</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Google 계정으로 로그인하면 바로 콘텐츠를 만들 수 있어요.
+            Google 계정으로 1초 만에 시작하세요. 처음이면 자동으로 가입돼요 — 별도 가입 절차가 없어요.
           </p>
 
           <div className="mt-5">
             <GoogleSignInButton onCredential={handleCredential} />
           </div>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            가입·로그인이 하나로 처리됩니다.
+          </p>
 
           {loading && (
             <p className="mt-3 text-center text-xs text-muted-foreground">로그인 중…</p>
