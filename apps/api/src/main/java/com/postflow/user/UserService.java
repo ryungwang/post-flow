@@ -55,6 +55,14 @@ public class UserService {
         getById(userId).changePlan(plan);
     }
 
+    /** Toss: store billing key + activate the plan for the paid period. */
+    @Transactional
+    public void activateTossSubscription(Long userId, Plan plan, String billingKey, java.time.Instant periodEnd) {
+        User user = getById(userId);
+        user.setTossBillingKey(billingKey);
+        user.activateSubscription(plan, periodEnd);
+    }
+
     @Transactional
     public void linkStripeCustomer(Long userId, String customerId) {
         if (customerId != null) {

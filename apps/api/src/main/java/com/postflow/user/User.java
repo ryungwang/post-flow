@@ -52,6 +52,10 @@ public class User extends BaseTimeEntity {
     @Column(name = "cancel_scheduled", nullable = false)
     private boolean cancelScheduled = false;
 
+    /** Toss billing key (for recurring charges); null if not using Toss. */
+    @Column(name = "toss_billing_key", length = 255)
+    private String tossBillingKey;
+
     public static User create(String email, String name, String profileImage) {
         User u = new User();
         u.email = email;
@@ -86,6 +90,10 @@ public class User extends BaseTimeEntity {
         this.plan = plan;
         this.currentPeriodEnd = periodEnd;
         this.cancelScheduled = false;
+    }
+
+    public void setTossBillingKey(String tossBillingKey) {
+        this.tossBillingKey = tossBillingKey;
     }
 
     /** Cancellation scheduled: keep current plan until periodEnd, then it downgrades. */
