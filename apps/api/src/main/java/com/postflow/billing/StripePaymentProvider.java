@@ -6,6 +6,7 @@ import com.stripe.model.Event;
 import com.stripe.model.Subscription;
 import com.stripe.net.Webhook;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -14,8 +15,12 @@ import java.util.Map;
  * Stripe Checkout (subscription) + Billing Portal implementation. Drop-in: fill STRIPE_* env
  * to enable real billing. Without a secret key it reports {@code isConfigured()=false} so the
  * app boots and the UI can fall back (dev upgrade/cancel) — same pattern as ClaudeProvider.
+ *
+ * <p>Active PG is chosen by {@code payment.provider} (default = stripe). Set {@code payment.provider=toss}
+ * to use {@link TossPaymentProvider} instead.
  */
 @Service
+@ConditionalOnProperty(name = "payment.provider", havingValue = "stripe", matchIfMissing = true)
 public class StripePaymentProvider implements PaymentProvider {
 
     private final String secretKey;
