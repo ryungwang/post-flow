@@ -286,6 +286,7 @@ function WebhookCard() {
   const { data, isLoading } = useQuery({ queryKey: ["account", "webhook"], queryFn: accountApi.webhook });
   const [reveal, setReveal] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [guide, setGuide] = useState(false);
   const regen = useMutation({
     mutationFn: accountApi.regenerateWebhook,
     onSuccess: (d) => qc.setQueryData(["account", "webhook"], d),
@@ -336,17 +337,68 @@ function WebhookCard() {
               </div>
             </div>
             <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-muted-foreground">
-                <code className="rounded bg-muted px-1">X-PostFlow-Timestamp</code>(epoch초) +{" "}
-                <code className="rounded bg-muted px-1">X-PostFlow-Signature</code> = HMAC(<code className="rounded bg-muted px-1">타임스탬프.본문</code>)
-              </p>
+              <Button variant="outline" size="sm" onClick={() => setGuide((v) => !v)}>
+                {guide ? "연동 가이드 닫기" : "연동 가이드 보기"}
+              </Button>
               <Button variant="ghost" size="sm" className="gap-1.5" disabled={regen.isPending} onClick={() => regen.mutate()}>
                 {regen.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} 재발급
               </Button>
             </div>
+
+            {guide && (
+              <div className="space-y-3 rounded-xl border border-border/60 bg-muted/30 p-4">
+                <div>
+                  <p className="text-sm font-medium">언제 호출하나요?</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    내 쇼핑몰·강의·예약 등 <b>외부에서 결제가 완료될 때</b>, 결제 완료 처리 코드에서 아래처럼 한 번 POST 하세요.
+                    그러면 그 매출이 추적링크(slug)를 통해 해당 글의 ROI로 자동 집계됩니다.
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">본문 필드</p>
+                  <ul className="space-y-0.5 text-xs text-muted-foreground">
+                    <li>• <code className="rounded bg-muted px-1">slug</code> 또는 <code className="rounded bg-muted px-1">postId</code> — 필수(택1, 어느 글의 전환인지)</li>
+                    <li>• <code className="rounded bg-muted px-1">amount</code> — 필수, 결제 금액</li>
+                    <li>• <code className="rounded bg-muted px-1">currency</code> — 선택(기본 KRW), <code className="rounded bg-muted px-1">note</code> — 선택(메모)</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground">예제 (Node.js)</p>
+                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => copy(snippet(data.endpoint), "code")}>
+                      {copied === "code" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />} 복사
+                    </Button>
+                  </div>
+                  <pre className="overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-relaxed">{snippet(data.endpoint)}</pre>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  서명은 <code className="rounded bg-muted px-1">HMAC-SHA256(타임스탬프 + "." + 본문)</code>, 시크릿은 위에서 복사하세요.
+                  타임스탬프가 5분 이상 차이 나면 거부됩니다(재전송 방지).
+                </p>
+              </div>
+            )}
           </>
         )}
       </CardContent>
     </Card>
   );
+}
+
+function snippet(endpoint: string) {
+  return `const crypto = require("crypto");
+const SECRET = "여기에_시크릿_붙여넣기";
+
+const body = JSON.stringify({ slug: "추적링크_slug", amount: 29000, currency: "KRW" });
+const ts = Math.floor(Date.now() / 1000).toString();
+const sig = crypto.createHmac("sha256", SECRET).update(ts + "." + body).digest("hex");
+
+await fetch("${endpoint}", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-PostFlow-Timestamp": ts,
+    "X-PostFlow-Signature": sig,
+  },
+  body,
+});`;
 }
