@@ -43,6 +43,27 @@ public class TossBillingController {
         return Map.of("clientKey", clientKey, "customerKey", "user_" + userId);
     }
 
+    public record PlanRequest(String plan) {
+    }
+
+    /**
+     * 카드 재입력 없이 결제: 저장된 빌링키가 있으면 즉시 청구+활성화(needCard=false),
+     * 없으면 카드 등록이 필요함을 알린다(needCard=true).
+     */
+    @PostMapping("/charge")
+    public Map<String, Object> charge(@AuthenticationPrincipal Long userId, @RequestBody PlanRequest req) {
+        Plan plan = Plan.valueOf(req.plan());
+        String billingKey = userService.getById(userId).getTossBillingKey();
+        if (billingKey == null || billingKey.isBlank()) {
+            return Map.of("needCard", true);
+        }
+        String customerKey = "user_" + userId;
+        String orderId = "sub_" + userId + "_" + UUID.randomUUID().toString().substring(0, 8);
+        toss.charge(billingKey, customerKey, toss.priceOf(plan), orderId, plan.name() + " 구독");
+        userService.activateTossSubscription(userId, plan, billingKey, Instant.now().plus(30, ChronoUnit.DAYS));
+        return Map.of("charged", true, "plan", plan.name());
+    }
+
     public record ConfirmRequest(String authKey, String plan) {
     }
 

@@ -28,8 +28,14 @@ export function BillingTossPage() {
           navigate("/settings/account?upgraded=1", { replace: true });
           return;
         }
-        // step 1: start card registration — use the server-provided customerKey so it
-        // matches the charge customerKey on confirm (avoids NOT_MATCHES_CUSTOMER_KEY)
+        // step 1a: if a billing key already exists, charge without re-entering the card
+        const charge = await billingApi.tossCharge(plan);
+        if (charge.charged) {
+          navigate("/settings/account?upgraded=1", { replace: true });
+          return;
+        }
+
+        // step 1b: no saved card → register one (server-provided customerKey so auth/charge match)
         const { clientKey, customerKey } = await billingApi.tossConfig();
         const tp = await getTossPayments(clientKey);
         const origin = window.location.origin;
