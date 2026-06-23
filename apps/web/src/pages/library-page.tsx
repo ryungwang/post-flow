@@ -206,7 +206,7 @@ export function LibraryPage() {
                 </tr>
               </thead>
               <tbody>
-                {posts.map((p: Post) => {
+                {posts.map((p: Post, i: number) => {
                   const meta = POST_STATUS_META[p.status];
                   const when = p.publishedAt ?? p.scheduledAt;
                   const busy =
@@ -215,7 +215,8 @@ export function LibraryPage() {
                   return (
                     <tr
                       key={p.id}
-                      className="cursor-pointer border-b border-border/60 align-top last:border-0 hover:bg-accent/40"
+                      className="animate-fade-up cursor-pointer border-b border-border/60 align-top last:border-0 hover:bg-accent/40"
+                      style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
                       onClick={() => setSelected(p)}
                     >
                       <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>

@@ -12,6 +12,7 @@ import { analyticsApi } from "@/lib/analytics-api";
 import { contentApi } from "@/lib/content-api";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { threadsApi } from "@/lib/threads-api";
+import { CountUp } from "@/components/count-up";
 import { POST_STATUS_META } from "@/lib/post-status";
 
 const nf = new Intl.NumberFormat("ko-KR");
@@ -51,11 +52,11 @@ export function DashboardPage() {
 
   const a = analytics.data;
   const kpis = [
-    { label: "총 게시물", value: a ? nf.format(a.totalPosts) : "—", sub: a ? `발행 ${a.publishedPosts} · 예약 ${a.scheduledPosts}` : "", icon: FileText },
-    { label: "총 조회수", value: a ? nf.format(a.views) : "—", icon: Eye },
-    { label: "총 좋아요", value: a ? nf.format(a.likes) : "—", icon: Heart },
-    { label: "총 댓글", value: a ? nf.format(a.replies) : "—", icon: MessageCircle },
-    { label: "참여율", value: a ? `${(a.engagementRate * 100).toFixed(1)}%` : "—", icon: Activity },
+    { label: "총 게시물", num: a?.totalPosts ?? 0, fmt: (n: number) => nf.format(Math.round(n)), sub: a ? `발행 ${a.publishedPosts} · 예약 ${a.scheduledPosts}` : "", icon: FileText },
+    { label: "총 조회수", num: a?.views ?? 0, fmt: (n: number) => nf.format(Math.round(n)), icon: Eye },
+    { label: "총 좋아요", num: a?.likes ?? 0, fmt: (n: number) => nf.format(Math.round(n)), icon: Heart },
+    { label: "총 댓글", num: a?.replies ?? 0, fmt: (n: number) => nf.format(Math.round(n)), icon: MessageCircle },
+    { label: "참여율", num: a ? a.engagementRate * 100 : 0, fmt: (n: number) => `${n.toFixed(1)}%`, icon: Activity },
   ];
 
   const recent = (postsQ.data ?? []).slice(0, 6);
@@ -86,7 +87,7 @@ export function DashboardPage() {
               </span>
             </div>
             <div className="mt-3 text-2xl font-semibold tabular-nums tracking-tight">
-              {analytics.isLoading ? <Loader2 className="size-5 animate-spin text-muted-foreground" /> : kpi.value}
+              {analytics.isLoading ? <Loader2 className="size-5 animate-spin text-muted-foreground" /> : <CountUp value={kpi.num} format={kpi.fmt} />}
             </div>
             {kpi.sub && <div className="mt-1 text-xs text-muted-foreground">{kpi.sub}</div>}
           </Card>

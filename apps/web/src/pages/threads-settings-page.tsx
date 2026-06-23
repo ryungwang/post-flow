@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { threadsApi } from "@/lib/threads-api";
 import { accountApi } from "@/lib/account-api";
 import { useConfirm } from "@/components/confirm-dialog";
+import { CountUp } from "@/components/count-up";
 
 const STATUS_META: Record<string, { label: string; variant: "success" | "warning" | "muted" }> = {
   CONNECTED: { label: "연결됨", variant: "success" },
@@ -131,7 +132,9 @@ export function ThreadsSettingsPage() {
 function Stat({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="rounded-lg border border-border/60 px-2 py-1.5 text-center">
-      <div className="text-sm font-semibold tabular-nums">{value != null ? value.toLocaleString() : "—"}</div>
+      <div className="text-sm font-semibold tabular-nums">
+        {value != null ? <CountUp value={value} /> : "—"}
+      </div>
       <div className="text-[11px] text-muted-foreground">{label}</div>
     </div>
   );
