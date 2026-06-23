@@ -3,13 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, CreditCard } from "lucide-react";
 import { billingApi } from "@/lib/billing-api";
 import { getTossPayments } from "@/lib/toss";
-import { useAuth } from "@/store/auth";
 
 /** Toss billing: register a card (requestBillingAuth) → confirm on callback → activate plan. */
 export function BillingTossPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const user = useAuth((s) => s.user);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState("결제를 준비하고 있어요…");
   const ran = useRef(false);
@@ -30,12 +28,13 @@ export function BillingTossPage() {
           navigate("/settings/account?upgraded=1", { replace: true });
           return;
         }
-        // step 1: start card registration
-        const { clientKey } = await billingApi.tossConfig();
+        // step 1: start card registration — use the server-provided customerKey so it
+        // matches the charge customerKey on confirm (avoids NOT_MATCHES_CUSTOMER_KEY)
+        const { clientKey, customerKey } = await billingApi.tossConfig();
         const tp = await getTossPayments(clientKey);
         const origin = window.location.origin;
         await tp.requestBillingAuth("카드", {
-          customerKey: "user_" + (user?.id ?? "anon"),
+          customerKey,
           successUrl: `${origin}/billing/toss?plan=${encodeURIComponent(plan)}`,
           failUrl: `${origin}/billing/toss?fail=1`,
         });
@@ -47,7 +46,7 @@ export function BillingTossPage() {
         );
       }
     })();
-  }, [authKey, plan, navigate, user, params]);
+  }, [authKey, plan, navigate, params]);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">

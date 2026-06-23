@@ -34,10 +34,13 @@ public class TossBillingController {
         this.clientKey = clientKey;
     }
 
-    /** Frontend needs the client key to start the Toss billing-auth SDK. */
+    /**
+     * Frontend needs the client key + the SAME customerKey the server will use on confirm,
+     * so the billing-auth customerKey matches the charge customerKey (avoids NOT_MATCHES_CUSTOMER_KEY).
+     */
     @GetMapping("/config")
-    public Map<String, String> config() {
-        return Map.of("clientKey", clientKey);
+    public Map<String, String> config(@AuthenticationPrincipal Long userId) {
+        return Map.of("clientKey", clientKey, "customerKey", "user_" + userId);
     }
 
     public record ConfirmRequest(String authKey, String plan) {
