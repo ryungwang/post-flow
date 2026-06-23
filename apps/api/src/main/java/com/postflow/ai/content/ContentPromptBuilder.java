@@ -30,7 +30,9 @@ public class ContentPromptBuilder {
                 Hard rules:
                 - "content" MUST be a rich multi-line post, ideally 250-480 characters,
                   and MUST be 500 characters or fewer (Threads limit).
-                - Write in the same language as the topic; natural, human, specific.
+                - Write everything (content, cta, hashtags) in natural KOREAN (한국어) by default.
+                  Only use another language if the topic is itself clearly written in that language.
+                  Use natural, human Korean — not translated-sounding.
                 - Tasteful emoji allowed (0-3), never spammy.
                 - The CTA goes in the separate "cta" field, NOT inside content.
                 - Hashtags: 3-5, relevant, no '#', no spaces.
@@ -64,6 +66,8 @@ public class ContentPromptBuilder {
                 progressing from hook/awareness to depth to action.
 
                 Hard rules:
+                - Write everything (title, content, cta, hashtags) in natural KOREAN (한국어) by default,
+                  unless the topic is itself clearly in another language. Natural, human Korean.
                 - Each day's "content" is a rich multi-line post (hook → 2-4 value lines →
                   insight → question), ideally 250-480 chars, and ≤500 chars (Threads limit).
                 - Use line breaks (\\n); be specific, human, not a single thin sentence.
