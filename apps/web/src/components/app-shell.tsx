@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LogOut, Plus, Search } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -16,6 +16,7 @@ export function AppShell() {
   const user = useAuth((s) => s.user);
   const clear = useAuth((s) => s.clear);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const logout = () => {
     window.google?.accounts.id.disableAutoSelect();
@@ -60,7 +61,9 @@ export function AppShell() {
         </header>
         <main className="relative z-10 flex-1 overflow-y-auto">
           <ErrorBoundary>
-            <Outlet />
+            <div key={location.pathname} className="animate-page-in">
+              <Outlet />
+            </div>
           </ErrorBoundary>
         </main>
       </div>
