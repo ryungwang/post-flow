@@ -31,8 +31,25 @@ import { useAuth } from "@/store/auth";
 import { ApiError } from "@/lib/api";
 
 const TOPIC_CHIPS = ["AI", "스타트업", "개발", "생산성", "여행", "음식", "운동", "육아"];
-const GOALS = ["Engagement", "Followers", "Leads", "Sales", "Awareness", "Personal Branding", "Fun"];
-const TONES = ["Expert", "Friendly", "Storytelling", "Controversial", "Educational", "Casual", "Personal", "Humor"];
+const GOALS = [
+  { value: "Engagement", label: "참여 유도" },
+  { value: "Followers", label: "팔로워 증가" },
+  { value: "Leads", label: "리드 확보" },
+  { value: "Sales", label: "판매·전환" },
+  { value: "Awareness", label: "인지도" },
+  { value: "Personal Branding", label: "퍼스널 브랜딩" },
+  { value: "Fun", label: "재미·바이럴" },
+];
+const TONES = [
+  { value: "Expert", label: "전문가" },
+  { value: "Friendly", label: "친근함" },
+  { value: "Storytelling", label: "스토리텔링" },
+  { value: "Controversial", label: "도발적" },
+  { value: "Educational", label: "교육적" },
+  { value: "Casual", label: "캐주얼" },
+  { value: "Personal", label: "개인적" },
+  { value: "Humor", label: "유머" },
+];
 const QUANTITIES = [5, 10, 30];
 const MAX = 500;
 
@@ -138,7 +155,7 @@ export function GeneratePage() {
                 </SelectTrigger>
                 <SelectContent>
                   {GOALS.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -151,7 +168,7 @@ export function GeneratePage() {
                 </SelectTrigger>
                 <SelectContent>
                   {TONES.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
