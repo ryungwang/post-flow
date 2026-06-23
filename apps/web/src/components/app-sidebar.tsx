@@ -5,6 +5,7 @@ import {
   BarChart3,
   CalendarClock,
   ChevronRight,
+  HelpCircle,
   LayoutDashboard,
   Library,
   Link2,
@@ -35,6 +36,7 @@ const NAV: Item[] = [
   { label: "스케줄", to: "/schedule", icon: CalendarClock },
   { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply },
   { label: "분석", to: "/analytics", icon: BarChart3 },
+  { label: "자주 묻는 질문", to: "/help", icon: HelpCircle },
   {
     label: "설정",
     icon: Settings,
