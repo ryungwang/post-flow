@@ -128,6 +128,15 @@ export function ThreadsSettingsPage() {
   );
 }
 
+function Stat({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div className="rounded-lg border border-border/60 px-2 py-1.5 text-center">
+      <div className="text-sm font-semibold tabular-nums">{value != null ? value.toLocaleString() : "—"}</div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
 function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean }) {
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -167,29 +176,42 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
       <CardContent>
         <ul className="divide-y divide-border/60">
           {list.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 py-3">
-              {a.profilePictureUrl ? (
-                <img src={a.profilePictureUrl} alt="" className="size-10 shrink-0 rounded-full object-cover" />
-              ) : (
-                <div className="bg-brand-gradient flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-brand-foreground">
-                  {(a.name ?? a.username).charAt(0).toUpperCase()}
+            <li key={a.id} className="py-4">
+              <div className="flex items-center gap-3">
+                {a.profilePictureUrl ? (
+                  <img src={a.profilePictureUrl} alt="" className="size-12 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <div className="bg-brand-gradient flex size-12 shrink-0 items-center justify-center rounded-full text-base font-semibold text-brand-foreground">
+                    {(a.name ?? a.username).charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 text-sm font-medium">
+                    {a.name ?? `@${a.username}`}
+                    {a.isDefault && <Badge variant="success">기본</Badge>}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {a.name && <span>@{a.username}</span>}
+                    <span>· {a.status}</span>
+                  </div>
+                  {a.biography && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{a.biography}</p>}
                 </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 text-sm font-medium">
-                  {a.name ?? `@${a.username}`}
-                  {a.isDefault && <Badge variant="success">기본</Badge>}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {a.name && <span>@{a.username}</span>}
-                  {a.followersCount != null && <span>팔로워 {a.followersCount.toLocaleString()}</span>}
-                  <span>· {a.status}</span>
-                </div>
+                {!a.isDefault && (
+                  <Button variant="ghost" size="sm" disabled={setDefault.isPending} onClick={() => setDefault.mutate(a.id)}>기본으로</Button>
+                )}
+                <Button variant="ghost" size="sm" className="text-destructive" disabled={disconnect.isPending} onClick={() => askDisconnect(a.username, a.id)}>연결 해제</Button>
               </div>
-              {!a.isDefault && (
-                <Button variant="ghost" size="sm" disabled={setDefault.isPending} onClick={() => setDefault.mutate(a.id)}>기본으로</Button>
+              <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                <Stat label="팔로워" value={a.followersCount} />
+                <Stat label="조회" value={a.views} />
+                <Stat label="좋아요" value={a.likes} />
+                <Stat label="답글" value={a.replies} />
+                <Stat label="리포스트" value={a.reposts} />
+                <Stat label="인용" value={a.quotes} />
+              </div>
+              {(a.views != null || a.likes != null) && (
+                <p className="mt-2 text-[11px] text-muted-foreground">조회·좋아요·답글·리포스트·인용은 최근 30일 기준</p>
               )}
-              <Button variant="ghost" size="sm" className="text-destructive" disabled={disconnect.isPending} onClick={() => askDisconnect(a.username, a.id)}>연결 해제</Button>
             </li>
           ))}
         </ul>

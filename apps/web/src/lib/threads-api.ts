@@ -11,7 +11,13 @@ export type ThreadsAccount = {
   username: string;
   name: string | null;
   profilePictureUrl: string | null;
+  biography: string | null;
   followersCount: number | null;
+  views: number | null;
+  likes: number | null;
+  replies: number | null;
+  reposts: number | null;
+  quotes: number | null;
   status: string;
   isDefault: boolean;
   expiresAt: string | null;

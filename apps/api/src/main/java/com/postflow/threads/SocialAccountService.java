@@ -89,23 +89,33 @@ public class SocialAccountService {
     @Transactional
     public List<ThreadsAccountDto> list(Long userId) {
         List<ThreadsAccountDto> out = new java.util.ArrayList<>();
+        long until = Instant.now().getEpochSecond();
+        long since = until - 30L * 24 * 3600; // last 30 days for engagement
         for (SocialAccount a : repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS)) {
-            // one-time enrichment: cache real @handle/name/picture if missing or still the numeric id
-            if (a.getStatus() == ConnectionStatus.CONNECTED
-                    && (a.getName() == null || a.getUsername() == null || a.getUsername().matches("\\d+"))) {
+            String biography = null;
+            Long followers = null;
+            com.postflow.threads.api.ThreadsInsights eng = null;
+            if (a.getStatus() == ConnectionStatus.CONNECTED) {
                 com.postflow.threads.api.ThreadsUsername p = apiClient.fetchProfile(a.getAccessToken());
                 if (p != null) {
-                    a.updateProfile(p.username(), p.name(), p.profilePictureUrl());
+                    a.updateProfile(p.username(), p.name(), p.profilePictureUrl()); // cache handle/name/picture
+                    biography = p.biography();
                 }
+                followers = apiClient.fetchFollowers(a.getThreadsUserId(), a.getAccessToken());
+                eng = apiClient.fetchEngagement(a.getThreadsUserId(), a.getAccessToken(), since, until);
             }
-            Long followers = a.getStatus() == ConnectionStatus.CONNECTED
-                    ? apiClient.fetchFollowers(a.getThreadsUserId(), a.getAccessToken()) : null;
             out.add(new ThreadsAccountDto(
                     a.getId(),
                     a.getUsername() != null ? a.getUsername() : a.getThreadsUserId(),
                     a.getName(),
                     a.getProfilePictureUrl(),
+                    biography,
                     followers,
+                    eng != null ? eng.value("views") : null,
+                    eng != null ? eng.value("likes") : null,
+                    eng != null ? eng.value("replies") : null,
+                    eng != null ? eng.value("reposts") : null,
+                    eng != null ? eng.value("quotes") : null,
                     a.getStatus().name(),
                     a.isDefault(),
                     a.getExpiresAt()));

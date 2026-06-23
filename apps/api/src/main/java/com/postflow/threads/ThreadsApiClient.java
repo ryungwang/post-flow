@@ -147,6 +147,24 @@ public class ThreadsApiClient {
         }
     }
 
+    /** Best-effort account engagement insights (views/likes/replies/reposts/quotes) over a window. */
+    public com.postflow.threads.api.ThreadsInsights fetchEngagement(String threadsUserId, String accessToken,
+                                                                    long sinceEpoch, long untilEpoch) {
+        try {
+            return graph.get()
+                    .uri(b -> b.path("/{id}/threads_insights")
+                            .queryParam("metric", "views,likes,replies,reposts,quotes")
+                            .queryParam("since", sinceEpoch)
+                            .queryParam("until", untilEpoch)
+                            .queryParam("access_token", accessToken)
+                            .build(threadsUserId))
+                    .retrieve()
+                    .body(com.postflow.threads.api.ThreadsInsights.class);
+        } catch (RestClientException e) {
+            return null;
+        }
+    }
+
     /** List replies (comments) on a published media. */
     public List<ThreadsReply> getReplies(String mediaId, String accessToken) {
         try {

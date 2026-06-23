@@ -16,14 +16,18 @@ public record ThreadsInsights(List<Metric> data) {
     public record TotalValue(Long value) {
     }
 
-    /** Extract the followers_count value, or null if absent. */
-    public Long followersCount() {
+    /** Extract a metric's total value, or null if absent. */
+    public Long value(String metric) {
         if (data == null) {
             return null;
         }
         return data.stream()
-                .filter(m -> "followers_count".equals(m.name()) && m.total_value() != null)
+                .filter(m -> metric.equals(m.name()) && m.total_value() != null)
                 .map(m -> m.total_value().value())
                 .findFirst().orElse(null);
+    }
+
+    public Long followersCount() {
+        return value("followers_count");
     }
 }
