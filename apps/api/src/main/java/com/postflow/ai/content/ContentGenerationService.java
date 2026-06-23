@@ -36,24 +36,27 @@ public class ContentGenerationService {
     private final AiGenerationRepository aiGenerationRepository;
     private final ObjectMapper objectMapper;
     private final UsageService usageService;
+    private final com.postflow.brand.BrandRepository brandRepository;
 
     public ContentGenerationService(LLMProvider llmProvider,
                                     ContentPromptBuilder promptBuilder,
                                     AiGenerationRepository aiGenerationRepository,
                                     ObjectMapper objectMapper,
-                                    UsageService usageService) {
+                                    UsageService usageService,
+                                    com.postflow.brand.BrandRepository brandRepository) {
         this.llmProvider = llmProvider;
         this.promptBuilder = promptBuilder;
         this.aiGenerationRepository = aiGenerationRepository;
         this.objectMapper = objectMapper;
         this.usageService = usageService;
+        this.brandRepository = brandRepository;
     }
 
     @Transactional
     public GenerateContentResponse generate(Long userId, GenerateContentRequest request) {
         usageService.assertCanGenerate(userId);
         String systemPrompt = promptBuilder.systemPrompt();
-        String userPrompt = promptBuilder.userPrompt(request);
+        String userPrompt = promptBuilder.userPrompt(request, brandContext(userId, request.brandId()));
 
         GenerationRequest llmRequest = GenerationRequest.builder()
                 .systemPrompt(systemPrompt)
@@ -124,6 +127,17 @@ public class ContentGenerationService {
         } catch (JsonProcessingException e) {
             throw new ContentGenerationException("Failed to parse series as JSON", e);
         }
+    }
+
+    /** Brand promotion context for a chosen product (owned by user), or empty string. */
+    private String brandContext(Long userId, Long brandId) {
+        if (brandId == null) {
+            return "";
+        }
+        return brandRepository.findByIdAndUserId(brandId, userId)
+                .map(b -> promptBuilder.brandBlock(b.getName(), b.getDescription(), b.getAudience(),
+                        b.getKeyPoints(), b.getCtaText(), b.getUrl()))
+                .orElse("");
     }
 
     private int estimateMaxTokens(int quantity) {

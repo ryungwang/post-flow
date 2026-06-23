@@ -44,18 +44,36 @@ public class ContentPromptBuilder {
                 """;
     }
 
-    /** Per-request user prompt. */
-    public String userPrompt(GenerateContentRequest request) {
+    /** Per-request user prompt. {@code brandContext} may be empty (no product selected). */
+    public String userPrompt(GenerateContentRequest request, String brandContext) {
         return """
                 Topic: %s
                 Goal: %s
                 Tone: %s
+                %s
                 Generate %d distinct posts as a JSON array.
                 """.formatted(
                 request.topic(),
                 request.goalOrDefault(),
                 request.toneOrDefault(),
+                brandContext == null ? "" : brandContext,
                 request.quantity());
+    }
+
+    /** Build a promotion-context block so posts naturally promote the user's product. */
+    public String brandBlock(String name, String description, String audience,
+                             String keyPoints, String ctaText, String url) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\nPROMOTION CONTEXT — every post must naturally promote this product (소프트한 홍보, 광고티 X):\n");
+        sb.append("- 제품/서비스: ").append(name);
+        if (description != null && !description.isBlank()) sb.append(" — ").append(description);
+        sb.append("\n");
+        if (audience != null && !audience.isBlank()) sb.append("- 타깃 고객: ").append(audience).append("\n");
+        if (keyPoints != null && !keyPoints.isBlank()) sb.append("- 핵심 강점: ").append(keyPoints).append("\n");
+        if (ctaText != null && !ctaText.isBlank()) sb.append("- 선호 CTA: ").append(ctaText).append(" (cta 필드에 자연스럽게 반영)\n");
+        if (url != null && !url.isBlank()) sb.append("- 링크: ").append(url).append(" (cta에 녹이되 본문엔 raw URL 넣지 말 것)\n");
+        sb.append("주제는 이 제품의 가치를 보여주는 각도로 풀고, 가치를 먼저 준 뒤 자연스럽게 제품으로 연결하세요.\n");
+        return sb.toString();
     }
 
     /** Stable, cacheable prefix for a multi-day content series. */

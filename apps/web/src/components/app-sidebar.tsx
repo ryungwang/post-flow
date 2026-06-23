@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Library,
   Link2,
+  Megaphone,
   MessageSquareReply,
   Rocket,
   Settings,
@@ -30,6 +31,7 @@ const NAV: Item[] = [
     children: [
       { label: "AI 생성", to: "/content/generate", icon: Wand2 },
       { label: "시리즈 생성", to: "/content/series", icon: Sparkles },
+      { label: "브랜드/제품", to: "/brands", icon: Megaphone },
       { label: "라이브러리", to: "/content/library", icon: Library },
     ],
   },

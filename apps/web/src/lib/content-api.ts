@@ -18,6 +18,7 @@ export type GenerateRequest = {
   goal: string;
   tone: string;
   quantity: number;
+  brandId?: number | null;
 };
 
 export type HookVariant = { hook: string; score: number };

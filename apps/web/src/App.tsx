@@ -14,6 +14,7 @@ import { LandingPage } from "@/pages/landing-page";
 import { AutomationPage } from "@/pages/automation-page";
 import { ThreadsSettingsPage } from "@/pages/threads-settings-page";
 import { FaqPage } from "@/pages/faq-page";
+import { BrandsPage } from "@/pages/brands-page";
 
 export default function App() {
   useSession();
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings/account" element={<AccountPage />} />
           <Route path="/settings/threads" element={<ThreadsSettingsPage />} />
+          <Route path="/brands" element={<BrandsPage />} />
           <Route path="/help" element={<FaqPage />} />
         </Route>
       </Route>

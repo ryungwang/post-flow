@@ -16,7 +16,8 @@ public record GenerateContentRequest(
         @NotBlank String topic,
         String goal,
         String tone,
-        @Min(1) @Max(30) int quantity
+        @Min(1) @Max(30) int quantity,
+        Long brandId
 ) {
     public String goalOrDefault() {
         return goal == null || goal.isBlank() ? "Engagement" : goal;

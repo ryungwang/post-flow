@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { BookmarkPlus, Check, Copy, Eye, Loader2, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { BookmarkPlus, Check, Copy, Eye, Loader2, Megaphone, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { postsApi } from "@/lib/posts-api";
+import { brandApi } from "@/lib/brand-api";
 import {
   Select,
   SelectContent,
@@ -58,6 +59,8 @@ export function GeneratePage() {
   const [topic, setTopic] = useState(params.get("topic") ?? "");
   const [goal, setGoal] = useState("Engagement");
   const [tone, setTone] = useState("Friendly");
+  const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: brandApi.list });
+  const [brandId, setBrandId] = useState("none");
   const [quantity, setQuantity] = useState(5);
 
   const [loading, setLoading] = useState(false);
@@ -89,7 +92,7 @@ export function GeneratePage() {
     setError(null);
     setLimited(false);
     try {
-      const res = await contentApi.generate({ topic: topic.trim(), goal, tone, quantity });
+      const res = await contentApi.generate({ topic: topic.trim(), goal, tone, quantity, brandId: brandId === "none" ? null : Number(brandId) });
       setCards(res.cards);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
@@ -145,6 +148,21 @@ export function GeneratePage() {
               ))}
             </div>
           </div>
+
+          {brands.length > 0 && (
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1.5"><Megaphone className="size-3.5 text-brand" /> 홍보 대상 (선택 시 이 제품을 자연스럽게 홍보)</Label>
+              <Select value={brandId} onValueChange={setBrandId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">없음 (일반 글)</SelectItem>
+                  {brands.map((b) => (
+                    <SelectItem key={b.id} value={String(b.id)}>{b.name}{b.isDefault ? " (기본)" : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-2">
