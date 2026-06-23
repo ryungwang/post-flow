@@ -25,13 +25,13 @@ export function BillingTossPage() {
         if (authKey) {
           setStatus("결제를 확정하고 있어요…");
           await billingApi.tossConfirm(authKey, plan);
-          navigate("/settings/account?upgraded=1", { replace: true });
+          window.location.href = "/settings/account?upgraded=1"; // full reload → usage·plan 모두 갱신
           return;
         }
         // step 1a: if a billing key already exists, charge without re-entering the card
         const charge = await billingApi.tossCharge(plan);
         if (charge.charged) {
-          navigate("/settings/account?upgraded=1", { replace: true });
+          window.location.href = "/settings/account?upgraded=1"; // full reload → usage·plan 모두 갱신
           return;
         }
 
