@@ -32,14 +32,15 @@ import { useAuth } from "@/store/auth";
 import { ApiError } from "@/lib/api";
 
 const TOPIC_CHIPS = ["AI", "스타트업", "개발", "생산성", "여행", "음식", "운동", "육아"];
+// need: required(없으면 경고) / helpful(있으면 더 좋음) / optional(불필요)
 const GOALS = [
-  { value: "Engagement", label: "참여 유도" },
-  { value: "Followers", label: "팔로워 증가" },
-  { value: "Leads", label: "리드 확보" },
-  { value: "Sales", label: "판매·전환" },
-  { value: "Awareness", label: "인지도" },
-  { value: "Personal Branding", label: "퍼스널 브랜딩" },
-  { value: "Fun", label: "재미·바이럴" },
+  { value: "Engagement", label: "참여 유도", desc: "공감·질문으로 댓글·저장을 유도하는 글", need: "optional" as const },
+  { value: "Followers", label: "팔로워 증가", desc: "계속 보고 싶게 만들어 팔로우를 유도", need: "helpful" as const },
+  { value: "Leads", label: "리드 확보", desc: "무료 자료 등으로 연락처(리드)를 모으는 글", need: "required" as const },
+  { value: "Sales", label: "판매·전환", desc: "이득·증거·CTA로 구매·클릭을 유도", need: "required" as const },
+  { value: "Awareness", label: "인지도", desc: "기억·공유되는 한 줄 메시지로 알리기", need: "helpful" as const },
+  { value: "Personal Branding", label: "퍼스널 브랜딩", desc: "내 경험·전문성으로 신뢰를 쌓는 글", need: "optional" as const },
+  { value: "Fun", label: "재미·바이럴", desc: "위트·밈으로 가볍게 퍼지는 글", need: "optional" as const },
 ];
 const TONES = [
   { value: "Expert", label: "전문가" },
@@ -61,8 +62,8 @@ export function GeneratePage() {
   const [tone, setTone] = useState("Friendly");
   const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: brandApi.list });
   const [brandId, setBrandId] = useState("none");
-  // 판매·전환/리드는 홍보 대상이 있어야 의도대로 나옴
-  const needsBrand = goal === "Sales" || goal === "Leads";
+  const currentGoal = GOALS.find((g) => g.value === goal) ?? GOALS[0];
+  const noBrand = brandId === "none";
   const [quantity, setQuantity] = useState(5);
 
   const [loading, setLoading] = useState(false);
@@ -179,6 +180,7 @@ export function GeneratePage() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">{currentGoal.desc}</p>
             </div>
             <div className="grid gap-2">
               <Label>톤</Label>
@@ -214,15 +216,22 @@ export function GeneratePage() {
             </div>
           </div>
 
-          {needsBrand && brandId === "none" && (
+          {currentGoal.need === "required" && noBrand && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               <div className="flex-1">
-                <b>{GOALS.find((g) => g.value === goal)?.label}</b>은(는) 홍보 대상이 없으면 의도와 다른 일반 글이 생성될 수 있어요.
-                {brands.length > 0
-                  ? " 위에서 홍보 대상을 선택하거나 "
-                  : " 등록된 제품이 없어요 — "}
+                <b>{currentGoal.label}</b>은(는) 홍보 대상이 없으면 의도와 다른 일반 글이 생성될 수 있어요.
+                {brands.length > 0 ? " 위에서 홍보 대상을 선택하거나 " : " 등록된 제품이 없어요 — "}
                 <Link to="/brands" className="font-semibold underline">{brands.length > 0 ? "새 제품 추가" : "브랜드/제품 추가"}</Link>.
+              </div>
+            </div>
+          )}
+          {currentGoal.need === "helpful" && noBrand && (
+            <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+              <Megaphone className="mt-0.5 size-4 shrink-0 text-brand" />
+              <div className="flex-1">
+                <b className="text-foreground/80">{currentGoal.label}</b>은(는) 홍보 대상을 고르면 더 효과적이에요(필수는 아님).{" "}
+                <Link to="/brands" className="font-semibold underline">브랜드/제품 관리</Link>.
               </div>
             </div>
           )}
