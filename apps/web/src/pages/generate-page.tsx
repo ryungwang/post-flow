@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookmarkPlus, Check, Copy, Eye, Loader2, Megaphone, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { AlertTriangle, BookmarkPlus, Check, Copy, Eye, Loader2, Megaphone, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,8 @@ export function GeneratePage() {
   const [tone, setTone] = useState("Friendly");
   const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: brandApi.list });
   const [brandId, setBrandId] = useState("none");
+  // 판매·전환/리드는 홍보 대상이 있어야 의도대로 나옴
+  const needsBrand = goal === "Sales" || goal === "Leads";
   const [quantity, setQuantity] = useState(5);
 
   const [loading, setLoading] = useState(false);
@@ -211,6 +213,19 @@ export function GeneratePage() {
               </div>
             </div>
           </div>
+
+          {needsBrand && brandId === "none" && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <div className="flex-1">
+                <b>{GOALS.find((g) => g.value === goal)?.label}</b>은(는) 홍보 대상이 없으면 의도와 다른 일반 글이 생성될 수 있어요.
+                위에서 홍보 대상을 선택하세요.
+                {brands.length === 0 && (
+                  <> 등록된 제품이 없다면 <Link to="/brands" className="font-semibold underline">브랜드/제품 추가</Link>.</>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <Button onClick={generate} disabled={loading || !topic.trim()} className="gap-2">
