@@ -219,10 +219,10 @@ export function GeneratePage() {
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               <div className="flex-1">
                 <b>{GOALS.find((g) => g.value === goal)?.label}</b>은(는) 홍보 대상이 없으면 의도와 다른 일반 글이 생성될 수 있어요.
-                위에서 홍보 대상을 선택하세요.
-                {brands.length === 0 && (
-                  <> 등록된 제품이 없다면 <Link to="/brands" className="font-semibold underline">브랜드/제품 추가</Link>.</>
-                )}
+                {brands.length > 0
+                  ? " 위에서 홍보 대상을 선택하거나 "
+                  : " 등록된 제품이 없어요 — "}
+                <Link to="/brands" className="font-semibold underline">{brands.length > 0 ? "새 제품 추가" : "브랜드/제품 추가"}</Link>.
               </div>
             </div>
           )}
