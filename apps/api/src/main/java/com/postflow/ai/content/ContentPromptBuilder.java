@@ -25,7 +25,8 @@ public class ContentPromptBuilder {
                 2. Body — 2 to 4 short lines delivering concrete, specific value
                    (numbered points, examples, or numbers). No vague filler.
                 3. Insight — one punchy takeaway line.
-                4. Question — an engaging question to drive replies.
+                4. Close — a closing line that fits the GOAL (질문/팔로우 유도/구매·클릭 등).
+                   목표에 맞는 마무리를 쓰고, 모든 글을 질문으로 끝내지 말 것.
 
                 Hard rules:
                 - "content" MUST be a rich multi-line post, ideally 250-480 characters,
@@ -49,15 +50,30 @@ public class ContentPromptBuilder {
         return """
                 Topic: %s
                 Goal: %s
+                %s
                 Tone: %s
                 %s
                 Generate %d distinct posts as a JSON array.
                 """.formatted(
                 request.topic(),
                 request.goalOrDefault(),
+                goalGuidance(request.goalOrDefault()),
                 request.toneOrDefault(),
                 brandContext == null ? "" : brandContext,
                 request.quantity());
+    }
+
+    /** Concrete writing instructions per goal so the goal actually shapes the post. */
+    private String goalGuidance(String goal) {
+        return switch (goal) {
+            case "Sales" -> "GOAL GUIDANCE(판매·전환): 구체적 이득/결과를 앞세우고, 가능한 사회적 증거(숫자·사례)와 가벼운 긴급성을 넣어 행동을 끌어내세요. cta는 구매/신청/클릭 같은 명확한 전환 행동으로(애매한 질문 X). 제품 컨텍스트가 있으면 그 제품으로 연결.";
+            case "Leads" -> "GOAL GUIDANCE(리드 확보): 무료 자료·체크리스트·템플릿 같은 가치를 미끼로 제시하고, cta는 \"댓글에 키워드\" 또는 \"링크에서 받기\"로 연락처/리드를 남기게 유도.";
+            case "Followers" -> "GOAL GUIDANCE(팔로워 증가): 계속 보고 싶은 시리즈성 가치를 암시하고, cta는 \"이런 내용 더 보려면 팔로우\"처럼 팔로우를 직접 유도.";
+            case "Awareness" -> "GOAL GUIDANCE(인지도): 한 문장으로 각인되는 메시지와 공유하고 싶은 관점에 집중. cta는 공유/리포스트 유도.";
+            case "Personal Branding" -> "GOAL GUIDANCE(퍼스널 브랜딩): 본인 경험·관점·전문성이 드러나는 1인칭 서사로 신뢰를 쌓고, cta는 팔로우/대화 유도.";
+            case "Fun" -> "GOAL GUIDANCE(재미·바이럴): 위트·반전·공감 밈 요소로 가볍고 재밌게. cta는 태그/공유 유도.";
+            default -> "GOAL GUIDANCE(참여 유도): 공감 또는 가벼운 논쟁 포인트로 댓글·저장을 유도하고, cta는 답글을 부르는 질문.";
+        };
     }
 
     /** Build a promotion-context block so posts naturally promote the user's product. */
