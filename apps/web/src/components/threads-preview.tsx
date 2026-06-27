@@ -1,4 +1,5 @@
 import { Heart, MessageCircle, MoreHorizontal, Repeat2, Send } from "lucide-react";
+import { isVideoUrl } from "@/lib/media-api";
 
 /** How a post will look as a Threads card (visual mockup — no API). */
 export function ThreadsPreview({
@@ -44,8 +45,9 @@ export function ThreadsPreview({
             </p>
           )}
 
-          {mediaUrl && (
-            <img src={mediaUrl} alt="" className="mt-3 max-h-72 w-full rounded-xl border object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          {mediaUrl && (isVideoUrl(mediaUrl)
+            ? <video src={mediaUrl} controls className="mt-3 max-h-72 w-full rounded-xl border" />
+            : <img src={mediaUrl} alt="" className="mt-3 max-h-72 w-full rounded-xl border object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
           )}
 
           <div className="mt-3 flex items-center gap-5 text-muted-foreground">

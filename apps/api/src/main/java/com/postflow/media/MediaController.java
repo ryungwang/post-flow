@@ -21,9 +21,12 @@ import java.util.UUID;
 @RequestMapping("/api/media")
 public class MediaController {
 
-    private static final Set<String> ALLOWED = Set.of(
+    private static final Set<String> IMAGE_TYPES = Set.of(
             "image/png", "image/jpeg", "image/gif", "image/webp");
-    private static final long MAX_BYTES = 8L * 1024 * 1024;
+    private static final Set<String> VIDEO_TYPES = Set.of(
+            "video/mp4", "video/quicktime");
+    private static final long MAX_IMAGE_BYTES = 8L * 1024 * 1024;
+    private static final long MAX_VIDEO_BYTES = 100L * 1024 * 1024;
 
     private final StorageService storage;
 
@@ -38,12 +41,15 @@ public class MediaController {
         if (file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "empty file");
         }
-        if (file.getSize() > MAX_BYTES) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "max 8MB");
-        }
         String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED.contains(contentType)) {
-            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "image only");
+        boolean isImage = contentType != null && IMAGE_TYPES.contains(contentType);
+        boolean isVideo = contentType != null && VIDEO_TYPES.contains(contentType);
+        if (!isImage && !isVideo) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "이미지(JPG/PNG/GIF/WEBP) 또는 영상(MP4/MOV)만 가능");
+        }
+        long max = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+        if (file.getSize() > max) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, isVideo ? "영상은 최대 100MB" : "이미지는 최대 8MB");
         }
         String key = "media/" + userId + "/" + UUID.randomUUID() + extension(contentType);
         try {
@@ -60,6 +66,8 @@ public class MediaController {
             case "image/jpeg" -> ".jpg";
             case "image/gif" -> ".gif";
             case "image/webp" -> ".webp";
+            case "video/mp4" -> ".mp4";
+            case "video/quicktime" -> ".mov";
             default -> "";
         };
     }

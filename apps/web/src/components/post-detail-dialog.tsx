@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { postsApi, type Post } from "@/lib/posts-api";
-import { uploadMedia } from "@/lib/media-api";
+import { uploadMedia, isVideoUrl } from "@/lib/media-api";
 import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ThreadsPreview } from "@/components/threads-preview";
@@ -109,12 +109,16 @@ export function PostDetailDialog({
     setEditing(true);
   };
 
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const onPickFile = async (id: number, file: File | undefined) => {
     if (!file) return;
     setUploading(true);
+    setUploadError(null);
     try {
       const { url } = await uploadMedia(file);
       await setMedia.mutateAsync({ id, url });
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "업로드 실패");
     } finally {
       setUploading(false);
     }
@@ -236,15 +240,19 @@ export function PostDetailDialog({
                   )}
                   {p.cta && <p className="mt-3 text-sm font-medium text-brand">{p.cta}</p>}
 
-                  {/* media */}
+                  {/* media (image or video) */}
                   <div className="mt-4">
                     {p.mediaUrl ? (
                       <div className="group relative w-fit">
-                        <img src={p.mediaUrl} alt="첨부 이미지" className="max-h-56 rounded-lg border object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                        {isVideoUrl(p.mediaUrl) ? (
+                          <video src={p.mediaUrl} controls className="max-h-56 rounded-lg border" />
+                        ) : (
+                          <img src={p.mediaUrl} alt="첨부 미디어" className="max-h-56 rounded-lg border object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                        )}
                         <button
                           onClick={() => setMedia.mutate({ id: p.id, url: null })}
                           className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                          title="이미지 제거"
+                          title="미디어 제거"
                         >
                           <X className="size-4" />
                         </button>
@@ -256,13 +264,14 @@ export function PostDetailDialog({
                         className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-brand/50 hover:text-foreground"
                       >
                         {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
-                        이미지 첨부
+                        이미지·영상 첨부
                       </button>
                     )}
+                    {uploadError && <p className="mt-1.5 text-xs text-destructive">{uploadError}</p>}
                     <input
                       ref={fileRef}
                       type="file"
-                      accept="image/png,image/jpeg,image/gif,image/webp"
+                      accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/quicktime"
                       className="hidden"
                       onChange={(e) => onPickFile(p.id, e.target.files?.[0])}
                     />

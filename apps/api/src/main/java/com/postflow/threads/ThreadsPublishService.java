@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 public class ThreadsPublishService {
 
     private static final int MAX_POLL_ATTEMPTS = 10;
+    private static final int MAX_POLL_ATTEMPTS_VIDEO = 60; // 영상 인코딩은 더 오래 걸림(최대 ~2분)
     private static final long POLL_INTERVAL_MS = 2000L;
 
     private final ThreadsApiClient apiClient;
@@ -30,22 +31,38 @@ public class ThreadsPublishService {
      * (must be a publicly reachable URL), otherwise a TEXT container. Returns the media id.
      */
     public String publish(String threadsUserId, String accessToken, String text, String mediaUrl) {
-        String creationId = (mediaUrl != null && !mediaUrl.isBlank())
-                ? apiClient.createImageContainer(threadsUserId, accessToken, text, mediaUrl)
-                : apiClient.createTextContainer(threadsUserId, accessToken, text);
-        awaitFinished(creationId, accessToken);
+        boolean hasMedia = mediaUrl != null && !mediaUrl.isBlank();
+        boolean isVideo = hasMedia && isVideoUrl(mediaUrl);
+        String creationId;
+        if (!hasMedia) {
+            creationId = apiClient.createTextContainer(threadsUserId, accessToken, text);
+        } else if (isVideo) {
+            creationId = apiClient.createVideoContainer(threadsUserId, accessToken, text, mediaUrl);
+        } else {
+            creationId = apiClient.createImageContainer(threadsUserId, accessToken, text, mediaUrl);
+        }
+        awaitFinished(creationId, accessToken, isVideo ? MAX_POLL_ATTEMPTS_VIDEO : MAX_POLL_ATTEMPTS);
         return apiClient.publish(threadsUserId, accessToken, creationId);
+    }
+
+    private boolean isVideoUrl(String url) {
+        String u = url.toLowerCase();
+        int q = u.indexOf('?');
+        if (q >= 0) {
+            u = u.substring(0, q);
+        }
+        return u.endsWith(".mp4") || u.endsWith(".mov");
     }
 
     /** Publish a reply to a comment/media; returns the published reply id. */
     public String publishReply(String threadsUserId, String accessToken, String text, String replyToId) {
         String creationId = apiClient.createReplyContainer(threadsUserId, accessToken, text, replyToId);
-        awaitFinished(creationId, accessToken);
+        awaitFinished(creationId, accessToken, MAX_POLL_ATTEMPTS);
         return apiClient.publish(threadsUserId, accessToken, creationId);
     }
 
-    private void awaitFinished(String containerId, String accessToken) {
-        for (int attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+    private void awaitFinished(String containerId, String accessToken, int maxAttempts) {
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
             ThreadsContainerStatus status = apiClient.getContainerStatus(containerId, accessToken);
             if (status != null && status.isFinished()) {
                 return;

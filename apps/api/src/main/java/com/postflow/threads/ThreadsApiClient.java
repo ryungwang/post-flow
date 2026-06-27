@@ -96,6 +96,19 @@ public class ThreadsApiClient {
         return res.id();
     }
 
+    /** Create a video media container; returns its creation id. Video URL must be public. */
+    public String createVideoContainer(String threadsUserId, String accessToken, String text, String videoUrl) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("media_type", "VIDEO");
+        form.add("video_url", videoUrl);
+        if (text != null && !text.isBlank()) {
+            form.add("text", text);
+        }
+        form.add("access_token", accessToken);
+        ThreadsIdResponse res = postPath("/{id}/threads", threadsUserId, form);
+        return res.id();
+    }
+
     /** Poll a container's processing status. */
     public ThreadsContainerStatus getContainerStatus(String containerId, String accessToken) {
         try {

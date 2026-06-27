@@ -16,6 +16,7 @@ import {
 import { PostDetailDialog } from "@/components/post-detail-dialog";
 import { ScoreBadge } from "@/components/score-badge";
 import { postsApi, type Post, type PostStatus } from "@/lib/posts-api";
+import { isVideoUrl } from "@/lib/media-api";
 import { POST_STATUS_META } from "@/lib/post-status";
 
 type SortKey = "recent" | "score-desc" | "score-asc";
@@ -224,8 +225,9 @@ export function LibraryPage() {
                       </td>
                       <td className="px-6 py-3.5">
                         <div className="flex max-w-xl gap-3">
-                          {p.mediaUrl && (
-                            <img src={p.mediaUrl} alt="" className="size-14 shrink-0 rounded-md border object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                          {p.mediaUrl && (isVideoUrl(p.mediaUrl)
+                            ? <video src={p.mediaUrl} className="size-14 shrink-0 rounded-md border object-cover" muted />
+                            : <img src={p.mediaUrl} alt="" className="size-14 shrink-0 rounded-md border object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                           )}
                           <div className="min-w-0">
                             <p className="line-clamp-3 whitespace-pre-line font-medium">{p.content}</p>

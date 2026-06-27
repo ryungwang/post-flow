@@ -22,8 +22,8 @@ spring:
     default-schema: postflow
   servlet:
     multipart:
-      max-file-size: 16MB
-      max-request-size: 16MB
+      max-file-size: 110MB
+      max-request-size: 110MB
 
 server:
   port: 8080
