@@ -12,6 +12,11 @@ import jakarta.validation.constraints.NotBlank;
  */
 public record GenerateSeriesRequest(
         @NotBlank String topic,
-        @Min(1) @Max(30) int days
+        @Min(1) @Max(30) int days,
+        String goal,
+        Long brandId
 ) {
+    public String goalOrDefault() {
+        return goal == null || goal.isBlank() ? "Engagement" : goal;
+    }
 }

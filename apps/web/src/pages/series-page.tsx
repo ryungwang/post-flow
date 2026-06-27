@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { BookmarkPlus, CalendarRange, Check, Eye, Loader2, Sparkles } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, BookmarkPlus, CalendarRange, Check, Eye, Loader2, Megaphone, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { seriesApi, type SeriesItem } from "@/lib/series-api";
+import { brandApi } from "@/lib/brand-api";
+import { GENERATE_GOALS } from "@/lib/goals";
 import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ThreadsPreview } from "@/components/threads-preview";
@@ -20,6 +23,10 @@ const DAYS = [7, 14, 30];
 export function SeriesPage() {
   const [topic, setTopic] = useState("");
   const [days, setDays] = useState(7);
+  const [goal, setGoal] = useState("Engagement");
+  const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: brandApi.list });
+  const [brandId, setBrandId] = useState("none");
+  const currentGoal = GENERATE_GOALS.find((g) => g.value === goal) ?? GENERATE_GOALS[0];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limited, setLimited] = useState(false);
@@ -31,7 +38,7 @@ export function SeriesPage() {
     setError(null);
     setLimited(false);
     try {
-      const res = await seriesApi.generate(topic.trim(), days);
+      const res = await seriesApi.generate(topic.trim(), days, goal, brandId === "none" ? null : Number(brandId));
       setItems(res.items);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setError("로그인이 필요해요.");
@@ -82,6 +89,45 @@ export function SeriesPage() {
               ))}
             </div>
           </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>목표</Label>
+              <Select value={goal} onValueChange={setGoal}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GENERATE_GOALS.map((g) => (
+                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{currentGoal.desc}</p>
+            </div>
+            {brands.length > 0 && (
+              <div className="grid gap-2">
+                <Label className="flex items-center gap-1.5"><Megaphone className="size-3.5 text-brand" /> 홍보 대상</Label>
+                <Select value={brandId} onValueChange={setBrandId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">없음 (일반 글)</SelectItem>
+                    {brands.map((b) => (
+                      <SelectItem key={b.id} value={String(b.id)}>{b.name}{b.isDefault ? " (기본)" : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {currentGoal.need === "required" && brandId === "none" && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <div className="flex-1">
+                <b>{currentGoal.label}</b>은(는) 홍보 대상이 없으면 의도와 다른 일반 시리즈가 생성될 수 있어요.{" "}
+                <Link to="/brands" className="font-semibold underline">{brands.length > 0 ? "새 제품 추가" : "브랜드/제품 추가"}</Link>.
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-3">
             <Button onClick={generate} disabled={loading || !topic.trim()} className="gap-2">
               {loading ? <Loader2 className="size-4 animate-spin" /> : <CalendarRange className="size-4" />}

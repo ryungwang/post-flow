@@ -32,16 +32,7 @@ import { useAuth } from "@/store/auth";
 import { ApiError } from "@/lib/api";
 
 const TOPIC_CHIPS = ["AI", "스타트업", "개발", "생산성", "여행", "음식", "운동", "육아"];
-// need: required(없으면 경고) / helpful(있으면 더 좋음) / optional(불필요)
-const GOALS = [
-  { value: "Engagement", label: "참여 유도", desc: "공감·질문으로 댓글·저장을 유도하는 글", need: "optional" as const },
-  { value: "Followers", label: "팔로워 증가", desc: "계속 보고 싶게 만들어 팔로우를 유도", need: "helpful" as const },
-  { value: "Leads", label: "리드 확보", desc: "무료 자료 등으로 연락처(리드)를 모으는 글", need: "required" as const },
-  { value: "Sales", label: "판매·전환", desc: "이득·증거·CTA로 구매·클릭을 유도", need: "required" as const },
-  { value: "Awareness", label: "인지도", desc: "기억·공유되는 한 줄 메시지로 알리기", need: "helpful" as const },
-  { value: "Personal Branding", label: "퍼스널 브랜딩", desc: "내 경험·전문성으로 신뢰를 쌓는 글", need: "optional" as const },
-  { value: "Fun", label: "재미·바이럴", desc: "위트·밈으로 가볍게 퍼지는 글", need: "optional" as const },
-];
+import { GENERATE_GOALS as GOALS } from "@/lib/goals";
 const TONES = [
   { value: "Expert", label: "전문가" },
   { value: "Friendly", label: "친근함" },

@@ -57,6 +57,7 @@ public class AiContentController {
     public GenerateSeriesResponse series(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody GenerateSeriesRequest request) {
-        return contentGenerationService.generateSeries(userId, request.topic(), request.days());
+        return contentGenerationService.generateSeries(
+                userId, request.topic(), request.days(), request.goalOrDefault(), request.brandId());
     }
 }

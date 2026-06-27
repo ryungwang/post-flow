@@ -83,16 +83,16 @@ public class ContentGenerationService {
     }
 
     @Transactional
-    public GenerateSeriesResponse generateSeries(Long userId, String topic, int days) {
+    public GenerateSeriesResponse generateSeries(Long userId, String topic, int days, String goal, Long brandId) {
         usageService.assertCanSeries(userId);
         usageService.assertCanGenerate(userId);
         String systemPrompt = promptBuilder.seriesSystemPrompt();
-        String userPrompt = promptBuilder.seriesUserPrompt(topic, days);
+        String userPrompt = promptBuilder.seriesUserPrompt(topic, days, goal, brandContext(userId, brandId));
 
         GenerationRequest llmRequest = GenerationRequest.builder()
                 .systemPrompt(systemPrompt)
                 .prompt(userPrompt)
-                .maxTokens(estimateMaxTokens(days))
+                .maxTokens(estimateSeriesTokens(days))
                 .tier(ModelTier.PREMIUM) // series planning → Opus (PRD)
                 .cacheHint(true)
                 .build();
@@ -142,6 +142,11 @@ public class ContentGenerationService {
 
     private int estimateMaxTokens(int quantity) {
         return Math.min(MAX_OUTPUT_TOKENS, 500 + quantity * 300);
+    }
+
+    /** Series items are larger (title + rich multi-line post per day) → wider budget to avoid truncation. */
+    private int estimateSeriesTokens(int days) {
+        return Math.min(MAX_OUTPUT_TOKENS, 1000 + days * 700);
     }
 
     private List<GeneratedCard> parseCards(String raw) {

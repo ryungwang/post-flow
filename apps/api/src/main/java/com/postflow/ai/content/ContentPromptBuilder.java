@@ -115,10 +115,18 @@ public class ContentPromptBuilder {
                 """;
     }
 
-    public String seriesUserPrompt(String topic, int days) {
+    public String seriesUserPrompt(String topic, int days, String goal, String brandContext) {
         return """
                 Topic: %s
+                Goal: %s
+                %s
+                %s
                 Build a %d-day content series as a JSON array (day 1..%d).
-                """.formatted(topic, days, days);
+                """.formatted(
+                topic,
+                goal,
+                goalGuidance(goal),
+                brandContext == null ? "" : brandContext,
+                days, days);
     }
 }
