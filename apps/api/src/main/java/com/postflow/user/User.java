@@ -56,6 +56,10 @@ public class User extends BaseTimeEntity {
     @Column(name = "toss_billing_key", length = 255)
     private String tossBillingKey;
 
+    /** Consecutive failed recurring charges (0 = healthy). Grace before downgrade. */
+    @Column(name = "payment_failed_count", nullable = false)
+    private int paymentFailedCount = 0;
+
     public static User create(String email, String name, String profileImage) {
         User u = new User();
         u.email = email;
@@ -85,11 +89,17 @@ public class User extends BaseTimeEntity {
         this.stripeCustomerId = stripeCustomerId;
     }
 
-    /** Active paid subscription: set plan, period end, clear any scheduled cancel. */
+    /** Active paid subscription: set plan, period end, clear scheduled cancel + payment failures. */
     public void activateSubscription(Plan plan, java.time.Instant periodEnd) {
         this.plan = plan;
         this.currentPeriodEnd = periodEnd;
         this.cancelScheduled = false;
+        this.paymentFailedCount = 0;
+    }
+
+    /** A recurring charge failed → increment grace counter. */
+    public void recordPaymentFailure() {
+        this.paymentFailedCount += 1;
     }
 
     public void setTossBillingKey(String tossBillingKey) {
@@ -113,5 +123,6 @@ public class User extends BaseTimeEntity {
         this.plan = Plan.FREE;
         this.cancelScheduled = false;
         this.currentPeriodEnd = null;
+        this.paymentFailedCount = 0;
     }
 }

@@ -25,6 +25,8 @@ import java.util.UUID;
 public class RecurringBillingJob {
 
     private static final Logger log = LoggerFactory.getLogger(RecurringBillingJob.class);
+    /** 연속 실패 허용 횟수(유예) — 초과 시 FREE 강등. */
+    private static final int MAX_RETRIES = 3;
 
     private final UserRepository userRepository;
     private final TossPaymentProvider toss;
@@ -52,8 +54,15 @@ public class RecurringBillingJob {
                 u.activateSubscription(u.getPlan(), Instant.now().plus(30, ChronoUnit.DAYS));
                 log.info("Recurring charge OK: user {} plan {}", u.getId(), u.getPlan());
             } catch (Exception e) {
-                // TODO: 재시도/실패 알림(연속 실패 시 강등). 우선 다음 주기에 재시도되도록 기간 유지.
-                log.warn("Recurring charge FAILED: user {} plan {} — {}", u.getId(), u.getPlan(), e.getMessage());
+                u.recordPaymentFailure();
+                if (u.getPaymentFailedCount() >= MAX_RETRIES) {
+                    u.endSubscription(); // 유예 소진 → FREE 강등 (알림은 NotificationController가 상태로 파생)
+                    log.warn("Recurring charge FAILED {}x → downgraded user {}", MAX_RETRIES, u.getId());
+                } else {
+                    // 기간 유지 → 다음 주기 재시도(유예). 알림은 paymentFailedCount로 표시.
+                    log.warn("Recurring charge FAILED ({}/{}): user {} — {}",
+                            u.getPaymentFailedCount(), MAX_RETRIES, u.getId(), e.getMessage());
+                }
             }
         }
     }
