@@ -1,8 +1,11 @@
 package com.postflow.billing;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.postflow.user.Plan;
 import com.postflow.user.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,9 +26,12 @@ import java.util.UUID;
 @ConditionalOnProperty(name = "payment.provider", havingValue = "toss")
 public class TossBillingController {
 
+    private static final Logger log = LoggerFactory.getLogger(TossBillingController.class);
+
     private final TossPaymentProvider toss;
     private final UserService userService;
     private final String clientKey;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public TossBillingController(TossPaymentProvider toss, UserService userService,
                                 @Value("${toss.client-key:}") String clientKey) {
@@ -88,5 +94,36 @@ public class TossBillingController {
         userService.activateTossSubscription(userId, plan, billingKey, Instant.now().plus(30, ChronoUnit.DAYS));
         return Map.of("ok", true, "plan", plan.name(),
                 "status", charge != null && charge.hasNonNull("status") ? charge.get("status").asText() : "DONE");
+    }
+
+    /**
+     * Toss webhook(public). 서명이 없으므로 payload의 paymentKey로 결제를 <b>재조회해 검증</b>한 뒤
+     * 처리한다(위·변조 방지). 결제가 취소/환불되면 orderId(sub_/renew_{userId})로 사용자를 강등.
+     */
+    @PostMapping("/webhook")
+    public org.springframework.http.ResponseEntity<String> webhook(@RequestBody String payload) {
+        try {
+            JsonNode body = objectMapper.readTree(payload);
+            JsonNode data = body.has("data") ? body.get("data") : body;
+            String paymentKey = data.path("paymentKey").asText(null);
+            if (paymentKey == null) {
+                return org.springframework.http.ResponseEntity.ok("ignored");
+            }
+            JsonNode pay = toss.fetchPayment(paymentKey); // 재조회 = 진위 검증
+            if (pay == null) {
+                return org.springframework.http.ResponseEntity.ok("unverified");
+            }
+            String status = pay.path("status").asText("");
+            String orderId = pay.path("orderId").asText("");
+            if (("CANCELED".equals(status) || "PARTIAL_CANCELED".equals(status)) && orderId.matches("(sub|renew)_\\d+_.*")) {
+                Long userId = Long.valueOf(orderId.split("_")[1]);
+                userService.endSubscription(userId);
+                log.info("Toss webhook: payment {} {} → user {} 강등", paymentKey, status, userId);
+            }
+            return org.springframework.http.ResponseEntity.ok("ok");
+        } catch (Exception e) {
+            log.warn("Toss webhook 처리 실패: {}", e.getMessage());
+            return org.springframework.http.ResponseEntity.ok("error"); // 200으로 재전송 폭주 방지
+        }
     }
 }

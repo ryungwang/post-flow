@@ -105,6 +105,12 @@ public class UserService {
         userRepository.findByStripeCustomerId(customerId).ifPresent(User::endSubscription);
     }
 
+    /** Downgrade a specific user to FREE (e.g., Toss payment canceled/refunded). */
+    @Transactional
+    public void endSubscription(Long userId) {
+        userRepository.findById(userId).ifPresent(User::endSubscription);
+    }
+
     @Transactional(readOnly = true)
     public User getById(Long id) {
         return userRepository.findById(id)

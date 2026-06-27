@@ -113,6 +113,19 @@ public class TossPaymentProvider implements PaymentProvider {
         return prices.getOrDefault(plan, 0L);
     }
 
+    /** Authoritative payment lookup by paymentKey (used to verify webhooks). Null if not found. */
+    public JsonNode fetchPayment(String paymentKey) {
+        try {
+            return toss.get()
+                    .uri("/v1/payments/{key}", paymentKey)
+                    .header(HttpHeaders.AUTHORIZATION, basicAuth())
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private String basicAuth() {
         // 토스 인증: "{secretKey}:" 를 base64 (비밀번호 없음)
         String token = Base64.getEncoder().encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
