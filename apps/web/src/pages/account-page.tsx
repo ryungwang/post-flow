@@ -193,6 +193,8 @@ export function AccountPage() {
             </CardContent>
           </Card>
 
+          <PaymentHistoryCard />
+
           <WebhookCard />
 
           <ExportCard />
@@ -242,7 +244,56 @@ function UsageBar() {
           </Badge>
         ))}
       </div>
+
+      {data.plan !== "FREE" && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+          {data.currentPeriodEnd && (
+            <span>
+              {data.cancelScheduled ? "이용 종료" : "다음 결제"}:{" "}
+              <span className="font-medium text-foreground/80">{new Date(data.currentPeriodEnd).toLocaleDateString("ko-KR")}</span>
+            </span>
+          )}
+          <span>결제수단: <span className="font-medium text-foreground/80">{data.hasPaymentMethod ? "등록됨" : "미등록"}</span></span>
+          {data.paymentFailedCount > 0 && <span className="text-rose-500">결제 실패 {data.paymentFailedCount}회</span>}
+        </div>
+      )}
     </div>
+  );
+}
+
+function PaymentHistoryCard() {
+  const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
+  const { data } = useQuery({ queryKey: ["billing", "history"], queryFn: billingApi.history });
+  if (!usage || (usage.plan === "FREE" && (!data || data.length === 0))) return null;
+  const rows = data ?? [];
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>결제 이력</CardTitle>
+        <CardDescription>최근 결제 내역(최대 20건)</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? (
+          <p className="py-4 text-sm text-muted-foreground">결제 내역이 없어요.</p>
+        ) : (
+          <ul className="divide-y divide-border/60 text-sm">
+            {rows.map((p, i) => (
+              <li key={i} className="flex items-center justify-between py-2.5">
+                <div>
+                  <span className="font-medium">{p.plan}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">{p.kind === "first" ? "첫 결제" : "정기 갱신"}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="tabular-nums">{p.amount.toLocaleString()}원</span>
+                  <span className="text-xs text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("ko-KR")}</span>
+                  <Badge variant={p.status === "DONE" ? "success" : "secondary"}>{p.status === "DONE" ? "완료" : p.status}</Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

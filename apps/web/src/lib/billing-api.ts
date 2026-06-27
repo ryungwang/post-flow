@@ -11,4 +11,8 @@ export const billingApi = {
     api.post<{ charged?: boolean; needCard?: boolean; plan?: string }>("/billing/toss/charge", { plan }),
   tossConfirm: (authKey: string, plan: string) =>
     api.post<{ ok: boolean; plan: string; status: string }>("/billing/toss/confirm", { authKey, plan }),
+  history: () =>
+    api.get<{ amount: number; currency: string; plan: string; kind: string; status: string; createdAt: string }[]>(
+      "/billing/toss/history",
+    ),
 };

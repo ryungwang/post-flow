@@ -30,13 +30,16 @@ public class TossBillingController {
 
     private final TossPaymentProvider toss;
     private final UserService userService;
+    private final PaymentRepository paymentRepository;
     private final String clientKey;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public TossBillingController(TossPaymentProvider toss, UserService userService,
+                                PaymentRepository paymentRepository,
                                 @Value("${toss.client-key:}") String clientKey) {
         this.toss = toss;
         this.userService = userService;
+        this.paymentRepository = paymentRepository;
         this.clientKey = clientKey;
     }
 
@@ -67,6 +70,7 @@ public class TossBillingController {
         String orderId = "sub_" + userId + "_" + UUID.randomUUID().toString().substring(0, 8);
         toss.charge(billingKey, customerKey, toss.priceOf(plan), orderId, plan.name() + " 구독");
         userService.activateTossSubscription(userId, plan, billingKey, Instant.now().plus(30, ChronoUnit.DAYS));
+        paymentRepository.save(Payment.of(userId, toss.priceOf(plan), "KRW", plan.name(), "renew", "DONE", "toss", orderId));
         return Map.of("charged", true, "plan", plan.name());
     }
 
@@ -92,8 +96,19 @@ public class TossBillingController {
         JsonNode charge = toss.charge(billingKey, customerKey, amount, orderId, plan.name() + " 구독");
 
         userService.activateTossSubscription(userId, plan, billingKey, Instant.now().plus(30, ChronoUnit.DAYS));
+        paymentRepository.save(Payment.of(userId, amount, "KRW", plan.name(), "first", "DONE", "toss", orderId));
         return Map.of("ok", true, "plan", plan.name(),
                 "status", charge != null && charge.hasNonNull("status") ? charge.get("status").asText() : "DONE");
+    }
+
+    /** 결제 이력(최근 20건). */
+    @GetMapping("/history")
+    public java.util.List<Map<String, Object>> history(@AuthenticationPrincipal Long userId) {
+        return paymentRepository.findByUserIdOrderByCreatedAtDesc(userId, org.springframework.data.domain.Limit.of(20)).stream()
+                .map(pmt -> Map.<String, Object>of(
+                        "amount", pmt.getAmount(), "currency", pmt.getCurrency(), "plan", pmt.getPlan(),
+                        "kind", pmt.getKind(), "status", pmt.getStatus(), "createdAt", pmt.getCreatedAt().toString()))
+                .toList();
     }
 
     /**

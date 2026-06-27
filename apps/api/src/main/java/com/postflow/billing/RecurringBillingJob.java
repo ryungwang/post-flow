@@ -30,10 +30,12 @@ public class RecurringBillingJob {
 
     private final UserRepository userRepository;
     private final TossPaymentProvider toss;
+    private final PaymentRepository paymentRepository;
 
-    public RecurringBillingJob(UserRepository userRepository, TossPaymentProvider toss) {
+    public RecurringBillingJob(UserRepository userRepository, TossPaymentProvider toss, PaymentRepository paymentRepository) {
         this.userRepository = userRepository;
         this.toss = toss;
+        this.paymentRepository = paymentRepository;
     }
 
     /** 매시간 갱신 대상 점검(기간 지난 활성 Toss 구독 → 재청구 + 30일 연장). */
@@ -49,9 +51,10 @@ public class RecurringBillingJob {
             try {
                 String customerKey = "user_" + u.getId();
                 String orderId = "renew_" + u.getId() + "_" + UUID.randomUUID().toString().substring(0, 8);
-                toss.charge(u.getTossBillingKey(), customerKey, toss.priceOf(u.getPlan()),
-                        orderId, u.getPlan().name() + " 구독 갱신");
+                long amount = toss.priceOf(u.getPlan());
+                toss.charge(u.getTossBillingKey(), customerKey, amount, orderId, u.getPlan().name() + " 구독 갱신");
                 u.activateSubscription(u.getPlan(), Instant.now().plus(30, ChronoUnit.DAYS));
+                paymentRepository.save(Payment.of(u.getId(), amount, "KRW", u.getPlan().name(), "renew", "DONE", "toss", orderId));
                 log.info("Recurring charge OK: user {} plan {}", u.getId(), u.getPlan());
             } catch (Exception e) {
                 u.recordPaymentFailure();

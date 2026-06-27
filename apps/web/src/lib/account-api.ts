@@ -11,6 +11,8 @@ export type Usage = {
   canMultiAccount: boolean;
   cancelScheduled: boolean;
   currentPeriodEnd: string | null;
+  hasPaymentMethod: boolean;
+  paymentFailedCount: number;
 };
 
 export const accountApi = {
