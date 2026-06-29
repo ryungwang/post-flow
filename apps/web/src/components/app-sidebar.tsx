@@ -17,6 +17,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { accountApi } from "@/lib/account-api";
+import { IN_APP_BILLING } from "@/lib/billing-config";
 import { cn } from "@/lib/utils";
 
 type Leaf = { label: string; to: string; icon?: React.ComponentType<{ className?: string }> };
@@ -122,6 +123,7 @@ const NEXT_PLAN: Record<string, string> = { FREE: "Starter", STARTER: "Pro", PRO
 
 function UpgradeCta() {
   const { data } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
+  if (!IN_APP_BILLING) return null; // 결제는 별도 사이트 — 인앱 업그레이드 CTA 숨김
   if (!data || data.plan === "BUSINESS") return null; // 최상위 플랜이면 숨김
   const next = NEXT_PLAN[data.plan] ?? "Pro";
   return (

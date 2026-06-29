@@ -35,8 +35,23 @@ docker build -f apps/web/Dockerfile -t postflow-web \
 | `THREADS_APP_ID` / `THREADS_APP_SECRET` | Threads |
 | `THREADS_REDIRECT_URI=https://api.example.com/api/threads/callback` | Threads 콜백(고정 https) |
 | `THREADS_FRONTEND_REDIRECT_URL=https://app.example.com/settings/threads?threads=connected` | 연결 후 복귀 |
-| `PAYMENT_PROVIDER=toss` | 결제 PG (toss\|stripe) |
-| `TOSS_SECRET_KEY` / `TOSS_CLIENT_KEY` | Toss 키 (또는 STRIPE_* 일습) |
+| `BILLING_SYNC_SECRET` | 외부 결제 사이트 → 내부 plan 동기화 공유 시크릿(없으면 동기화 API 비활성) |
+| `PAYMENT_PROVIDER` / `TOSS_*` / `STRIPE_*` | (선택) 인앱 결제용 — 현재 인앱 결제 UI는 숨김(`IN_APP_BILLING=false`), 결제는 별도 사이트 |
+
+## 결제 연동 (별도 결제 사이트 → 이 앱)
+인앱 결제 UI는 숨겨져 있고(`apps/web/src/lib/billing-config.ts` → `IN_APP_BILLING`), 결제는 **별도 결제 사이트**가 처리한다.
+결제/취소 후 결제 사이트가 아래 내부 API로 plan을 동기화한다(서버↔서버, 공유 시크릿).
+
+```
+POST https://api.example.com/api/internal/billing/plan
+Header: X-Internal-Token: <BILLING_SYNC_SECRET>
+Body(JSON): { "userId": 1 | "email": "user@x.com",   // 둘 중 하나
+              "plan": "STARTER|PRO|BUSINESS",          // ACTIVATE 시 필수
+              "action": "ACTIVATE|SCHEDULE_CANCEL|CANCEL",
+              "periodEnd": "2026-12-31T00:00:00Z" }    // 선택(기본 now+30일)
+```
+- `ACTIVATE`: 유료 플랜 활성(기간 설정) · `SCHEDULE_CANCEL`: 기간 말 취소 예약 · `CANCEL`: 즉시 FREE
+- 미인증=401, 사용자 없음=404, 시크릿 미설정=503
 
 ## 3. 서버 docker-compose.yml (레퍼런스 — 서버에서 관리)
 ```yaml

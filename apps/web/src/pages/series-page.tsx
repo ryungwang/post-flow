@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { seriesApi, type SeriesItem } from "@/lib/series-api";
 import { brandApi } from "@/lib/brand-api";
 import { GENERATE_GOALS } from "@/lib/goals";
+import { IN_APP_BILLING } from "@/lib/billing-config";
 import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ThreadsPreview } from "@/components/threads-preview";
@@ -136,7 +137,7 @@ export function SeriesPage() {
             {error && (
               <span className="flex items-center gap-2 text-sm text-destructive">
                 {error}
-                {limited && (
+                {limited && IN_APP_BILLING && (
                   <Link to="/settings/account" className="bg-brand-gradient rounded-md px-2.5 py-1 text-xs font-semibold text-brand-foreground">
                     업그레이드
                   </Link>

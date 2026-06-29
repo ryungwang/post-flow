@@ -10,6 +10,7 @@ import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
 import { accountApi } from "@/lib/account-api";
 import { billingApi } from "@/lib/billing-api";
+import { IN_APP_BILLING } from "@/lib/billing-config";
 import { useConfirm } from "@/components/confirm-dialog";
 import { postsApi } from "@/lib/posts-api";
 import { toCsv, downloadCsv, download } from "@/lib/csv";
@@ -151,26 +152,36 @@ export function AccountPage() {
                           </li>
                         ))}
                       </ul>
-                      <Button
-                        variant={active ? "secondary" : "default"}
-                        size="sm"
-                        className="mt-4 w-full"
-                        disabled={active || p.key === "FREE" || upgrade.isPending}
-                        onClick={() => upgrade.mutate(p.key)}
-                      >
-                        {upgrade.isPending && upgrade.variables === p.key
-                          ? <Loader2 className="size-4 animate-spin" />
-                          : active ? "사용 중" : "업그레이드"}
-                      </Button>
+                      {IN_APP_BILLING ? (
+                        <Button
+                          variant={active ? "secondary" : "default"}
+                          size="sm"
+                          className="mt-4 w-full"
+                          disabled={active || p.key === "FREE" || upgrade.isPending}
+                          onClick={() => upgrade.mutate(p.key)}
+                        >
+                          {upgrade.isPending && upgrade.variables === p.key
+                            ? <Loader2 className="size-4 animate-spin" />
+                            : active ? "사용 중" : "업그레이드"}
+                        </Button>
+                      ) : (
+                        active && (
+                          <div className="mt-4 w-full rounded-md bg-muted py-1.5 text-center text-xs font-medium text-muted-foreground">
+                            사용 중
+                          </div>
+                        )
+                      )}
                     </div>
                   );
                 })}
               </div>
               <div className="mt-3 flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">
-                  Stripe 결제 — 키 설정 시 실결제, 미설정(로컬) 시 바로 전환됩니다.
+                  {IN_APP_BILLING
+                    ? "Stripe 결제 — 키 설정 시 실결제, 미설정(로컬) 시 바로 전환됩니다."
+                    : "결제·구독 변경은 별도 결제 사이트에서 진행됩니다."}
                 </p>
-                {currentPlan !== "FREE" && (
+                {IN_APP_BILLING && currentPlan !== "FREE" && (
                   <Button
                     variant="ghost"
                     size="sm"

@@ -33,6 +33,7 @@ import { ApiError } from "@/lib/api";
 
 const TOPIC_CHIPS = ["AI", "스타트업", "개발", "생산성", "여행", "음식", "운동", "육아"];
 import { GENERATE_GOALS as GOALS } from "@/lib/goals";
+import { IN_APP_BILLING } from "@/lib/billing-config";
 const TONES = [
   { value: "Expert", label: "전문가" },
   { value: "Friendly", label: "친근함" },
@@ -238,7 +239,7 @@ export function GeneratePage() {
             {error && (
               <span className="flex items-center gap-2 text-sm text-destructive">
                 {error}
-                {limited && (
+                {limited && IN_APP_BILLING && (
                   <Link to="/settings/account" className="bg-brand-gradient rounded-md px-2.5 py-1 text-xs font-semibold text-brand-foreground">
                     업그레이드
                   </Link>
