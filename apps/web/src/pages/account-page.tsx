@@ -15,10 +15,9 @@ import { LEGAL } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 
 const PLANS = [
-  { key: "FREE", name: "Free", price: "₩0", features: ["월 30회 생성"] },
-  { key: "STARTER", name: "Starter", price: "₩9,900", features: ["월 300회 생성", "예약 발행"] },
-  { key: "PRO", name: "Pro", price: "₩29,000", features: ["무제한 생성", "분석", "시리즈 생성"] },
-  { key: "BUSINESS", name: "Business", price: "₩49,000", features: ["다중 계정", "우선 지원"] },
+  { key: "FREE", name: "Free", price: "₩0", features: ["월 30개 생성"] },
+  { key: "BASIC", name: "Basic", price: "₩15,000", features: ["월 50개 생성", "1채널 연동", "기본 템플릿"] },
+  { key: "PRO", name: "Pro", price: "₩25,000", features: ["무제한 생성", "5채널 연동", "예약 발행", "성과 분석"] },
 ];
 
 const THEMES = [
@@ -109,7 +108,7 @@ export function AccountPage() {
             </CardHeader>
             <CardContent>
               <UsageBar />
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-3">
                 {PLANS.map((p) => {
                   const active = p.key === currentPlan;
                   return (

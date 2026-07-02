@@ -1,6 +1,8 @@
 package com.postflow.auth;
 
 import com.postflow.auth.dto.UserDto;
+import com.postflow.billing.EntitlementService;
+import com.postflow.user.User;
 import com.postflow.user.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -25,10 +27,13 @@ import java.util.Map;
 public class AuthController {
 
     private final UserService userService;
+    private final EntitlementService entitlementService;
     private final RestClient sso;
 
-    public AuthController(UserService userService, @Value("${sso.base-url}") String ssoBaseUrl) {
+    public AuthController(UserService userService, EntitlementService entitlementService,
+                          @Value("${sso.base-url}") String ssoBaseUrl) {
         this.userService = userService;
+        this.entitlementService = entitlementService;
         this.sso = RestClient.create(ssoBaseUrl);
     }
 
@@ -59,9 +64,11 @@ public class AuthController {
         }
     }
 
-    /** Current authenticated user (local profile linked to the SSO identity). */
+    /** Current user. Pulls the authoritative plan from billing entitlements (session refresh). */
     @GetMapping("/me")
     public UserDto me(@AuthenticationPrincipal Long userId) {
+        User user = userService.getById(userId);
+        entitlementService.syncPlan(userId, user.getExternalId()); // billing = source of truth
         return UserDto.from(userService.getById(userId));
     }
 }

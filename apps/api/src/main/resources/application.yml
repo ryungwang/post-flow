@@ -61,6 +61,13 @@ auth:
   # Threads OAuth state 서명용(내부 전용). 로그인용 아님.
   state-secret: ${AUTH_STATE_SECRET:dev-only-insecure-state-secret-change-me-32b!}
 
+# synub-billing 연동(구독의 진실). entitlements pull + 웹훅 수신.
+billing:
+  base-url: ${BILLING_BASE_URL:http://localhost:8088}
+  service-code: ${BILLING_SERVICE_CODE:threads}
+  service-key: ${SERVICE_API_KEY:local-service-key}
+  webhook-secret: ${BILLING_WEBHOOK_SECRET:local-dev-webhook-secret}
+
 threads:
   app-id: ${THREADS_APP_ID:}
   app-secret: ${THREADS_APP_SECRET:}

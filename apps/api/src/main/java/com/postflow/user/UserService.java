@@ -83,6 +83,23 @@ public class UserService {
         userRepository.findById(userId).ifPresent(User::endSubscription);
     }
 
+    /** Reconcile local plan cache from a billing entitlement (FREE ⇒ end, else activate). */
+    @Transactional
+    public void applyEntitlement(Long userId, Plan plan, java.time.Instant periodEnd) {
+        User user = getById(userId);
+        if (plan == Plan.FREE) {
+            user.endSubscription();
+        } else {
+            user.activateSubscription(plan, periodEnd);
+        }
+    }
+
+    /** Resolve local user id for an SSO external id (webhook path); null if unknown. */
+    @Transactional(readOnly = true)
+    public Long findIdByExternalId(String externalId) {
+        return userRepository.findByExternalId(externalId).map(User::getId).orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public User getById(Long id) {
         return userRepository.findById(id)
