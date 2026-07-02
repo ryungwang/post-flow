@@ -38,7 +38,6 @@ export function AccountPage() {
   const navigate = useNavigate();
 
   const logout = () => {
-    window.google?.accounts.id.disableAutoSelect();
     clear();
     navigate("/login", { replace: true });
   };

@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, CalendarClock, MessageSquareReply, Sparkles, TrendingUp, Wand2 } from "lucide-react";
+import { BarChart3, CalendarClock, Loader2, MessageSquareReply, Sparkles, TrendingUp, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { GoogleSignInButton } from "@/auth/google-sign-in-button";
-import { authApi } from "@/lib/auth-api";
+import { authApi, DEMO_LOGIN } from "@/lib/auth-api";
+import { setRefreshToken, useAuth } from "@/store/auth";
 import { LEGAL } from "@/lib/legal";
-import { useAuth } from "@/store/auth";
 
 export function LoginPage() {
   const token = useAuth((s) => s.token);
+  const setToken = useAuth((s) => s.setToken);
   const setAuth = useAuth((s) => s.setAuth);
   const navigate = useNavigate();
   const location = useLocation();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,32 +25,26 @@ export function LoginPage() {
     return <Navigate to={from ?? "/"} replace />;
   }
 
-  const handleCredential = async (idToken: string) => {
+  const doLogin = async (mail: string, pw: string) => {
     setLoading(true);
     setError(null);
     try {
-      const { token: jwt, user } = await authApi.loginWithGoogle(idToken);
-      setAuth(jwt, user);
+      const tokens = await authApi.login(mail, pw);
+      setToken(tokens.accessToken); // 먼저 저장해야 /auth/me 가 Authorization 헤더에 실림
+      setRefreshToken(tokens.refreshToken);
+      const user = await authApi.me();
+      setAuth(tokens.accessToken, user);
       navigate("/", { replace: true });
     } catch {
-      setError("로그인에 실패했어요. 다시 시도해 주세요.");
+      setError("로그인에 실패했어요. 이메일·비밀번호를 확인해 주세요.");
     } finally {
       setLoading(false);
     }
   };
 
-  const devLogin = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { token: jwt, user } = await authApi.devLogin();
-      setAuth(jwt, user);
-      navigate("/", { replace: true });
-    } catch {
-      setError("개발용 로그인에 실패했어요. 백엔드(local) 실행을 확인하세요.");
-    } finally {
-      setLoading(false);
-    }
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim() && password) doLogin(email.trim(), password);
   };
 
   const features = [
@@ -112,19 +110,39 @@ export function LoginPage() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">로그인 / 회원가입</h2>
+            <h2 className="text-2xl font-bold tracking-tight">로그인</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Google 계정으로 1초 만에 시작하세요.<br />처음이면 자동으로 가입돼요 — 별도 절차가 없습니다.
+              synub 통합계정으로 로그인하세요. 하나의 계정으로 synub의 모든 서비스를 이용합니다.
             </p>
           </div>
 
-          <div className="mt-7">
-            <GoogleSignInButton onCredential={handleCredential} />
-          </div>
-          <p className="mt-2 text-center text-xs text-muted-foreground">가입·로그인이 하나로 처리됩니다.</p>
+          <form className="mt-7 space-y-3" onSubmit={onSubmit}>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">이메일</Label>
+              <Input id="email" type="email" autoComplete="email" placeholder="you@example.com"
+                value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">비밀번호</Label>
+              <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••"
+                value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <Button type="submit" className="w-full gap-2" disabled={loading || !email.trim() || !password}>
+              {loading && <Loader2 className="size-4 animate-spin" />} 로그인
+            </Button>
+          </form>
 
-          {loading && <p className="mt-3 text-center text-xs text-muted-foreground">로그인 중…</p>}
           {error && <p className="mt-3 text-center text-xs text-destructive">{error}</p>}
+
+          <div className="mt-6 border-t pt-5">
+            <Button variant="secondary" className="w-full" disabled={loading}
+              onClick={() => doLogin(DEMO_LOGIN.email, DEMO_LOGIN.password)}>
+              데모로 둘러보기
+            </Button>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              가입 없이 데모 계정으로 전체 기능을 체험할 수 있어요.
+            </p>
+          </div>
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
             로그인 시{" "}
@@ -133,17 +151,6 @@ export function LoginPage() {
             <a href={LEGAL.privacy} target="_blank" rel="noreferrer" className="underline hover:text-foreground">개인정보 처리방침</a>
             에 동의하게 됩니다.
           </p>
-
-          {import.meta.env.DEV && (
-            <div className="mt-6 border-t pt-5">
-              <Button variant="secondary" className="w-full" onClick={devLogin} disabled={loading}>
-                개발용 로그인 (로컬)
-              </Button>
-              <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                키 없이 화면을 둘러보기 위한 로컬 전용 로그인입니다.
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>

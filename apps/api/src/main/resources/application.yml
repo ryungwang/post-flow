@@ -50,13 +50,16 @@ ai:
       STANDARD: claude-sonnet-4-6
       PREMIUM: claude-opus-4-8
 
+# 로그인은 synub-sso(통합계정)로 중앙화. post-flow는 SSO RS256 토큰을 JWKS로 검증.
+sso:
+  base-url: ${SSO_BASE_URL:http://localhost:8090}
+  issuer: ${SSO_ISSUER:https://accounts.synub.io}
+  audience: ${SSO_AUDIENCE:synub-postflow}
+  jwks-uri: ${SSO_JWKS_URI:http://localhost:8090/.well-known/jwks.json}
+
 auth:
-  google:
-    client-id: ${GOOGLE_CLIENT_ID:}
-  jwt:
-    # Dev default is non-secret; prod MUST inject AUTH_JWT_SECRET (>= 32 bytes).
-    secret: ${AUTH_JWT_SECRET:dev-only-insecure-secret-change-me-32bytes!!}
-    expiration: ${AUTH_JWT_EXPIRATION:7d}
+  # Threads OAuth state 서명용(내부 전용). 로그인용 아님.
+  state-secret: ${AUTH_STATE_SECRET:dev-only-insecure-state-secret-change-me-32b!}
 
 threads:
   app-id: ${THREADS_APP_ID:}

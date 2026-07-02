@@ -1,6 +1,6 @@
 package com.postflow.threads;
 
-import com.postflow.auth.JwtService;
+import com.postflow.auth.OAuthStateService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -12,14 +12,14 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class ThreadsOAuthService {
 
     private final ThreadsProperties properties;
-    private final JwtService jwtService;
+    private final OAuthStateService oauthStateService;
     private final SocialAccountService socialAccountService;
 
     public ThreadsOAuthService(ThreadsProperties properties,
-                               JwtService jwtService,
+                               OAuthStateService oauthStateService,
                                SocialAccountService socialAccountService) {
         this.properties = properties;
-        this.jwtService = jwtService;
+        this.oauthStateService = oauthStateService;
         this.socialAccountService = socialAccountService;
     }
 
@@ -30,14 +30,14 @@ public class ThreadsOAuthService {
                 .queryParam("redirect_uri", properties.redirectUri())
                 .queryParam("scope", properties.scopesOrDefault())
                 .queryParam("response_type", "code")
-                .queryParam("state", jwtService.issueState(userId))
+                .queryParam("state", oauthStateService.issueState(userId))
                 .build()
                 .toUriString();
     }
 
     /** Validate state, exchange the code, store the connection; returns the frontend redirect URL. */
     public String handleCallback(String code, String state) {
-        Long userId = jwtService.parseUserId(state);
+        Long userId = oauthStateService.parseUserId(state);
         socialAccountService.connectFromCode(userId, code);
         return properties.frontendRedirectUrl();
     }

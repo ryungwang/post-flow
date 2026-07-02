@@ -1,5 +1,6 @@
 package com.postflow.auth;
 
+import com.postflow.user.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -7,6 +8,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -15,18 +19,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Reads a {@code Bearer} JWT, validates it, and sets the authenticated principal
- * (the user id) into the security context.
+ * Reads a {@code Bearer} SSO access token, verifies it (RS256 via JWKS), resolves the local
+ * user for its {@code sub}(external_id), and sets that user id as the authenticated principal.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
-    private final JwtService jwtService;
+    private final JwtDecoder ssoJwtDecoder;
+    private final UserService userService;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
-        this.jwtService = jwtService;
+    public JwtAuthenticationFilter(JwtDecoder ssoJwtDecoder, UserService userService) {
+        this.ssoJwtDecoder = ssoJwtDecoder;
+        this.userService = userService;
     }
 
     @Override
@@ -37,13 +43,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             String token = header.substring(BEARER_PREFIX.length());
             try {
-                Long userId = jwtService.parseUserId(token);
+                Jwt jwt = ssoJwtDecoder.decode(token);
+                Long userId = userService.resolveBySso(
+                        jwt.getSubject(), jwt.getClaimAsString("email"), jwt.getClaimAsString("name"));
                 var auth = new UsernamePasswordAuthenticationToken(
                         userId, null, AuthorityUtils.NO_AUTHORITIES);
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(auth);
-            } catch (InvalidTokenException ignored) {
-                // leave unauthenticated; protected endpoints will return 401
+            } catch (JwtException ignored) {
+                // invalid/expired token → leave unauthenticated; protected endpoints return 401
             }
         }
         filterChain.doFilter(request, response);

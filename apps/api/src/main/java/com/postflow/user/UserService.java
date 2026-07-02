@@ -39,15 +39,20 @@ public class UserService {
         return HexFormat.of().formatHex(bytes);
     }
 
-    /** Upsert a user from a verified Google identity (create on first login, else refresh profile). */
+    /**
+     * Resolve the local user for a verified SSO identity (token sub = external_id).
+     * Create on first login; else refresh cached profile. Links a pre-existing email match once.
+     */
     @Transactional
-    public User upsertFromGoogle(String email, String name, String profileImage) {
-        return userRepository.findByEmail(email)
-                .map(existing -> {
-                    existing.updateProfile(name, profileImage);
+    public Long resolveBySso(String externalId, String email, String name) {
+        User user = userRepository.findByExternalId(externalId)
+                .or(() -> userRepository.findByEmail(email).map(existing -> {
+                    existing.linkExternalId(externalId); // 기존 이메일 유저를 SSO 신원에 1회 연결
                     return existing;
-                })
-                .orElseGet(() -> userRepository.save(User.create(email, name, profileImage)));
+                }))
+                .orElseGet(() -> userRepository.save(User.createFromSso(externalId, email, name)));
+        user.updateProfile(name, user.getProfileImage());
+        return user.getId();
     }
 
     @Transactional

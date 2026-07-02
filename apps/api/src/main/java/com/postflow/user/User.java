@@ -23,6 +23,10 @@ public class User extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** SSO(통합계정) 신원 = 토큰 sub(external_id). 크레덴셜은 SSO에만 있고 여긴 없음. */
+    @Column(name = "external_id", length = 64, unique = true)
+    private String externalId;
+
     @Column(nullable = false, unique = true)
     private String email;
 
@@ -57,6 +61,20 @@ public class User extends BaseTimeEntity {
         u.profileImage = profileImage;
         u.plan = Plan.FREE;
         return u;
+    }
+
+    /** Create a local profile linked to an SSO identity (no credentials stored here). */
+    public static User createFromSso(String externalId, String email, String name) {
+        User u = new User();
+        u.externalId = externalId;
+        u.email = email;
+        u.name = name;
+        u.plan = Plan.FREE;
+        return u;
+    }
+
+    public void linkExternalId(String externalId) {
+        this.externalId = externalId;
     }
 
     /** Refresh mutable profile fields from the identity provider on each login. */

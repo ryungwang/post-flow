@@ -19,7 +19,6 @@ export function AppShell() {
   const location = useLocation();
 
   const logout = () => {
-    window.google?.accounts.id.disableAutoSelect();
     clear();
     navigate("/login", { replace: true });
   };
