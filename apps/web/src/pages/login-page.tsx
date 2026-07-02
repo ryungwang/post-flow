@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { BarChart3, CalendarClock, Loader2, MessageSquareReply, Sparkles, TrendingUp, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,22 @@ export function LoginPage() {
   const setAuth = useAuth((s) => s.setAuth);
   const navigate = useNavigate();
   const location = useLocation();
+  const [params] = useSearchParams();
+  const autoDemo = params.has("demo"); // 무로그인 체험 진입점(빌링 데모 URL)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const autoRan = useRef(false);
+
+  // ?demo → 데모 계정으로 자동 로그인해 바로 둘러보기(로그인 화면을 거치지 않음).
+  useEffect(() => {
+    if (autoDemo && !token && !autoRan.current) {
+      autoRan.current = true;
+      doLogin(DEMO_LOGIN.email, DEMO_LOGIN.password);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoDemo, token]);
 
   if (token) {
     const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
