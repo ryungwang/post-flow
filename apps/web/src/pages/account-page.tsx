@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
 import { accountApi } from "@/lib/account-api";
+import { BILLING_SUBSCRIPTIONS_URL } from "@/lib/billing-web";
 import { threadsApi } from "@/lib/threads-api";
 import { postsApi } from "@/lib/posts-api";
 import { toCsv, downloadCsv, download } from "@/lib/csv";
@@ -136,17 +137,35 @@ export function AccountPage() {
                           </li>
                         ))}
                       </ul>
-                      {active && (
-                        <div className="bg-brand/10 text-brand mt-4 w-full rounded-md py-1.5 text-center text-xs font-semibold">
-                          사용 중
-                        </div>
-                      )}
+                      {active ? (
+                        <a
+                          href={BILLING_SUBSCRIPTIONS_URL}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="bg-brand/10 text-brand hover:bg-brand/15 mt-4 w-full rounded-md py-1.5 text-center text-xs font-semibold transition-colors"
+                        >
+                          구독 관리
+                        </a>
+                      ) : p.key !== "FREE" ? (
+                        <a
+                          href={BILLING_SUBSCRIPTIONS_URL}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="border-border hover:border-brand/40 hover:text-brand mt-4 w-full rounded-md border py-1.5 text-center text-xs font-semibold text-muted-foreground transition-colors"
+                        >
+                          이 플랜으로
+                        </a>
+                      ) : null}
                     </div>
                   );
                 })}
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                구독·결제·플랜 변경은 synub 통합 결제에서 관리됩니다.
+                구독·결제·플랜 변경은{" "}
+                <a href={BILLING_SUBSCRIPTIONS_URL} target="_blank" rel="noreferrer" className="text-brand font-medium hover:underline">
+                  synub 통합 결제
+                </a>
+                에서 관리됩니다.
               </p>
             </CardContent>
           </Card>
