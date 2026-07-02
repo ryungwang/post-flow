@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { seriesApi, type SeriesItem } from "@/lib/series-api";
 import { brandApi } from "@/lib/brand-api";
 import { GENERATE_GOALS } from "@/lib/goals";
-import { IN_APP_BILLING } from "@/lib/billing-config";
 import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ThreadsPreview } from "@/components/threads-preview";
@@ -30,20 +29,18 @@ export function SeriesPage() {
   const currentGoal = GENERATE_GOALS.find((g) => g.value === goal) ?? GENERATE_GOALS[0];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [limited, setLimited] = useState(false);
   const [items, setItems] = useState<SeriesItem[] | null>(null);
 
   const generate = async () => {
     if (!topic.trim()) return;
     setLoading(true);
     setError(null);
-    setLimited(false);
     try {
       const res = await seriesApi.generate(topic.trim(), days, goal, brandId === "none" ? null : Number(brandId));
       setItems(res.items);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setError("로그인이 필요해요.");
-      else if (e instanceof ApiError && e.status === 402) { setLimited(true); setError(e.message); }
+      else if (e instanceof ApiError && e.status === 402) setError(e.message);
       else if (e instanceof ApiError && e.message && !e.message.startsWith("Request failed"))
         setError(e.message); // 백엔드 친절 메시지(플랜 잠금/크레딧 등)
       else setError("생성에 실패했어요. 다시 시도해 주세요.");
@@ -137,11 +134,6 @@ export function SeriesPage() {
             {error && (
               <span className="flex items-center gap-2 text-sm text-destructive">
                 {error}
-                {limited && IN_APP_BILLING && (
-                  <Link to="/settings/account" className="bg-brand-gradient rounded-md px-2.5 py-1 text-xs font-semibold text-brand-foreground">
-                    업그레이드
-                  </Link>
-                )}
               </span>
             )}
           </div>

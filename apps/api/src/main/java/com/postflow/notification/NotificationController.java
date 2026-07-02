@@ -26,13 +26,10 @@ public class NotificationController {
 
     private final PostRepository postRepository;
     private final SocialAccountRepository socialAccountRepository;
-    private final com.postflow.user.UserService userService;
 
-    public NotificationController(PostRepository postRepository, SocialAccountRepository socialAccountRepository,
-                                 com.postflow.user.UserService userService) {
+    public NotificationController(PostRepository postRepository, SocialAccountRepository socialAccountRepository) {
         this.postRepository = postRepository;
         this.socialAccountRepository = socialAccountRepository;
-        this.userService = userService;
     }
 
     public record NotificationDto(String type, String severity, String message, String link) {
@@ -41,13 +38,6 @@ public class NotificationController {
     @GetMapping
     public List<NotificationDto> list(@AuthenticationPrincipal Long userId) {
         List<NotificationDto> out = new ArrayList<>();
-
-        int payFail = userService.getById(userId).getPaymentFailedCount();
-        if (payFail > 0) {
-            out.add(new NotificationDto("payment_failed", "error",
-                    "결제가 실패했어요 (" + payFail + "회). 카드 정보를 확인하세요 — 계속 실패 시 무료로 전환돼요.",
-                    "/settings/account"));
-        }
 
         List<Post> posts = postRepository.findByUserIdOrderByCreatedAtDesc(userId);
 

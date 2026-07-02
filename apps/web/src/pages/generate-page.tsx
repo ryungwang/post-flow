@@ -33,7 +33,6 @@ import { ApiError } from "@/lib/api";
 
 const TOPIC_CHIPS = ["AI", "스타트업", "개발", "생산성", "여행", "음식", "운동", "육아"];
 import { GENERATE_GOALS as GOALS } from "@/lib/goals";
-import { IN_APP_BILLING } from "@/lib/billing-config";
 const TONES = [
   { value: "Expert", label: "전문가" },
   { value: "Friendly", label: "친근함" },
@@ -60,7 +59,6 @@ export function GeneratePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [limited, setLimited] = useState(false);
   const [cards, setCards] = useState<GeneratedCard[] | null>(null);
 
   const [sort, setSort] = useState<"score" | "original">("score");
@@ -85,7 +83,6 @@ export function GeneratePage() {
     if (!topic.trim()) return;
     setLoading(true);
     setError(null);
-    setLimited(false);
     try {
       const res = await contentApi.generate({ topic: topic.trim(), goal, tone, quantity, brandId: brandId === "none" ? null : Number(brandId) });
       setCards(res.cards);
@@ -93,8 +90,7 @@ export function GeneratePage() {
       if (e instanceof ApiError && e.status === 401) {
         setError("로그인이 필요해요. 다시 로그인해 주세요.");
       } else if (e instanceof ApiError && e.status === 402) {
-        setLimited(true); // 플랜 한도 → 업그레이드 유도
-        setError(e.message);
+        setError(e.message); // 플랜 한도
       } else if (e instanceof ApiError && e.message && !e.message.startsWith("Request failed")) {
         setError(e.message); // 백엔드 친절 메시지(예: 크레딧 부족)
       } else {
@@ -239,11 +235,6 @@ export function GeneratePage() {
             {error && (
               <span className="flex items-center gap-2 text-sm text-destructive">
                 {error}
-                {limited && IN_APP_BILLING && (
-                  <Link to="/settings/account" className="bg-brand-gradient rounded-md px-2.5 py-1 text-xs font-semibold text-brand-foreground">
-                    업그레이드
-                  </Link>
-                )}
               </span>
             )}
           </div>

@@ -40,9 +40,7 @@ public class User extends BaseTimeEntity {
     @Column(name = "webhook_secret", length = 64)
     private String webhookSecret;
 
-    /** Stripe customer id (set after first checkout; used for the billing portal). */
-    @Column(name = "stripe_customer_id", length = 255)
-    private String stripeCustomerId;
+    // 결제/구독 상태는 synub-billing이 진실. 아래는 entitlements/웹훅으로 갱신되는 로컬 캐시.
 
     /** End of the current paid period; plan stays active until this instant. */
     @Column(name = "current_period_end")
@@ -51,14 +49,6 @@ public class User extends BaseTimeEntity {
     /** True when cancellation is scheduled — keep plan until currentPeriodEnd, then downgrade. */
     @Column(name = "cancel_scheduled", nullable = false)
     private boolean cancelScheduled = false;
-
-    /** Toss billing key (for recurring charges); null if not using Toss. */
-    @Column(name = "toss_billing_key", length = 255)
-    private String tossBillingKey;
-
-    /** Consecutive failed recurring charges (0 = healthy). Grace before downgrade. */
-    @Column(name = "payment_failed_count", nullable = false)
-    private int paymentFailedCount = 0;
 
     public static User create(String email, String name, String profileImage) {
         User u = new User();
@@ -85,25 +75,11 @@ public class User extends BaseTimeEntity {
         this.plan = plan;
     }
 
-    public void setStripeCustomerId(String stripeCustomerId) {
-        this.stripeCustomerId = stripeCustomerId;
-    }
-
-    /** Active paid subscription: set plan, period end, clear scheduled cancel + payment failures. */
+    /** Active paid subscription: set plan, period end, clear scheduled cancel. */
     public void activateSubscription(Plan plan, java.time.Instant periodEnd) {
         this.plan = plan;
         this.currentPeriodEnd = periodEnd;
         this.cancelScheduled = false;
-        this.paymentFailedCount = 0;
-    }
-
-    /** A recurring charge failed → increment grace counter. */
-    public void recordPaymentFailure() {
-        this.paymentFailedCount += 1;
-    }
-
-    public void setTossBillingKey(String tossBillingKey) {
-        this.tossBillingKey = tossBillingKey;
     }
 
     /** Cancellation scheduled: keep current plan until periodEnd, then it downgrades. */
@@ -114,15 +90,10 @@ public class User extends BaseTimeEntity {
         }
     }
 
-    public void resumeSubscription() {
-        this.cancelScheduled = false;
-    }
-
     /** Period ended (or hard cancel): back to FREE. */
     public void endSubscription() {
         this.plan = Plan.FREE;
         this.cancelScheduled = false;
         this.currentPeriodEnd = null;
-        this.paymentFailedCount = 0;
     }
 }

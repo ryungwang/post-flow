@@ -24,7 +24,6 @@ const AutomationPage = lazyPage(() => import("@/pages/automation-page"), "Automa
 const ThreadsSettingsPage = lazyPage(() => import("@/pages/threads-settings-page"), "ThreadsSettingsPage");
 const FaqPage = lazyPage(() => import("@/pages/faq-page"), "FaqPage");
 const BrandsPage = lazyPage(() => import("@/pages/brands-page"), "BrandsPage");
-const BillingTossPage = lazyPage(() => import("@/pages/billing-toss-page"), "BillingTossPage");
 
 function PageFallback() {
   return (
@@ -53,7 +52,6 @@ export default function App() {
             <Route path="/settings/account" element={<AccountPage />} />
             <Route path="/settings/threads" element={<ThreadsSettingsPage />} />
             <Route path="/brands" element={<BrandsPage />} />
-            <Route path="/billing/toss" element={<BillingTossPage />} />
             <Route path="/help" element={<FaqPage />} />
           </Route>
         </Route>

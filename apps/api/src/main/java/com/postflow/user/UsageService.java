@@ -58,16 +58,13 @@ public class UsageService {
     }
 
     public record UsageDto(String plan, long used, int limit, boolean canSchedule, boolean canSeries,
-                           boolean canMultiAccount, boolean cancelScheduled, java.time.Instant currentPeriodEnd,
-                           boolean hasPaymentMethod, int paymentFailedCount) {
+                           boolean canMultiAccount, boolean cancelScheduled, java.time.Instant currentPeriodEnd) {
     }
 
     @Transactional(readOnly = true)
     public UsageDto usage(Long userId) {
         var user = userService.getById(userId);
         Plan plan = user.getPlan();
-        boolean hasPm = (user.getTossBillingKey() != null && !user.getTossBillingKey().isBlank())
-                || (user.getStripeCustomerId() != null && !user.getStripeCustomerId().isBlank());
         return new UsageDto(
                 plan.name(),
                 monthlyGenerations(userId),
@@ -76,8 +73,6 @@ public class UsageService {
                 PlanPolicy.canSeries(plan),
                 PlanPolicy.canMultiAccount(plan),
                 user.isCancelScheduled(),
-                user.getCurrentPeriodEnd(),
-                hasPm,
-                user.getPaymentFailedCount());
+                user.getCurrentPeriodEnd());
     }
 }

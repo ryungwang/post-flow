@@ -9,9 +9,6 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
 import { accountApi } from "@/lib/account-api";
-import { billingApi } from "@/lib/billing-api";
-import { IN_APP_BILLING } from "@/lib/billing-config";
-import { useConfirm } from "@/components/confirm-dialog";
 import { postsApi } from "@/lib/posts-api";
 import { toCsv, downloadCsv, download } from "@/lib/csv";
 import { LEGAL } from "@/lib/legal";
@@ -39,22 +36,6 @@ export function AccountPage() {
   const clear = useAuth((s) => s.clear);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
-  const confirm = useConfirm();
-
-  const upgrade = useMutation({
-    mutationFn: (plan: string) => billingApi.checkout(plan),
-    onSuccess: (res) => {
-      if (res.url) window.location.href = res.url; // Stripe checkout
-      else window.location.reload(); // dev/local instant upgrade → refresh plan
-    },
-  });
-  const portal = useMutation({
-    mutationFn: () => billingApi.portal(),
-    onSuccess: (res) => {
-      if (res.url) window.location.href = res.url; // Stripe billing portal
-      else window.location.reload(); // dev/local instant cancel → refresh plan
-    },
-  });
 
   const logout = () => {
     window.google?.accounts.id.disableAutoSelect();
@@ -152,59 +133,20 @@ export function AccountPage() {
                           </li>
                         ))}
                       </ul>
-                      {IN_APP_BILLING ? (
-                        <Button
-                          variant={active ? "secondary" : "default"}
-                          size="sm"
-                          className="mt-4 w-full"
-                          disabled={active || p.key === "FREE" || upgrade.isPending}
-                          onClick={() => upgrade.mutate(p.key)}
-                        >
-                          {upgrade.isPending && upgrade.variables === p.key
-                            ? <Loader2 className="size-4 animate-spin" />
-                            : active ? "사용 중" : "업그레이드"}
-                        </Button>
-                      ) : (
-                        active && (
-                          <div className="mt-4 w-full rounded-md bg-muted py-1.5 text-center text-xs font-medium text-muted-foreground">
-                            사용 중
-                          </div>
-                        )
+                      {active && (
+                        <div className="mt-4 w-full rounded-md bg-muted py-1.5 text-center text-xs font-medium text-muted-foreground">
+                          사용 중
+                        </div>
                       )}
                     </div>
                   );
                 })}
               </div>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">
-                  {IN_APP_BILLING
-                    ? "Stripe 결제 — 키 설정 시 실결제, 미설정(로컬) 시 바로 전환됩니다."
-                    : "결제·구독 변경은 별도 결제 사이트에서 진행됩니다."}
-                </p>
-                {IN_APP_BILLING && currentPlan !== "FREE" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0 text-muted-foreground"
-                    disabled={portal.isPending}
-                    onClick={async () => {
-                      const ok = await confirm({
-                        title: "구독 취소",
-                        description: "구독을 취소하고 무료 플랜으로 전환할까요? 유료 기능 잠금이 복원됩니다.",
-                        confirmText: "구독 취소",
-                        destructive: true,
-                      });
-                      if (ok) portal.mutate();
-                    }}
-                  >
-                    {portal.isPending ? <Loader2 className="size-4 animate-spin" /> : "구독 취소·관리"}
-                  </Button>
-                )}
-              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                구독·결제·플랜 변경은 synub 통합 결제에서 관리됩니다.
+              </p>
             </CardContent>
           </Card>
-
-          <PaymentHistoryCard />
 
           <WebhookCard />
 
@@ -256,55 +198,13 @@ function UsageBar() {
         ))}
       </div>
 
-      {data.plan !== "FREE" && (
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-border/60 pt-3 text-xs text-muted-foreground">
-          {data.currentPeriodEnd && (
-            <span>
-              {data.cancelScheduled ? "이용 종료" : "다음 결제"}:{" "}
-              <span className="font-medium text-foreground/80">{new Date(data.currentPeriodEnd).toLocaleDateString("ko-KR")}</span>
-            </span>
-          )}
-          <span>결제수단: <span className="font-medium text-foreground/80">{data.hasPaymentMethod ? "등록됨" : "미등록"}</span></span>
-          {data.paymentFailedCount > 0 && <span className="text-rose-500">결제 실패 {data.paymentFailedCount}회</span>}
+      {data.plan !== "FREE" && data.currentPeriodEnd && (
+        <div className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+          {data.cancelScheduled ? "이용 종료" : "다음 결제"}:{" "}
+          <span className="font-medium text-foreground/80">{new Date(data.currentPeriodEnd).toLocaleDateString("ko-KR")}</span>
         </div>
       )}
     </div>
-  );
-}
-
-function PaymentHistoryCard() {
-  const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
-  const { data } = useQuery({ queryKey: ["billing", "history"], queryFn: billingApi.history });
-  if (!usage || (usage.plan === "FREE" && (!data || data.length === 0))) return null;
-  const rows = data ?? [];
-  return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>결제 이력</CardTitle>
-        <CardDescription>최근 결제 내역(최대 20건)</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {rows.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">결제 내역이 없어요.</p>
-        ) : (
-          <ul className="divide-y divide-border/60 text-sm">
-            {rows.map((p, i) => (
-              <li key={i} className="flex items-center justify-between py-2.5">
-                <div>
-                  <span className="font-medium">{p.plan}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">{p.kind === "first" ? "첫 결제" : "정기 갱신"}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="tabular-nums">{p.amount.toLocaleString()}원</span>
-                  <span className="text-xs text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("ko-KR")}</span>
-                  <Badge variant={p.status === "DONE" ? "success" : "secondary"}>{p.status === "DONE" ? "완료" : p.status}</Badge>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 

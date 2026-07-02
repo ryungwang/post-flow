@@ -55,37 +55,15 @@ public class UserService {
         getById(userId).changePlan(plan);
     }
 
-    /** Toss: store billing key + activate the plan for the paid period. */
-    @Transactional
-    public void activateTossSubscription(Long userId, Plan plan, String billingKey, java.time.Instant periodEnd) {
-        User user = getById(userId);
-        user.setTossBillingKey(billingKey);
-        user.activateSubscription(plan, periodEnd);
-    }
+    // ── 구독 상태 반영 (진실은 synub-billing; entitlements/웹훅이 아래를 호출해 로컬 캐시 갱신) ──
 
+    /** Activate a paid subscription (from billing) with its period end. */
     @Transactional
-    public void linkStripeCustomer(Long userId, String customerId) {
-        if (customerId != null) {
-            getById(userId).setStripeCustomerId(customerId);
-        }
-    }
-
-    /** Activate a paid subscription (upgrade) with its period end. */
-    @Transactional
-    public void activateSubscription(Long userId, Plan plan, String customerId, java.time.Instant periodEnd) {
-        User user = getById(userId);
-        user.activateSubscription(plan, periodEnd);
-        if (customerId != null) {
-            user.setStripeCustomerId(customerId);
-        }
+    public void activateSubscription(Long userId, Plan plan, java.time.Instant periodEnd) {
+        getById(userId).activateSubscription(plan, periodEnd);
     }
 
     /** Schedule end-of-period cancellation; plan stays until periodEnd. */
-    @Transactional
-    public void scheduleCancelByCustomer(String customerId, java.time.Instant periodEnd) {
-        userRepository.findByStripeCustomerId(customerId).ifPresent(u -> u.scheduleCancel(periodEnd));
-    }
-
     @Transactional
     public java.time.Instant scheduleCancel(Long userId, java.time.Instant fallbackPeriodEnd) {
         User user = getById(userId);
@@ -94,18 +72,7 @@ public class UserService {
         return end;
     }
 
-    @Transactional
-    public void resumeByCustomer(String customerId) {
-        userRepository.findByStripeCustomerId(customerId).ifPresent(User::resumeSubscription);
-    }
-
-    /** Period ended → downgrade the user owning this Stripe customer to FREE. */
-    @Transactional
-    public void downgradeByStripeCustomer(String customerId) {
-        userRepository.findByStripeCustomerId(customerId).ifPresent(User::endSubscription);
-    }
-
-    /** Downgrade a specific user to FREE (e.g., Toss payment canceled/refunded). */
+    /** Downgrade a specific user to FREE (subscription canceled/suspended). */
     @Transactional
     public void endSubscription(Long userId) {
         userRepository.findById(userId).ifPresent(User::endSubscription);

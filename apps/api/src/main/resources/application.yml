@@ -41,11 +41,6 @@ management:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
-# 외부 결제 사이트 → 내부 plan 동기화 공유 시크릿(없으면 동기화 API 비활성).
-billing:
-  sync:
-    secret: ${BILLING_SYNC_SECRET:}
-
 ai:
   provider: ${AI_PROVIDER:claude}
   claude:
