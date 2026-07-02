@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
 import { accountApi } from "@/lib/account-api";
+import { threadsApi } from "@/lib/threads-api";
 import { postsApi } from "@/lib/posts-api";
 import { toCsv, downloadCsv, download } from "@/lib/csv";
 import { LEGAL } from "@/lib/legal";
@@ -51,24 +52,28 @@ export function AccountPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Profile */}
-        <Card className="lg:col-span-1">
-          <CardContent className="flex flex-col items-center pt-6 text-center">
-            <div className="bg-brand-gradient shadow-brand flex size-20 items-center justify-center overflow-hidden rounded-2xl text-2xl font-bold text-brand-foreground">
-              {user?.profileImage ? (
-                <img src={user.profileImage} alt="" className="size-full object-cover" />
-              ) : (
-                initialOf(user?.name)
-              )}
-            </div>
-            <div className="mt-4 text-lg font-semibold">{user?.name ?? "사용자"}</div>
-            <div className="text-sm text-muted-foreground">{user?.email ?? "—"}</div>
-            <Badge variant="info" className="mt-3">{currentPlan} 플랜</Badge>
-            <Button variant="outline" className="mt-6 w-full gap-2" onClick={logout}>
-              <LogOut className="size-4" /> 로그아웃
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Profile + summary */}
+        <div className="space-y-6 lg:col-span-1">
+          <Card>
+            <CardContent className="flex flex-col items-center pt-6 text-center">
+              <div className="bg-brand-gradient shadow-brand flex size-20 items-center justify-center overflow-hidden rounded-2xl text-2xl font-bold text-brand-foreground">
+                {user?.profileImage ? (
+                  <img src={user.profileImage} alt="" className="size-full object-cover" />
+                ) : (
+                  initialOf(user?.name)
+                )}
+              </div>
+              <div className="mt-4 text-lg font-semibold">{user?.name ?? "사용자"}</div>
+              <div className="text-sm text-muted-foreground">{user?.email ?? "—"}</div>
+              <Badge variant="info" className="mt-3">{currentPlan} 플랜</Badge>
+              <Button variant="outline" className="mt-6 w-full gap-2" onClick={logout}>
+                <LogOut className="size-4" /> 로그아웃
+              </Button>
+            </CardContent>
+          </Card>
+
+          <AccountSummaryCard />
+        </div>
 
         {/* Settings */}
         <div className="space-y-6 lg:col-span-2">
@@ -123,16 +128,16 @@ export function AccountPage() {
                         <span className="font-semibold">{p.name}</span>
                         {active && <Check className="size-4 text-brand" />}
                       </div>
-                      <div className="mt-1 text-lg font-bold tabular-nums">{p.price}</div>
-                      <ul className="mt-3 flex-1 space-y-1">
+                      <div className="mt-1 text-lg font-bold tabular-nums">{p.price}<span className="ml-1 text-xs font-normal text-muted-foreground">/월</span></div>
+                      <ul className="mt-3 flex-1 space-y-1.5">
                         {p.features.map((f) => (
-                          <li key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Check className="size-3 text-brand" /> {f}
+                          <li key={f} className="flex items-center gap-1.5 text-sm text-foreground/80">
+                            <Check className="size-3.5 shrink-0 text-brand" /> {f}
                           </li>
                         ))}
                       </ul>
                       {active && (
-                        <div className="mt-4 w-full rounded-md bg-muted py-1.5 text-center text-xs font-medium text-muted-foreground">
+                        <div className="bg-brand/10 text-brand mt-4 w-full rounded-md py-1.5 text-center text-xs font-semibold">
                           사용 중
                         </div>
                       )}
@@ -203,6 +208,41 @@ function UsageBar() {
         </div>
       )}
     </div>
+  );
+}
+
+function AccountSummaryCard() {
+  const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
+  const { data: accounts } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
+  const rows = [
+    { label: "현재 플랜", value: usage?.plan ?? "—" },
+    {
+      label: usage?.cancelScheduled ? "이용 종료" : "다음 결제",
+      value: usage?.currentPeriodEnd ? new Date(usage.currentPeriodEnd).toLocaleDateString("ko-KR") : "—",
+    },
+    { label: "연결 채널", value: `${accounts?.length ?? 0}개` },
+    {
+      label: "이번 달 생성",
+      value: usage ? `${usage.used} / ${usage.limit < 0 ? "무제한" : usage.limit}` : "—",
+    },
+  ];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>요약</CardTitle>
+        <CardDescription>내 구독·이용 현황</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y divide-border/60 text-sm">
+          {rows.map((r) => (
+            <li key={r.label} className="flex items-center justify-between py-2.5">
+              <span className="text-muted-foreground">{r.label}</span>
+              <span className="font-medium tabular-nums">{r.value}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 
