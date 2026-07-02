@@ -6,13 +6,18 @@ public final class PlanPolicy {
     private PlanPolicy() {
     }
 
-    /** Monthly AI generation cap; -1 = unlimited. (catalog: BASIC 월 50개, PRO 무제한) */
-    public static int monthlyGenerations(Plan plan) {
+    /** AI 생성 한도(-1=무제한). FREE=총 10개(누적 무료체험), BASIC=월 50개, PRO=무제한. */
+    public static int generationCap(Plan plan) {
         return switch (plan) {
-            case FREE -> 30;
+            case FREE -> 10;
             case BASIC -> 50;
             case PRO -> -1;
         };
+    }
+
+    /** FREE는 누적(총) 한도, 유료는 월 한도. */
+    public static boolean isLifetimeCap(Plan plan) {
+        return plan == Plan.FREE;
     }
 
     /** 예약 발행 — PRO 전용(카탈로그). */

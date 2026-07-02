@@ -27,19 +27,23 @@ public class UsageService {
         return now.withDayOfMonth(1).toLocalDate().atStartOfDay(KST).toInstant();
     }
 
+    /** FREE=누적(총), 유료=이번 달 생성 수. */
     @Transactional(readOnly = true)
-    public long monthlyGenerations(Long userId) {
-        return aiGenerationRepository.countByUserIdAndCreatedAtAfter(userId, monthStart());
+    public long usedGenerations(Long userId, Plan plan) {
+        return PlanPolicy.isLifetimeCap(plan)
+                ? aiGenerationRepository.countByUserId(userId)
+                : aiGenerationRepository.countByUserIdAndCreatedAtAfter(userId, monthStart());
     }
 
-    /** Throw if the user is at/over their monthly generation cap. */
+    /** Throw if the user is at/over their generation cap (FREE 총 10개 / 유료 월 한도). */
     @Transactional(readOnly = true)
     public void assertCanGenerate(Long userId) {
         Plan plan = userService.getById(userId).getPlan();
-        int limit = PlanPolicy.monthlyGenerations(plan);
-        if (limit >= 0 && monthlyGenerations(userId) >= limit) {
-            throw new PlanLimitException(
-                    "이번 달 생성 한도(" + limit + "회)를 모두 사용했어요. 플랜을 업그레이드하면 더 만들 수 있어요.");
+        int cap = PlanPolicy.generationCap(plan);
+        if (cap >= 0 && usedGenerations(userId, plan) >= cap) {
+            throw new PlanLimitException(PlanPolicy.isLifetimeCap(plan)
+                    ? "무료 체험 " + cap + "개를 모두 사용했어요. 구독하면 계속 생성할 수 있어요."
+                    : "이번 달 생성 한도(" + cap + "개)를 모두 사용했어요. 업그레이드하면 더 만들 수 있어요.");
         }
     }
 
@@ -53,12 +57,13 @@ public class UsageService {
     @Transactional(readOnly = true)
     public void assertCanSchedule(Long userId) {
         if (!PlanPolicy.canSchedule(userService.getById(userId).getPlan())) {
-            throw new PlanLimitException("예약 발행은 Starter 플랜부터 사용할 수 있어요.");
+            throw new PlanLimitException("예약 발행은 Pro 플랜부터 사용할 수 있어요.");
         }
     }
 
     public record UsageDto(String plan, long used, int limit, boolean canSchedule, boolean canSeries,
-                           boolean canMultiAccount, boolean cancelScheduled, java.time.Instant currentPeriodEnd) {
+                           boolean canMultiAccount, boolean cancelScheduled, java.time.Instant currentPeriodEnd,
+                           boolean lifetimeCap) {
     }
 
     @Transactional(readOnly = true)
@@ -67,12 +72,13 @@ public class UsageService {
         Plan plan = user.getPlan();
         return new UsageDto(
                 plan.name(),
-                monthlyGenerations(userId),
-                PlanPolicy.monthlyGenerations(plan),
+                usedGenerations(userId, plan),
+                PlanPolicy.generationCap(plan),
                 PlanPolicy.canSchedule(plan),
                 PlanPolicy.canSeries(plan),
                 PlanPolicy.canMultiAccount(plan),
                 user.isCancelScheduled(),
-                user.getCurrentPeriodEnd());
+                user.getCurrentPeriodEnd(),
+                PlanPolicy.isLifetimeCap(plan));
     }
 }

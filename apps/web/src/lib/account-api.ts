@@ -11,8 +11,7 @@ export type Usage = {
   canMultiAccount: boolean;
   cancelScheduled: boolean;
   currentPeriodEnd: string | null;
-  hasPaymentMethod: boolean;
-  paymentFailedCount: number;
+  lifetimeCap: boolean; // FREE=누적(총) 한도, 유료=월 한도
 };
 
 export const accountApi = {

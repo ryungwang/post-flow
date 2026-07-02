@@ -198,7 +198,7 @@ function UsageBar() {
         </div>
       )}
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium">이번 달 AI 생성</span>
+        <span className="font-medium">{data.lifetimeCap ? "무료 체험 생성 (총)" : "이번 달 AI 생성"}</span>
         <span className="tabular-nums text-muted-foreground">
           {unlimited ? `${data.used} / 무제한` : `${data.used} / ${data.limit}`}
         </span>
@@ -241,7 +241,7 @@ function AccountSummaryCard() {
     },
     { label: "연결 채널", value: `${accounts?.length ?? 0}개` },
     {
-      label: "이번 달 생성",
+      label: usage?.lifetimeCap ? "무료 체험 (총)" : "이번 달 생성",
       value: usage ? `${usage.used} / ${usage.limit < 0 ? "무제한" : usage.limit}` : "—",
     },
   ];
