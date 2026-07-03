@@ -1,6 +1,6 @@
 # 배포 런북 — post-flow
 
-전역 인프라 규약(shared-dev-system) 기준, synub-billing 레퍼런스와 동일 방식.
+전역 인프라 규약(shared-dev-system) 기준, **소비자 제품 레퍼런스 = `synub-office`** 와 동일 방식.
 **API = Docker→GHCR→공유 Lightsail `~/synub-prod` compose**, **web = Vercel(Vite SPA)**.
 `docker-compose.yml`·`Caddyfile`은 **서버 관리(repo 미포함)** — 이 repo엔 Dockerfile + env 계약 + CI만.
 
@@ -15,7 +15,7 @@
 |---|---|
 | CI `IMAGE_NAME` (GHCR) | `ghcr.io/<owner>/postflow-api` |
 | compose 서비스·container | `postflow-api` |
-| prod yml `storage.s3.prefix` | `synub-postflow` (하드코딩 — 공유 s3.env가 안 덮게) |
+| prod yml `storage.s3.prefix` | `${AWS_S3_PREFIX:synub-postflow}` (env 기본값 — s3.env엔 AWS_S3_PREFIX 없어 앱 기본값 적용) |
 > 서버 `~/synub-prod/docker-compose.yml`: `image: ghcr.io/ryungwang/postflow-api:latest`,
 > `container_name: postflow-api`, `env_file: [.env, s3.env]`, `expose: ["8080"]`, `depends_on: [db]`.
 
@@ -28,8 +28,8 @@
 
 env 이름·구조는 **office(같은 소비자 제품)와 동일** — `SYNUB_SSO_*`/`SYNUB_BILLING_*`, prefix `synub.sso`/`synub.billing`.
 
-### 2-1. postflow 전용 env (postflow 서비스 `environment:`)
-office의 per-app env(SPRING_DATASOURCE·SYNUB_SSO·SYNUB_BILLING·APP_*)와 같은 형태. 값·시크릿은 서버가 원천.
+### 2-1. postflow 전용 env (postflow의 `.env` — compose `env_file`)
+office의 per-app env(SPRING_DATASOURCE·SYNUB_SSO·SYNUB_BILLING·APP_*)와 같은 형태. 값·시크릿은 서버 파일이 원천.
 
 | env | 값/용도 |
 |---|---|
@@ -78,7 +78,7 @@ office의 per-app env(SPRING_DATASOURCE·SYNUB_SSO·SYNUB_BILLING·APP_*)와 같
 ## 5. synub 연동 연결 (도메인 확정 후)
 - **로그인(SSO)**: 위 CORS 등록. 백엔드는 JWKS로 검증만(audience `synub-postflow`).
 - **구독(빌링)**: service_code=`post-flow`. 빌링 카탈로그의 제품 **webhook_url을
-  `https://postflow.synub.io/api/webhooks/billing`**로 등록(⚠️ `/api` 프리픽스 필수). entitlements는 `SERVICE_API_KEY`로 pull.
+  `https://postflow.synub.io/api/webhooks/billing`**로 등록(⚠️ `/api` 프리픽스 필수). entitlements는 `SYNUB_BILLING_SERVICE_KEY`로 pull.
 - **Threads(Meta)**: 앱 Redirect URI에 `https://postflow.synub.io/api/threads/callback` 등록.
 
 ## 6. 배포
