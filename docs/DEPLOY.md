@@ -80,20 +80,12 @@ AUTH_STATE_SECRET=<위 명령 출력 붙여넣기>
 - role `postflow`의 비번 = 회사 공용 db 비번(`SPRING_DATASOURCE_PASSWORD`, §2-1).
 - 아래 SQL 1회 실행(role+DB+권한만). 로컬 PG 버전 = prod(16) 맞출 것.
 
-```bash
-# 서버에서: 공유 postgres 컨테이너 자동 탐지 후 슈퍼유저(synub)로 실행
-PG=$(docker ps --format '{{.Names}}' | grep -i postgres | head -1)
-docker exec -i "$PG" psql -U synub -d postgres <<'SQL'
--- 1) post-flow 전용 role (비번 = 회사 공용 db 비번으로 교체)
+```sql
+-- 슈퍼유저(synub)로 실행. 스키마·테이블은 부팅 시 Flyway가 생성하므로 여기선 role+DB+권한만.
 CREATE ROLE postflow WITH LOGIN PASSWORD '<회사 공용 db 비번>';
--- 2) 앱 전용 DB (owner=postflow → 부팅 시 Flyway가 스키마/테이블 생성 가능)
 CREATE DATABASE synub_postflow OWNER postflow;
--- 3) 접속 권한(슈퍼유저 금지, 자기 DB만)
 GRANT ALL PRIVILEGES ON DATABASE synub_postflow TO postflow;
-SQL
 ```
-> 스키마·테이블 DDL은 앱 부팅 시 Flyway가 처리하므로 여기서 CREATE SCHEMA/TABLE 하지 않는다.
-> 이미 role `postflow`가 있으면 1)은 건너뛰고 2)~3)만.
 
 ## 4. Web (Vercel — Vite SPA)
 - Vercel 프로젝트 **Root Directory = `apps/web`** (install/build override 금지 — 루트 lockfile 워크스페이스 해석).
