@@ -24,43 +24,36 @@
 
 ## 2. API 런타임 env 계약 (서버 compose `env_file`로 주입 — 시크릿은 이미지에 안 넣음)
 
-서버 compose는 `env_file: [.env, s3.env]`. **공통(전 synub 앱 공유)** 과 **postflow 전용**을 나눠 관리한다.
-
 env 이름·구조는 **office(같은 소비자 제품)와 동일** — `SYNUB_SSO_*`/`SYNUB_BILLING_*`, prefix `synub.sso`/`synub.billing`.
+**전 synub 앱이 같은 값을 쓰는 공통** 과 **postflow별로 다른 전용** 을 구분한다. (값·시크릿은 서버 파일이 원천 — repo에 안 박음)
 
-### 2-1. postflow 전용 env (postflow의 `.env` — compose `env_file`)
-office의 per-app env(SPRING_DATASOURCE·SYNUB_SSO·SYNUB_BILLING·APP_*)와 같은 형태. 값·시크릿은 서버 파일이 원천.
-
-| env | 값/용도 |
+### 2-1. 공통 env — 전 synub 앱 동일 (공용 `.env` + `s3.env`)
+| env | 값 |
 |---|---|
 | `SPRING_PROFILES_ACTIVE` | `prod` |
-| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | post-flow 전용 db 유저(`postflow`) — office는 `office` |
-| `APP_CORS_ALLOWED_ORIGINS` | `https://postflow.synub.io` |
-| `SYNUB_SSO_ENABLED` | `true` |
-| `SYNUB_SSO_BASE_URL` | `https://accounts.synub.io` (JWKS는 여기서 파생) |
-| `SYNUB_SSO_ISSUER` | `https://accounts.synub.io` |
-| `SYNUB_SSO_AUDIENCE` | `synub-postflow` (앱별 고유) |
+| `SERVER_PORT` | `8080` |
+| `SYNUB_SSO_BASE_URL` / `SYNUB_SSO_ISSUER` | `https://accounts.synub.io` (JWKS는 base-url에서 파생) |
 | `SYNUB_BILLING_BASE_URL` | `https://app-api.synub.io` (빌링 API) |
-| `SYNUB_BILLING_SERVICE_CODE` | `post-flow` |
-| `SYNUB_BILLING_SERVICE_KEY` | 빌링 `SERVICE_API_KEY`와 동일(시크릿) |
-| `SYNUB_BILLING_WEBHOOK_SECRET` | 빌링 `app.webhook.secret`과 동일(시크릿) |
+| `SYNUB_BILLING_SERVICE_KEY` | 빌링 `SERVICE_API_KEY`와 동일 — 전 제품 공유(시크릿) |
+| `SYNUB_BILLING_WEBHOOK_SECRET` | 빌링 `app.webhook.secret`과 동일 — 전 제품 공유(시크릿) |
+| `AWS_REGION` | `ap-northeast-2` (`s3.env`) |
+| `AWS_S3_BUCKET` | `synub-prod-uploads-haru` (`s3.env`) |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | 공유 자격증명 (`s3.env`, 시크릿) |
+| `AWS_S3_PUBLIC_BASE_URL` | 업로드 공개 URL — 같은 버킷이라 공통(예: `https://synub-prod-uploads-haru.s3.ap-northeast-2.amazonaws.com`) |
+
+### 2-2. postflow 전용 env — 앱별로 다름
+| env | 값 |
+|---|---|
+| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | post-flow 전용 db 유저(`postflow`) — office는 `office` |
+| `SYNUB_SSO_AUDIENCE` | `synub-postflow` (앱별 고유) |
+| `SYNUB_BILLING_SERVICE_CODE` | `post-flow` (앱별 고유) |
+| `APP_CORS_ALLOWED_ORIGINS` | `https://postflow.synub.io` |
 | `ANTHROPIC_API_KEY` | AI 생성(이 제품 키) |
 | `THREADS_APP_ID` / `THREADS_APP_SECRET` | 이 제품의 Threads 앱 |
 | `THREADS_REDIRECT_URI` / `THREADS_FRONTEND_REDIRECT_URL` | Threads 콜백/복귀(고정 https) |
 | `AUTH_STATE_SECRET` | Threads OAuth state 서명(≥32B, 로그인용 아님) |
-| `AWS_S3_PUBLIC_BASE_URL` | 업로드 공개 URL(예: `https://synub-prod-uploads-haru.s3.ap-northeast-2.amazonaws.com`) |
 
-> **yml 기본값이라 env 불필요**: `SPRING_DATASOURCE_URL`(=`db:5432/synub_postflow`), `SPRING_DATASOURCE_INIT_SQL`(=`search_path TO postflow`),
-> S3 `prefix`(=`synub-postflow`). SSO/빌링 issuer·base-url·audience도 yml 기본값 있음(운영은 위 env로 명시 권장).
-
-### 2-2. 공통 env — s3.env (전 synub 앱 공유)
-공유 버킷·자격증명. 각 앱은 prefix(`synub-postflow`)로 격리(§storage).
-
-| env | 값 |
-|---|---|
-| `AWS_REGION` | `ap-northeast-2` |
-| `AWS_S3_BUCKET` | `synub-prod-uploads-haru` |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | 자격증명(시크릿) |
+> **yml 기본값이라 env 불필요**: `SPRING_DATASOURCE_URL`(=`db:5432/synub_postflow`), `SPRING_DATASOURCE_INIT_SQL`(=`search_path TO postflow`), S3 `prefix`(=`synub-postflow`). SSO/빌링 base-url·issuer·audience·service-code도 yml 기본값 있음(운영은 위 env로 명시 권장).
 
 ## 3. DB (공유 host 앱별 격리 — office=synub_office, billing=synub_billing 방식)
 - 공유 postgres `db`(postgres:16)에 **DB `synub_postflow`** + **스키마 `postflow`** + **post-flow 전용 role `postflow`**(해당 DB/스키마 권한만).
