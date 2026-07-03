@@ -66,10 +66,11 @@ THREADS_APP_ID=<meta threads app id>
 THREADS_APP_SECRET=<meta threads app secret>
 THREADS_REDIRECT_URI=https://postflow.synub.io/api/threads/callback
 THREADS_FRONTEND_REDIRECT_URL=https://postflow.synub.io/settings?threads=connected
-AUTH_STATE_SECRET=<32바이트 이상 랜덤>
+# AUTH_STATE_SECRET 값 생성: openssl rand -base64 32
+AUTH_STATE_SECRET=<위 명령 출력 붙여넣기>
 ```
 > 공통(`SPRING_PROFILES_ACTIVE`·`SYNUB_SSO_*`·`SYNUB_BILLING_BASE_URL/SERVICE_KEY/WEBHOOK_SECRET`·`AWS_*`)은
-> office와 동일 값 → 공용 `.env`+`s3.env`에서 로드(여기 중복 X). `AUTH_STATE_SECRET`은 `openssl rand -base64 32`로 생성.
+> office와 동일 값 → 공용 `.env`+`s3.env`에서 로드(여기 중복 X).
 
 > **yml 기본값이라 env 불필요**: `SPRING_DATASOURCE_URL`(=`db:5432/synub_postflow`), `SPRING_DATASOURCE_INIT_SQL`(=`search_path TO postflow`), S3 `prefix`(=`synub-postflow`). SSO/빌링 base-url·issuer·audience·service-code도 yml 기본값 있음(운영은 위 env로 명시 권장).
 
