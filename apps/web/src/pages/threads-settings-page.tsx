@@ -219,7 +219,7 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
           ))}
         </ul>
         {!usage?.canMultiAccount && list.length >= 1 && (
-          <p className="mt-3 text-xs text-muted-foreground">다중 계정은 Business 플랜부터 — 추가 연결 시 현재 계정이 교체됩니다.</p>
+          <p className="mt-3 text-xs text-muted-foreground">다중 채널은 Pro 플랜부터 — 추가 연결 시 현재 계정이 교체됩니다.</p>
         )}
       </CardContent>
     </Card>

@@ -56,18 +56,20 @@ cd apps/api
 | 키 | 기능 |
 |---|---|
 | `ANTHROPIC_API_KEY` | AI 콘텐츠 생성 (`/api/ai/generate`) |
-| `GOOGLE_CLIENT_ID` | Google 로그인 ID토큰 검증 (프론트와 동일 값) |
 | `THREADS_APP_ID` / `THREADS_APP_SECRET` | Threads 연동·발행 |
-| `AUTH_JWT_SECRET` (선택) | JWT 서명 (prod 필수) |
+| `SERVICE_API_KEY` / `BILLING_WEBHOOK_SECRET` | synub 중앙 빌링 연동(로컬 기본값 있음, 빌링과 동일 값) |
 
 **프론트** — `apps/web/.env.example` → `apps/web/.env.local` 로 복사 (Vite 자동 로드):
 
 | 키 | 기능 |
 |---|---|
-| `VITE_GOOGLE_CLIENT_ID` | Google 로그인 버튼 (백엔드와 동일 값) |
-| `VITE_API_PROXY_TARGET` | API 프록시 대상 (기본 `http://localhost:8080`) |
+| `VITE_SSO_BASE_URL` | synub-sso 주소 (기본 `http://localhost:8090`) — 로그인은 SSO 직접 호출 |
+| `VITE_API_PROXY_TARGET` | API 프록시 대상 (기본 `http://localhost:8081`) |
+| `VITE_BILLING_WEB_URL` (선택) | 빌링 웹(내 구독) 주소 (기본 `http://localhost:3100`) |
 
-> Google 로그인은 FE/BE **동일 Client ID** 필요 + Google Cloud OAuth 클라이언트의 Authorized JS origin 에 `http://localhost:5173` 등록.
+> **로그인 = synub 통합계정(SSO).** 프론트가 synub-sso를 직접 호출해 토큰을 받고, 이 앱은 그 JWT를 검증만 한다.
+> synub-sso의 CORS 허용 오리진에 이 앱 프론트(`http://localhost:5173`, 운영 `https://postflow.synub.io`)가 등록돼 있어야 한다.
+> 구독은 **synub 중앙 빌링**(service_code=`post-flow`)에서 entitlements/웹훅으로 받는다. 자세히는 `docs/KEYS.md`.
 
 ## 배포
 

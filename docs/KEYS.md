@@ -1,14 +1,17 @@
 # API 키 발급 가이드
 
-PostFlow를 실제로 동작시키려면 3종의 외부 키가 필요하다. 키가 없어도 앱은 뜨고 해당
-기능만 "설정 필요/에러"로 처리되며, **키를 채우면 바로 활성화**된다.
+PostFlow가 자체적으로 발급하는 외부 키는 **Anthropic(AI)** 과 **Threads(Meta)** 둘뿐이다.
+로그인·구독은 synub 통합 시스템(SSO·중앙 빌링)에 붙어서 처리하고, 이 앱은 **연동 값(서비스 키·웹훅 시크릿)** 만 공유받는다.
+키가 없어도 앱은 뜨고 해당 기능만 "설정 필요/에러"로 처리되며, **채우면 바로 활성화**된다.
 
 | 키 | 활성화되는 기능 | 들어가는 곳 |
 |---|---|---|
 | Anthropic API Key | AI 콘텐츠/시리즈 생성 | `apps/api/.env` → `ANTHROPIC_API_KEY` |
-| Google OAuth Client ID | Google 로그인 | `apps/api/.env` → `GOOGLE_CLIENT_ID` + `apps/web/.env.local` → `VITE_GOOGLE_CLIENT_ID` (동일 값) |
 | Threads(Meta) App ID/Secret | Threads 연결·발행·분석 | `apps/api/.env` → `THREADS_APP_ID`, `THREADS_APP_SECRET` |
-| Stripe(PG) Secret/Webhook/Price | 유료 플랜 결제·구독 | `apps/api/.env` → `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` |
+| (SSO/빌링) 서비스 키·웹훅 시크릿 | 로그인·구독 연동 | `apps/api/.env` → `SERVICE_API_KEY`, `BILLING_WEBHOOK_SECRET` (빌링과 동일 값) |
+
+> **로그인·결제는 이 앱이 직접 발급하지 않는다.** synub 통합 시스템(SSO·중앙 빌링)에 붙어서
+> 로그인은 **synub-sso**, 구독·결제는 **synub-billing**이 담당한다(아래 §2·§4). Google/Stripe/Toss 키는 더 이상 쓰지 않는다.
 
 설정 절차: 각 앱의 `.env.example`을 복사(`apps/api/.env`, `apps/web/.env.local`) → 값 입력 →
 백엔드 재시작(`./gradlew bootRun`), 프론트는 Vite가 자동 반영(필요 시 재시작).
@@ -33,34 +36,19 @@ PostFlow를 실제로 동작시키려면 3종의 외부 키가 필요하다. 키
 
 ---
 
-## 2. Google OAuth Client ID (로그인)
+## 2. 로그인 = synub 통합계정(SSO) — 별도 키 발급 없음
 
-1. https://console.cloud.google.com 접속 → 프로젝트 생성/선택.
-2. **APIs & Services → OAuth consent screen** 설정:
-   - User Type: **External** → 만들기.
-   - 앱 이름/지원 이메일 입력, 저장.
-   - **Test users**에 로그인할 Gmail 주소 추가(게시 전 테스트 모드에서 필수).
-3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**:
-   - Application type: **Web application**
-   - Name: `postflow-web`
-   - **Authorized JavaScript origins**에 추가:
-     - `http://localhost:5173`
-     - (배포 시) 실제 프론트 도메인 `https://app.example.com`
-   - (이 ID토큰 방식은 redirect URI 불필요 — 비워도 됨)
-   - 만들기 → **Client ID** (`...apps.googleusercontent.com`) 복사.
-4. 동일 값을 두 곳에 입력:
-   ```
-   # apps/api/.env
-   GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
-   ```
-   ```
-   # apps/web/.env.local
-   VITE_GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
-   ```
-5. 백엔드 재시작 + 프론트 재시작 → 로그인 화면의 Google 버튼으로 로그인 확인.
+로그인은 이 앱이 만들지 않는다. **synub-sso**가 발급한 JWT를 이 앱이 **검증만** 한다
+(PRODUCT_REGISTRATION §7). 프론트는 synub-sso를 **직접 호출**해 토큰을 받는다.
 
-> 백엔드는 이 Client ID를 ID토큰 **audience 검증**에 사용하므로 FE/BE 값이 **반드시 동일**해야 한다.
-> Client Secret은 이 방식(ID 토큰 검증)에서는 사용하지 않는다.
+- 로컬: synub-sso를 `:8090`으로 띄우면 기본값으로 바로 동작(별도 키 불필요).
+  데모 계정 `demo@synub.io` / `demo1234`로 로그인 체험.
+- 검증 설정(기본값 있음): `SSO_JWKS_URI`(=`:8090/.well-known/jwks.json`), `SSO_ISSUER`(=`https://accounts.synub.io`),
+  `SSO_AUDIENCE`(=`synub-postflow`). 프론트는 `VITE_SSO_BASE_URL`(=`http://localhost:8090`).
+- **주의**: synub-sso의 CORS 허용 오리진에 이 앱의 프론트 origin(`http://localhost:5173`, 운영 `https://postflow.synub.io`)이
+  등록돼 있어야 프론트→SSO 직접 호출이 된다(synub-sso `sso.cors.allowed-origins`).
+
+> 신원의 원천은 synub-sso다. 이 앱 `users` 테이블은 크레덴셜 없이 `external_id`(토큰 sub)로 연결한 로컬 프로필만 보관.
 
 ---
 
@@ -102,60 +90,27 @@ PostFlow를 실제로 동작시키려면 3종의 외부 키가 필요하다. 키
 
 ---
 
-## 4. Stripe (PG) — 유료 플랜 결제·구독
+## 4. 구독·결제 = synub 중앙 빌링 — 이 앱은 상태만 받음
 
-> 결제는 **PaymentProvider 추상화 + Stripe 구현**이라, 키가 없으면 결제 비활성(로컬은 즉시 전환으로 테스트)되고
-> **키를 채우면 실제 구독 결제가 동작**한다. Toss 등 다른 PG는 같은 인터페이스 구현으로 교체 가능.
+결제/구독은 이 앱이 하지 않는다. **synub-billing**이 카탈로그·결제·구독의 single source of truth다.
+이 앱은 **① entitlements 조회(pull) + ② 웹훅 수신(push)** 두 경로로 구독 상태만 받아 게이팅한다.
 
-> ⚠️ **한국 사업자 주의**: Stripe는 **한국 소재 사업자의 직접 가입을 지원하지 않는다**(가입 국가 목록에 한국 없음).
-> - **국내 운영**: **Toss Payments** 또는 **PortOne(아임포트)** 사용을 권장(카드·카카오페이·토스 등 통합). `PaymentProvider`에 해당 PG 구현을 추가하면 된다(예: `TossPaymentProvider`).
-> - **글로벌 운영**: 미국 법인(예: Stripe Atlas) 설립 후 Stripe 사용 가능.
-> 아래 절차는 Stripe(또는 동등 PG)를 쓸 수 있는 경우의 표준 흐름이다.
+- **service_code = `post-flow`** (빌링 카탈로그 등록값, 불변). 플랜: Free(총 10개) / Basic(₩15,000·월 50개) / Pro(₩25,000·무제한).
+- **① entitlements**: `GET {빌링}/api/entitlements?service=post-flow&customer={sub}` 헤더 `X-Service-Key`.
+  → `/auth/me` 호출 시마다 pull해서 로컬 plan 캐시 갱신.
+- **② 웹훅 수신**: 빌링이 구독 변화 시 이 앱의 `POST /api/webhooks/billing`으로 POST(`X-Synub-Signature` HMAC).
+  빌링 카탈로그의 제품 **webhook_url**을 `https://postflow.synub.io/api/webhooks/billing`로 등록(⚠️ `/api` 프리픽스 필수).
+- 필요한 공유 값(빌링과 동일):
+  ```
+  # apps/api/.env  (로컬은 기본값으로 동작)
+  SERVICE_API_KEY=local-service-key            # entitlements 조회 인증(빌링 발급)
+  BILLING_WEBHOOK_SECRET=local-dev-webhook-secret   # 웹훅 서명 검증(빌링 app.webhook.secret)
+  # BILLING_BASE_URL=https://app.synub.io       # 운영 빌링 주소
+  ```
+- 플랜 등록/수정은 빌링 repo의 **Flyway 마이그레이션**으로만(PRODUCT_REGISTRATION.md). 이 앱에선 안 만든다.
+- 무료(구독 없음)는 이 앱이 **총 10개 누적**으로 게이팅(빌링엔 amount 0 Free 플랜으로 노출).
 
-### 4-1. 계정·키 발급
-1. https://dashboard.stripe.com → 가입/로그인 (사업자/개인 모두 가능, 테스트 모드는 즉시 사용).
-2. 우상단 **테스트 모드** 토글로 시작 권장(`sk_test_...`). 실서비스 전환 시 라이브 키(`sk_live_...`)로 교체.
-3. **Developers → API keys**에서 **Secret key** 복사 → `STRIPE_SECRET_KEY`.
-   - Publishable key는 이 서버 연동(Checkout 리다이렉트 방식)에서는 불필요.
-
-### 4-2. 상품·가격(Price) 만들기 — 플랜별 1개씩
-1. **Product catalog → Add product** 로 플랜 3개 생성: Starter / Pro / Business.
-2. 각 상품에 **반복 결제(Recurring) 가격**을 추가(월간, 통화 KRW 등):
-   - Starter ₩9,900/월, Pro ₩29,000/월, Business ₩49,000/월 (원하는 금액으로).
-3. 생성된 각 가격의 **Price ID**(`price_...`) 복사 → 아래 env에 매핑.
-   ```
-   STRIPE_PRICE_STARTER=price_...
-   STRIPE_PRICE_PRO=price_...
-   STRIPE_PRICE_BUSINESS=price_...
-   ```
-   > Free는 결제 상품이 아니므로 Price 불필요.
-
-### 4-3. 웹훅(결제·구독 이벤트 수신) 등록
-1. **Developers → Webhooks → Add endpoint**.
-2. **Endpoint URL**: `https://<백엔드 도메인>/api/billing/webhook`
-   - 로컬 테스트는 Stripe CLI 사용: `stripe listen --forward-to localhost:8080/api/billing/webhook` → 출력되는 `whsec_...` 사용.
-3. 구독할 **이벤트 선택**:
-   - `checkout.session.completed` (업그레이드 확정)
-   - `customer.subscription.updated` (취소 예약/재개)
-   - `customer.subscription.deleted` (기간 종료 → 무료 강등)
-4. 생성 후 표시되는 **Signing secret**(`whsec_...`) 복사 → `STRIPE_WEBHOOK_SECRET`.
-   > 서명 검증 + 이벤트 ID 멱등 처리로 재전송/위조를 막는다.
-
-### 4-4. .env 입력 + 확인
-```
-# apps/api/.env
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PRICE_STARTER=price_...
-STRIPE_PRICE_PRO=price_...
-STRIPE_PRICE_BUSINESS=price_...
-```
-1. 백엔드 재시작.
-2. 계정 화면 → 플랜에서 **업그레이드** → Stripe Checkout으로 이동 → 테스트 카드(`4242 4242 4242 4242`, 미래 만료일, 임의 CVC)로 결제.
-3. 결제 완료 시 웹훅으로 플랜이 자동 반영되는지 확인. **구독 취소·관리**는 같은 화면의 버튼 → Stripe Billing Portal에서 처리.
-
-> 키 미설정(로컬)일 때는 업그레이드/취소가 DB에서 즉시 처리되어 게이팅을 테스트할 수 있다(실결제 아님).
-> 결제한 기간은 끝까지 유지되고, 기간 종료 시 `subscription.deleted` 웹훅(또는 안전망 잡)으로 무료 전환된다.
+> 계정 화면의 "구독 관리"/플랜 버튼은 빌링 `/subscriptions`(내 구독)로 링크(`VITE_BILLING_WEB_URL`).
 
 ---
 

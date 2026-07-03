@@ -145,13 +145,13 @@ public class SocialAccountService {
         }
     }
 
-    /** Connecting an additional account requires the Business plan. */
+    /** Connecting an additional account requires the Pro plan (multi-channel). */
     @Transactional(readOnly = true)
     public void assertCanAddAccount(Long userId) {
         boolean multi = PlanPolicy.canMultiAccount(userService.getById(userId).getPlan());
         long count = repository.countByUserIdAndProvider(userId, THREADS);
         if (!multi && count >= 1) {
-            throw new PlanLimitException("다중 계정 연결은 Business 플랜부터 가능해요. (현재 플랜은 1계정)");
+            throw new PlanLimitException("다중 채널 연결은 Pro 플랜부터 가능해요. (현재 플랜은 1채널)");
         }
     }
 
