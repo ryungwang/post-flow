@@ -3,10 +3,6 @@ spring:
     url: jdbc:postgresql://localhost:5432/postflow
     username: ${DB_USERNAME:postflow}
     password: ${DB_PASSWORD:postflow}
-  data:
-    redis:
-      host: localhost
-      port: 6379
 
 storage:
   local:

@@ -1,97 +1,66 @@
-# 배포 가이드 (AWS Lightsail + Caddy + S3)
+# 배포 런북 — post-flow
 
-PostFlow는 컨테이너 2개(api·web)로 배포한다. **HTTPS·도메인 라우팅은 서버의 Caddy**가 처리하고,
-앱 컨테이너는 내부 8080만 노출한다. `docker-compose.yml`·`Caddyfile`은 **서버에서 관리(레포 미포함)** —
-아래는 그 레퍼런스다.
+전역 인프라 규약(shared-dev-system) 기준, synub-billing 레퍼런스와 동일 방식.
+**API = Docker→GHCR→공유 Lightsail `~/synub-prod` compose**, **web = Vercel(Vite SPA)**.
+`docker-compose.yml`·`Caddyfile`은 **서버 관리(repo 미포함)** — 이 repo엔 Dockerfile + env 계약 + CI만.
 
-## 0. 사전 준비 (사용자)
-- AWS Lightsail 인스턴스(Docker), 고정 IP
-- 도메인 2개: `app.example.com`(web), `api.example.com`(api)  ← DNS A레코드 → 고정 IP
-- S3 버킷(공개 읽기 또는 CloudFront) + 인스턴스 IAM 롤(또는 `AWS_*` 자격증명)
-- PostgreSQL·Redis (RDS/ElastiCache 또는 같은 compose에 컨테이너)
+## 0. 현황 (준비됨)
+- `apps/api/Dockerfile` — 멀티스테이지(JDK21→JRE21), 컨텍스트=`apps/api`(독립 gradle), non-root(uid 10001), `MaxRAMPercentage=75`, TZ=KST. ✅
+- `apps/api/src/main/resources/application-prod.yml` — `${ENV}`(시크릿 디폴트 없음), 공유 db(postflow)+search_path, S3(prefix `synub-postflow`). 나머지(SSO/빌링/cors/AI/threads)는 base yml의 `${ENV:기본}`. ✅
+- `.github/workflows/deploy.yml` — main push(apps/api/**) + 수동. GHCR build/push → Lightsail SSH deploy. ✅
+- `apps/api/.dockerignore` — build/.gradle/.env 제외. ✅
 
-## 1. 이미지 빌드
-```bash
-# api (context = apps/api)
-docker build -f apps/api/Dockerfile -t postflow-api apps/api
-# web (context = repo root, 빌드시 공개 env 주입 — Vite가 인라인)
-docker build -f apps/web/Dockerfile -t postflow-web \
-  --build-arg VITE_API_BASE_URL=https://postflow.synub.io/api \
-  --build-arg VITE_SSO_BASE_URL=https://accounts.synub.io \
-  --build-arg VITE_BILLING_WEB_URL=https://app.synub.io .
-```
-> ⚠️ web의 `VITE_*`는 **빌드 타임에 박힌다**. 도메인/SSO 주소가 바뀌면 web 이미지를 다시 빌드.
+## 네이밍 (앱별 — 서버 compose와 일치시킬 것)
+| 위치 | 값 |
+|---|---|
+| CI `IMAGE_NAME` (GHCR) | `ghcr.io/<owner>/synub-postflow-api` |
+| compose 서비스 (`docker compose pull/up`) | `postflow-api` |
+| prod yml `storage.s3.prefix` | `synub-postflow` |
+> 서버 `~/synub-prod/docker-compose.yml`의 post-flow 서비스명이 기준. CI의 `postflow-api`와 일치시킨다.
 
-## 2. API 환경변수 계약 (prod, 디폴트 없음 = 없으면 기동 실패)
+## 1. GitHub Secrets
+- `LIGHTSAIL_HOST`, `LIGHTSAIL_USER`(예: ubuntu), `LIGHTSAIL_SSH_KEY`(개인키). GHCR는 `GITHUB_TOKEN` 자동.
 
+## 2. API 런타임 env 계약 (서버 compose가 주입 — 시크릿은 이미지에 안 넣음)
 | env | 용도 |
 |---|---|
 | `SPRING_PROFILES_ACTIVE=prod` | prod 프로필 |
-| `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | PostgreSQL (`jdbc:postgresql://host:5432/postflow`) |
-| `REDIS_HOST` / `REDIS_PORT` | Redis |
-| `AWS_S3_BUCKET` / `AWS_REGION` / `AWS_S3_PUBLIC_BASE_URL` | S3 스토리지 (+선택 `AWS_S3_PREFIX`) |
-| `CORS_ALLOWED_ORIGINS=https://postflow.synub.io` | 허용 프론트 도메인 |
+| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | 공유 `db`의 **postflow 전용 role**(슈퍼유저 금지) |
+| `SPRING_DATASOURCE_URL`(선택) | 기본 `jdbc:postgresql://db:5432/postflow` |
+| `CORS_ALLOWED_ORIGINS` | 허용 프론트(예: `https://postflow.synub.io`) |
 | `ANTHROPIC_API_KEY` | AI 생성 |
-| `THREADS_APP_ID` / `THREADS_APP_SECRET` | Threads |
-| `THREADS_REDIRECT_URI=https://postflow.synub.io/api/threads/callback` | Threads 콜백(고정 https) |
-| `THREADS_FRONTEND_REDIRECT_URL=https://postflow.synub.io/settings/threads?threads=connected` | 연결 후 복귀 |
+| `THREADS_APP_ID` / `THREADS_APP_SECRET` | Threads 연동·발행 |
+| `THREADS_REDIRECT_URI` / `THREADS_FRONTEND_REDIRECT_URL` | Threads 콜백/복귀(고정 https) |
 | `AUTH_STATE_SECRET` | Threads OAuth state 서명(≥32B, 로그인용 아님) |
-| `SSO_ISSUER` / `SSO_JWKS_URI` | synub-sso 토큰 검증 (기본 accounts.synub.io) |
-| `BILLING_BASE_URL=https://app.synub.io` | synub 중앙 빌링 주소 |
+| `SSO_ISSUER` / `SSO_JWKS_URI` / `SSO_AUDIENCE` | synub-sso 토큰 검증(기본 accounts.synub.io / `synub-postflow`) |
+| `BILLING_BASE_URL` | synub 중앙 빌링(예: `https://app.synub.io`) |
 | `SERVICE_API_KEY` | 빌링 entitlements 조회 인증(빌링 발급, 동일 값) |
 | `BILLING_WEBHOOK_SECRET` | 빌링 웹훅 서명 검증(빌링 `app.webhook.secret`과 동일) |
+| `AWS_S3_BUCKET` / `AWS_REGION` / `AWS_S3_PUBLIC_BASE_URL` | 업로드 스토리지(자격증명=인스턴스 롤) |
 
-> 로그인/결제는 이 앱이 발급하지 않는다 — **synub-sso**(로그인)·**synub-billing**(구독)에 붙는다.
+## 3. DB (공유 host 앱별 격리)
+- 공유 postgres `db`에 **DB `postflow`** + **스키마 `postflow`** + **전용 role**(해당 DB/스키마 권한만).
+- Flyway가 부팅 시 V1~V25 자동 적용. 로컬 PG 버전 = prod 버전 맞출 것.
 
-## 연동 연결 (synub 중앙 시스템)
-- **로그인(SSO)**: 프론트가 synub-sso를 직접 호출 → 토큰. **synub-sso `sso.cors.allowed-origins`에
-  `https://postflow.synub.io` 등록** 필요. 백엔드는 JWKS로 검증만(audience `synub-postflow`).
+## 4. Web (Vercel — Vite SPA)
+- Vercel 프로젝트 **Root Directory = `apps/web`** (install/build override 금지 — 루트 lockfile 워크스페이스 해석).
+- Build: `vite build`, Output: `dist` (Vite 프리셋 자동).
+- 빌드타임 env(VITE_*는 번들에 박힘 — 바뀌면 재배포):
+  - `VITE_API_BASE_URL=https://postflow.synub.io/api`
+  - `VITE_SSO_BASE_URL=https://accounts.synub.io`  ← 로그인은 프론트가 SSO 직접 호출
+  - `VITE_BILLING_WEB_URL=https://app.synub.io`  ← "구독 관리" 링크
+- ⚠️ **synub-sso CORS 허용 오리진**에 `https://postflow.synub.io` 등록돼 있어야 프론트→SSO 직접 호출 가능.
+
+## 5. synub 연동 연결 (도메인 확정 후)
+- **로그인(SSO)**: 위 CORS 등록. 백엔드는 JWKS로 검증만(audience `synub-postflow`).
 - **구독(빌링)**: service_code=`post-flow`. 빌링 카탈로그의 제품 **webhook_url을
-  `https://postflow.synub.io/api/webhooks/billing`**로 등록(⚠️ `/api` 프리픽스). entitlements는 `SERVICE_API_KEY`로 pull.
-- 자세한 계약: `docs/KEYS.md` §2·§4.
+  `https://postflow.synub.io/api/webhooks/billing`**로 등록(⚠️ `/api` 프리픽스 필수). entitlements는 `SERVICE_API_KEY`로 pull.
+- **Threads(Meta)**: 앱 Redirect URI에 `https://postflow.synub.io/api/threads/callback` 등록.
 
-## 3. 서버 docker-compose.yml (레퍼런스 — 서버에서 관리)
-```yaml
-services:
-  api:
-    image: postflow-api
-    env_file: [./api.env]      # 위 2번 계약
-    expose: ["8080"]
-    restart: unless-stopped
-  web:
-    image: postflow-web
-    expose: ["8080"]
-    restart: unless-stopped
-  caddy:
-    image: caddy:2-alpine
-    ports: ["80:80", "443:443"]
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-    restart: unless-stopped
-volumes: { caddy_data: {} }
-```
-
-## 4. 서버 Caddyfile (레퍼런스 — 자동 HTTPS)
-```
-app.example.com {
-    reverse_proxy web:8080
-}
-api.example.com {
-    reverse_proxy api:8080
-}
-```
-> 새 도메인은 블록 한 줄 추가 → Caddy가 Let's Encrypt 인증서 자동 발급/갱신.
-
-## 5. 기동 + 확인
+## 6. 배포
 ```bash
-docker compose up -d
-curl https://api.example.com/actuator/health   # {"status":"UP"}
-# 브라우저로 https://app.example.com 접속 → 구글 로그인 → 생성/발행 확인
+# 자동: apps/api/** 변경을 main에 push → deploy.yml 실행
+# 수동: Actions → deploy → Run workflow
+# 서버에서 실행: cd ~/synub-prod && docker compose pull postflow-api && up -d postflow-api && up -d --force-recreate caddy
+curl https://postflow.synub.io/api/actuator/health   # {"status":"UP"}
 ```
-
-## 6. 외부 콘솔 등록 (도메인 확정 후)
-- **Google OAuth**: Authorized JavaScript origins에 `https://app.example.com` 추가
-- **Threads(Meta)**: Redirect URI에 `https://api.example.com/api/threads/callback` 추가
-- **Toss**: successUrl/웹훅 URL을 `https://app.example.com/billing/toss` / `https://api.example.com/api/billing/toss/webhook`
-- Flyway는 기동 시 자동 마이그레이션(V1~V24) 적용
