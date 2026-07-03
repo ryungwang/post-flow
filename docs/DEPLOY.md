@@ -40,11 +40,12 @@ env 이름·구조는 **office(같은 소비자 제품)와 동일** — `SYNUB_S
 | `AWS_S3_BUCKET` | `synub-prod-uploads-haru` (`s3.env`) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | 공유 자격증명 (`s3.env`, 시크릿) |
 | `AWS_S3_PUBLIC_BASE_URL` | 업로드 공개 URL — 같은 버킷이라 공통(예: `https://synub-prod-uploads-haru.s3.ap-northeast-2.amazonaws.com`) |
+| `SPRING_DATASOURCE_PASSWORD` | 회사 공용 db 비번 — 전 앱 동일(유저만 앱별, §2-2) |
 
 ### 2-2. postflow 전용 env — 앱별로 다름
 | env | 값 |
 |---|---|
-| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | post-flow 전용 db 유저(`postflow`) — office는 `office` |
+| `SPRING_DATASOURCE_USERNAME` | post-flow 전용 db 유저(`postflow`) — office는 `office`. 비번은 회사 공용(§2-1) |
 | `SYNUB_SSO_AUDIENCE` | `synub-postflow` (앱별 고유) |
 | `SYNUB_BILLING_SERVICE_CODE` | `post-flow` (앱별 고유) |
 | `APP_CORS_ALLOWED_ORIGINS` | `https://postflow.synub.io` |
@@ -56,8 +57,8 @@ env 이름·구조는 **office(같은 소비자 제품)와 동일** — `SYNUB_S
 **postflow `.env` 붙여넣기용** (`<...>`만 실제 값으로 채우기):
 ```dotenv
 # --- post-flow 전용 (앱마다 다름) ---
+# SPRING_DATASOURCE_PASSWORD는 회사 공용 비번 → 공용 .env에서 로드(여기 X)
 SPRING_DATASOURCE_USERNAME=postflow
-SPRING_DATASOURCE_PASSWORD=<postflow DB 비번>
 SYNUB_SSO_AUDIENCE=synub-postflow
 SYNUB_BILLING_SERVICE_CODE=post-flow
 APP_CORS_ALLOWED_ORIGINS=https://postflow.synub.io
