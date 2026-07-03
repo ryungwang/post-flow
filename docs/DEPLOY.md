@@ -65,7 +65,7 @@ APP_CORS_ALLOWED_ORIGINS=https://postflow.synub.io
 ANTHROPIC_API_KEY=<claude api key>
 THREADS_APP_ID=<meta threads app id>
 THREADS_APP_SECRET=<meta threads app secret>
-THREADS_REDIRECT_URI=https://postflow.synub.io/api/threads/callback
+THREADS_REDIRECT_URI=https://postflow-api.synub.io/api/threads/callback
 THREADS_FRONTEND_REDIRECT_URL=https://postflow.synub.io/settings?threads=connected
 # AUTH_STATE_SECRET 값 생성: openssl rand -base64 32
 AUTH_STATE_SECRET=<위 명령 출력 붙여넣기>
@@ -91,7 +91,7 @@ GRANT ALL PRIVILEGES ON DATABASE synub_postflow TO postflow;
 - Vercel 프로젝트 **Root Directory = `apps/web`** (install/build override 금지 — 루트 lockfile 워크스페이스 해석).
 - Build: `vite build`, Output: `dist` (Vite 프리셋 자동).
 - 빌드타임 env(VITE_*는 번들에 박힘 — 바뀌면 재배포):
-  - `VITE_API_BASE_URL=https://postflow.synub.io/api`
+  - `VITE_API_BASE_URL=https://postflow-api.synub.io/api`  ← ⚠️ API는 **별도 서브도메인**(office=office-api). 프론트 도메인(postflow.synub.io)은 Vercel이라 /api 없음
   - `VITE_SSO_BASE_URL=https://accounts.synub.io`  ← 로그인은 프론트가 SSO 직접 호출
   - `VITE_BILLING_WEB_URL=https://app.synub.io`  ← "구독 관리" 링크
 - ⚠️ **CORS**: 서버 synub-sso `.env`의 `SSO_CORS_ALLOWED_ORIGINS`에 `https://postflow.synub.io`가 있어야 프론트→SSO 직접 호출 가능(코드 기본값은 로컬 dev만 — 운영 오리진은 서버 env 관리). ✅ 서버 반영 완료.
@@ -99,8 +99,8 @@ GRANT ALL PRIVILEGES ON DATABASE synub_postflow TO postflow;
 ## 5. synub 연동 연결 (도메인 확정 후)
 - **로그인(SSO)**: 서버 SSO `.env` `SSO_CORS_ALLOWED_ORIGINS`에 도메인 등록(완료). 백엔드는 JWKS로 검증만(audience `synub-postflow`).
 - **구독(빌링)**: service_code=`post-flow`. 빌링 카탈로그의 제품 **webhook_url을
-  `https://postflow.synub.io/api/webhooks/billing`**로 등록(⚠️ `/api` 프리픽스 필수). entitlements는 `SYNUB_BILLING_SERVICE_KEY`로 pull.
-- **Threads(Meta)**: 앱 Redirect URI에 `https://postflow.synub.io/api/threads/callback` 등록.
+  `https://postflow-api.synub.io/api/webhooks/billing`**로 등록(⚠️ API 호스트 + `/api` 프리픽스). entitlements는 `SYNUB_BILLING_SERVICE_KEY`로 pull.
+- **Threads(Meta)**: 앱 Redirect URI에 `https://postflow-api.synub.io/api/threads/callback` 등록(백엔드 콜백).
 
 ## 6. 배포
 ```bash
