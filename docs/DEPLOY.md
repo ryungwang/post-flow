@@ -107,5 +107,5 @@ GRANT ALL PRIVILEGES ON DATABASE synub_postflow TO postflow;
 # 자동: apps/api/** 변경을 main에 push → deploy.yml 실행
 # 수동: Actions → deploy → Run workflow
 # 서버에서 실행: cd ~/synub-prod && docker compose pull postflow-api && up -d postflow-api && up -d --force-recreate caddy
-curl https://postflow.synub.io/api/actuator/health   # {"status":"UP"}
+curl https://postflow-api.synub.io/actuator/health   # {"status":"UP"}
 ```
