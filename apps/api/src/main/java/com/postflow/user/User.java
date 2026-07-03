@@ -19,6 +19,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
 
+    /** synub-sso 시드 데모 계정의 external_id. 이 유저 세션은 읽기전용(체험) — 모든 서비스 공통 규칙. */
+    public static final String DEMO_EXTERNAL_ID = "demo-user";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -75,6 +78,11 @@ public class User extends BaseTimeEntity {
 
     public void linkExternalId(String externalId) {
         this.externalId = externalId;
+    }
+
+    /** 데모(체험) 계정 여부 — SSO 데모 계정으로 로그인한 세션이면 쓰기 차단(read-only). */
+    public boolean isDemo() {
+        return DEMO_EXTERNAL_ID.equals(externalId);
     }
 
     /** Refresh mutable profile fields from the identity provider on each login. */

@@ -2,6 +2,7 @@ package com.postflow.auth;
 
 import com.postflow.auth.dto.UserDto;
 import com.postflow.billing.EntitlementService;
+import com.postflow.demo.DemoContentSeeder;
 import com.postflow.user.User;
 import com.postflow.user.UserService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,10 +21,13 @@ public class AuthController {
 
     private final UserService userService;
     private final EntitlementService entitlementService;
+    private final DemoContentSeeder demoContentSeeder;
 
-    public AuthController(UserService userService, EntitlementService entitlementService) {
+    public AuthController(UserService userService, EntitlementService entitlementService,
+                          DemoContentSeeder demoContentSeeder) {
         this.userService = userService;
         this.entitlementService = entitlementService;
+        this.demoContentSeeder = demoContentSeeder;
     }
 
     /** Current user. Pulls the authoritative plan from billing entitlements (session refresh). */
@@ -31,6 +35,9 @@ public class AuthController {
     public UserDto me(@AuthenticationPrincipal Long userId) {
         User user = userService.getById(userId);
         entitlementService.syncPlan(userId, user.getExternalId()); // billing = source of truth
+        if (user.isDemo()) {
+            demoContentSeeder.ensureSeeded(userId); // 데모 계정이면 샘플 콘텐츠 1회 시드(멱등)
+        }
         return UserDto.from(userService.getById(userId));
     }
 }

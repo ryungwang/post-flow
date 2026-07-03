@@ -7,7 +7,8 @@ public record UserDto(
         String email,
         String name,
         String profileImage,
-        String plan
+        String plan,
+        boolean demo
 ) {
     public static UserDto from(User user) {
         return new UserDto(
@@ -15,6 +16,7 @@ public record UserDto(
                 user.getEmail(),
                 user.getName(),
                 user.getProfileImage(),
-                user.getPlan().name());
+                user.getPlan().name(),
+                user.isDemo());
     }
 }

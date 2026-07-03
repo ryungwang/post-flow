@@ -3,6 +3,7 @@ import { LogOut, Plus, Search } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
+import { DemoBanner } from "@/components/demo-banner";
 import { CommandPalette } from "@/components/command-palette";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export function AppShell() {
       <AppSidebar />
       <CommandPalette />
       <div className="app-ambient flex min-w-0 flex-1 flex-col">
+        <DemoBanner />
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border/60 bg-background/70 px-6 backdrop-blur-xl">
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}

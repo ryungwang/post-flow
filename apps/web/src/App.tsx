@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/auth/require-auth";
@@ -39,6 +39,8 @@ export default function App() {
     <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* 빌링 "데모 체험하기" 진입점(postflow.synub.io/demo) → 데모 자동로그인 */}
+        <Route path="/demo" element={<Navigate to="/login?demo" replace />} />
         <Route path="/lp/:slug" element={<LandingPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>

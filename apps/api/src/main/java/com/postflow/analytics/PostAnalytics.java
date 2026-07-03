@@ -49,4 +49,19 @@ public class PostAnalytics extends BaseTimeEntity {
 
     @Column(name = "engagement_rate", nullable = false)
     private double engagementRate = 0.0;
+
+    /** Seed/snapshot factory — engagementRate = (likes+replies+reposts+quotes)/views. */
+    public static PostAnalytics of(Long postId, long views, long likes, long replies,
+                                   long reposts, long quotes, long shares) {
+        PostAnalytics a = new PostAnalytics();
+        a.postId = postId;
+        a.views = views;
+        a.likes = likes;
+        a.replies = replies;
+        a.reposts = reposts;
+        a.quotes = quotes;
+        a.shares = shares;
+        a.engagementRate = views > 0 ? (double) (likes + replies + reposts + quotes) / views : 0.0;
+        return a;
+    }
 }

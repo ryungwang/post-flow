@@ -1,5 +1,6 @@
 package com.postflow.common.config;
 
+import com.postflow.auth.DemoReadOnlyFilter;
 import com.postflow.auth.JwtAuthenticationFilter;
 import jakarta.servlet.DispatcherType;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
@@ -19,9 +20,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final DemoReadOnlyFilter demoReadOnlyFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          DemoReadOnlyFilter demoReadOnlyFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.demoReadOnlyFilter = demoReadOnlyFilter;
     }
 
     @Bean
@@ -45,7 +49,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // 인증 세팅 뒤 실행 — 데모 세션의 쓰기 요청 차단(read-only).
+                .addFilterAfter(demoReadOnlyFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }
