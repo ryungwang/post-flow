@@ -10,13 +10,14 @@
 - `.github/workflows/deploy.yml` — main push(apps/api/**) + 수동. GHCR build/push → Lightsail SSH deploy. ✅
 - `apps/api/.dockerignore` — build/.gradle/.env 제외. ✅
 
-## 네이밍 (앱별 — 서버 compose와 일치시킬 것)
+## 네이밍 (서버 compose와 일치 — 확정)
 | 위치 | 값 |
 |---|---|
-| CI `IMAGE_NAME` (GHCR) | `ghcr.io/<owner>/synub-postflow-api` |
-| compose 서비스 (`docker compose pull/up`) | `postflow-api` |
-| prod yml `storage.s3.prefix` | `synub-postflow` |
-> 서버 `~/synub-prod/docker-compose.yml`의 post-flow 서비스명이 기준. CI의 `postflow-api`와 일치시킨다.
+| CI `IMAGE_NAME` (GHCR) | `ghcr.io/<owner>/postflow-api` |
+| compose 서비스·container | `postflow-api` |
+| prod yml `storage.s3.prefix` | `synub-postflow` (하드코딩 — 공유 s3.env가 안 덮게) |
+> 서버 `~/synub-prod/docker-compose.yml`: `image: ghcr.io/ryungwang/postflow-api:latest`,
+> `container_name: postflow-api`, `env_file: [.env, s3.env]`, `expose: ["8080"]`, `depends_on: [db]`.
 
 ## 1. GitHub Secrets
 - `LIGHTSAIL_HOST`, `LIGHTSAIL_USER`(예: ubuntu), `LIGHTSAIL_SSH_KEY`(개인키). GHCR는 `GITHUB_TOKEN` 자동.

@@ -15,5 +15,6 @@ storage:
   s3:
     bucket: ${AWS_S3_BUCKET}
     region: ${AWS_REGION}
-    prefix: ${AWS_S3_PREFIX:synub-postflow}
+    # 공유 s3.env의 AWS_S3_PREFIX가 덮어쓰지 않도록 app 고정 네임스페이스로 하드코딩(앱별 격리).
+    prefix: synub-postflow
     public-base-url: ${AWS_S3_PUBLIC_BASE_URL}
