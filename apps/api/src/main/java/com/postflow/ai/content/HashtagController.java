@@ -19,7 +19,7 @@ import java.util.Set;
  * frequently-used tags. Deterministic (no LLM) — works without API keys.
  */
 @RestController
-@RequestMapping("/api/ai/hashtags")
+@RequestMapping("/ai/hashtags")
 public class HashtagController {
 
     private static final Map<String, List<String>> CURATED = new LinkedHashMap<>();

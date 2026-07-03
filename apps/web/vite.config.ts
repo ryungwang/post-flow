@@ -3,10 +3,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
-// Dev proxy so the SPA can call the backend without CORS. Override target with
-// VITE_API_PROXY_TARGET (default matches the API's local port).
-const apiTarget = process.env.VITE_API_PROXY_TARGET || "http://localhost:8080";
-
+// SPA는 API를 호스트 기준으로 직접 호출(office 컨벤션). dev=VITE_API_BASE_URL ?? http://localhost:8080.
+// 백엔드 CORS가 localhost:5173 허용하므로 dev proxy 불필요.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -16,8 +14,5 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: {
-      "/api": { target: apiTarget, changeOrigin: true },
-    },
   },
 });

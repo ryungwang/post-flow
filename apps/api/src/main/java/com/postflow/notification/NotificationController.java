@@ -21,7 +21,7 @@ import java.util.List;
  * reconnect-required / expiring Threads tokens. Keyless.
  */
 @RestController
-@RequestMapping("/api/notifications")
+@RequestMapping("/notifications")
 public class NotificationController {
 
     private final PostRepository postRepository;

@@ -10,7 +10,7 @@ import java.util.List;
 
 /** Flat listing of the current user's tracking links (for pickers). */
 @RestController
-@RequestMapping("/api/cta-links")
+@RequestMapping("/cta-links")
 public class CtaLinkQueryController {
 
     private final CtaLinkService ctaLinkService;

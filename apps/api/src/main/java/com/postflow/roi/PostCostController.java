@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/post-costs")
+@RequestMapping("/post-costs")
 public class PostCostController {
 
     private final RoiService roiService;

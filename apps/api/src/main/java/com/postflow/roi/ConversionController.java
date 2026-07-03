@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/conversions")
+@RequestMapping("/conversions")
 public class ConversionController {
 
     private final RoiService roiService;

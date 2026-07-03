@@ -11,7 +11,7 @@ import java.util.List;
  * real Insights data accumulates this can be blended with the user's own engagement.
  */
 @RestController
-@RequestMapping("/api/analytics/best-times")
+@RequestMapping("/analytics/best-times")
 public class BestTimeController {
 
     public record BestTime(String label, int score) {

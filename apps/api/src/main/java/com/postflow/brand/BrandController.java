@@ -17,7 +17,7 @@ import java.util.List;
 
 /** CRUD for the user's promoted products/campaigns (brand profiles). */
 @RestController
-@RequestMapping("/api/brands")
+@RequestMapping("/brands")
 public class BrandController {
 
     private final BrandRepository repository;

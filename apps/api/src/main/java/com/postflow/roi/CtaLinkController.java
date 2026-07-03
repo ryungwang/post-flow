@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/posts/{postId}/cta-links")
+@RequestMapping("/posts/{postId}/cta-links")
 public class CtaLinkController {
 
     private final CtaLinkService ctaLinkService;

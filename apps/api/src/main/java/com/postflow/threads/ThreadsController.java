@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/threads")
+@RequestMapping("/threads")
 public class ThreadsController {
 
     private final ThreadsOAuthService oAuthService;

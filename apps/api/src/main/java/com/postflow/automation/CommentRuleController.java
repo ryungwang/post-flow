@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/comment-rules")
+@RequestMapping("/comment-rules")
 public class CommentRuleController {
 
     private final CommentRuleService service;

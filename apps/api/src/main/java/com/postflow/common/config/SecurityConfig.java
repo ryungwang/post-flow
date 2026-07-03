@@ -38,10 +38,10 @@ public class SecurityConfig {
                         // and gets masked as 401
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
-                        .requestMatchers("/api/ping",
-                                "/api/threads/callback", "/api/threads/deauthorize",
-                                "/api/threads/data-deletion", "/r/**", "/api/public/**",
-                                "/api/webhooks/**", "/files/**").permitAll()
+                        .requestMatchers("/ping",
+                                "/threads/callback", "/threads/deauthorize",
+                                "/threads/data-deletion", "/r/**", "/public/**",
+                                "/webhooks/**", "/files/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint))

@@ -27,7 +27,7 @@ public class LeadController {
     }
 
     /** Landing page metadata (public). */
-    @GetMapping("/api/public/cta-links/{slug}")
+    @GetMapping("/public/cta-links/{slug}")
     public ResponseEntity<Map<String, Object>> meta(@PathVariable String slug) {
         return ctaLinkRepository.findBySlug(slug)
                 .map(link -> ResponseEntity.ok(Map.<String, Object>of(
@@ -38,7 +38,7 @@ public class LeadController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/api/public/leads/{slug}")
+    @PostMapping("/public/leads/{slug}")
     public ResponseEntity<Map<String, Object>> capture(@PathVariable String slug,
                                                        @RequestBody LeadRequest request) {
         return ctaLinkRepository.findBySlug(slug)

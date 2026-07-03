@@ -32,7 +32,7 @@ import java.util.HexFormat;
  * {@code {api-domain}/api/webhooks/billing}.
  */
 @RestController
-@RequestMapping("/api/webhooks/billing")
+@RequestMapping("/webhooks/billing")
 public class BillingWebhookController {
 
     private static final Logger log = LoggerFactory.getLogger(BillingWebhookController.class);

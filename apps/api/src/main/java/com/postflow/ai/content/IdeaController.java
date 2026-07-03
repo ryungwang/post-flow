@@ -16,7 +16,7 @@ import java.util.List;
  * Deterministic (date-seeded rotation + formula hooks), so it works without API keys.
  */
 @RestController
-@RequestMapping("/api/ai/ideas")
+@RequestMapping("/ai/ideas")
 public class IdeaController {
 
     private static final List<String> TOPIC_POOL = List.of(

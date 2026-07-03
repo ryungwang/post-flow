@@ -13,7 +13,7 @@ import java.util.Map;
 
 /** Account settings: webhook secret + plan usage. */
 @RestController
-@RequestMapping("/api/account")
+@RequestMapping("/account")
 public class AccountController {
 
     private final UserService userService;
@@ -44,6 +44,6 @@ public class AccountController {
     }
 
     private Map<String, String> response(String secret) {
-        return Map.of("secret", secret, "endpoint", apiBaseUrl + "/api/webhooks/conversions");
+        return Map.of("secret", secret, "endpoint", apiBaseUrl + "/webhooks/conversions");
     }
 }

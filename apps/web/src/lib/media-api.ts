@@ -1,6 +1,6 @@
 import { getToken } from "@/store/auth";
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 /** Upload an image; returns its publicly reachable URL. */
 export async function uploadMedia(file: File): Promise<{ key: string; url: string }> {

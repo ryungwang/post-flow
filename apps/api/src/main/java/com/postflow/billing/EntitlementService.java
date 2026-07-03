@@ -43,7 +43,7 @@ public class EntitlementService {
     public Entitlement fetch(String externalId) {
         try {
             return billing.get()
-                    .uri(uri -> uri.path("/api/entitlements")
+                    .uri(uri -> uri.path("/entitlements")
                             .queryParam("service", serviceCode)
                             .queryParam("customer", externalId)
                             .build())

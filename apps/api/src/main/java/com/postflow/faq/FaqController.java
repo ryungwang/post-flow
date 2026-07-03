@@ -8,7 +8,7 @@ import java.util.List;
 
 /** Read-only help center content (DB-managed). */
 @RestController
-@RequestMapping("/api/faqs")
+@RequestMapping("/faqs")
 public class FaqController {
 
     private final FaqRepository repository;

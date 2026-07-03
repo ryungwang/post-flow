@@ -73,7 +73,7 @@ auth:
 threads:
   app-id: ${THREADS_APP_ID:}
   app-secret: ${THREADS_APP_SECRET:}
-  redirect-uri: ${THREADS_REDIRECT_URI:http://localhost:8080/api/threads/callback}
+  redirect-uri: ${THREADS_REDIRECT_URI:http://localhost:8080/threads/callback}
   scopes: threads_basic,threads_content_publish,threads_manage_insights
   authorize-base-url: https://threads.net
   graph-base-url: https://graph.threads.net

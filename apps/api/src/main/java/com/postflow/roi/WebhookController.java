@@ -49,7 +49,7 @@ public class WebhookController {
     /** Reject signed payloads whose timestamp is older/newer than this (replay protection). */
     private static final long MAX_SKEW_SECONDS = 300;
 
-    @PostMapping("/api/webhooks/conversions")
+    @PostMapping("/webhooks/conversions")
     public ResponseEntity<?> conversion(@RequestHeader(name = "X-PostFlow-Signature", required = false) String signature,
                                         @RequestHeader(name = "X-PostFlow-Timestamp", required = false) String timestamp,
                                         @RequestBody String rawBody) {

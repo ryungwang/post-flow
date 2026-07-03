@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 로컬 프로필/구독 상태만 노출한다.
  */
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 public class AuthController {
 
     private final UserService userService;

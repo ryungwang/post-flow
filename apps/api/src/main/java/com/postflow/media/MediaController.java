@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /** Uploads media (images) for posts. Returns a publicly reachable URL (Threads needs one). */
 @RestController
-@RequestMapping("/api/media")
+@RequestMapping("/media")
 public class MediaController {
 
     private static final Set<String> IMAGE_TYPES = Set.of(
