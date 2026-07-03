@@ -55,7 +55,7 @@ sso:
   base-url: ${SSO_BASE_URL:http://localhost:8090}
   issuer: ${SSO_ISSUER:https://accounts.synub.io}
   audience: ${SSO_AUDIENCE:synub-postflow}
-  jwks-uri: ${SSO_JWKS_URI:http://localhost:8090/.well-known/jwks.json}
+  jwks-uri: ${SSO_JWKS_URL:http://localhost:8090/.well-known/jwks.json}
 
 auth:
   # Threads OAuth state 서명용(내부 전용). 로그인용 아님.

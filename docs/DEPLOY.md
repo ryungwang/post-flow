@@ -26,37 +26,48 @@
 
 서버 compose는 `env_file: [.env, s3.env]`. **공통(전 synub 앱 공유)** 과 **postflow 전용**을 나눠 관리한다.
 
-### 2-1. 공통 env — 전 synub 앱 공유 (`s3.env` + 공용 `.env`)
-여러 제품이 같은 값을 쓰므로 **한 곳에서 관리**하고 각 서비스가 함께 로드한다.
+### 2-1. 공통 env — 전 synub 앱 공유 (서버 `~/synub-prod`의 `.env` + `s3.env`)
+여러 제품이 같은 값을 쓰므로 **한 곳에서 관리**하고 각 서비스가 함께 로드한다. (실값·시크릿은 서버 파일이 원천 — repo에 안 박음)
 
-| env | 용도 | 위치 |
-|---|---|---|
-| `AWS_S3_BUCKET` / `AWS_REGION` / `AWS_S3_PUBLIC_BASE_URL` | 공유 S3 버킷·리전 (자격증명=인스턴스 롤) | `s3.env` |
-| `SSO_ISSUER` / `SSO_JWKS_URI` | synub-sso 토큰 검증(기본 `accounts.synub.io`) — 모든 제품 동일 | 공용 `.env` |
-| `BILLING_BASE_URL` | synub 중앙 빌링 주소(예: `https://app.synub.io`) — 동일 | 공용 `.env` |
-| `SERVICE_API_KEY` | 빌링 entitlements 호출 인증 — **빌링이 검증하는 단일 서비스 키(전 제품 공유)** | 공용 `.env` |
-| `BILLING_WEBHOOK_SECRET` | 빌링 웹훅 서명 검증 — 빌링 `app.webhook.secret`과 동일(전 제품 공유) | 공용 `.env` |
+**공용 `.env`** (전 앱):
+| env | 값/용도 |
+|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` |
+| `SERVER_PORT` | `8080` |
+| `SSO_ISSUER` | `https://accounts.synub.io` |
+| `SSO_JWKS_URL` | `https://accounts.synub.io/.well-known/jwks.json` (⚠️ `URL`, `URI` 아님) |
+| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | 공용 db 접속 유저(`synub`) — 앱 격리는 DB명으로(§2-2) |
+| `SSO_PROVISION_KEY`, `SSO_DEMO_*`, `APP_ADMIN_*` | SSO/관리자용(post-flow는 안 씀, 로드만) |
 
-> S3 prefix는 env로 안 받는다 — prod yml에 `synub-postflow`로 **하드코딩**(공유 `s3.env`의 `AWS_S3_PREFIX`가 덮어 다른 앱과 섞이는 것 방지).
+**공용 `s3.env`**:
+| env | 값/용도 |
+|---|---|
+| `AWS_REGION` | `ap-northeast-2` |
+| `AWS_S3_BUCKET` | `synub-prod-uploads-haru` (공유 버킷) |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | 자격증명(시크릿) — DefaultCredentialsProvider가 env로 읽음 |
+
+> - S3 prefix는 env로 안 받는다 — prod yml에 `synub-postflow`로 **하드코딩**(공유 `s3.env`의 `AWS_S3_PREFIX`가 덮어 다른 앱과 섞이는 것 방지).
+> - **빌링 연동값(`SERVICE_API_KEY`·`BILLING_WEBHOOK_SECRET`·`BILLING_BASE_URL`)은 전 제품 공유지만 아직 공용 `.env`에 없음 → 추가 필요**(빌링 `app.webhook.secret`/서비스키와 동일 값).
 
 ### 2-2. postflow 전용 env
-postflow만 쓰는 값 — postflow 서비스의 `environment:`(또는 postflow 전용 env 파일)로 주입.
+postflow만 쓰는 값 — postflow 서비스의 `environment:`(또는 전용 env 파일)로 주입.
 
-| env | 용도 |
+| env | 값/용도 |
 |---|---|
-| `SPRING_PROFILES_ACTIVE=prod` | prod 프로필 |
-| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | 공유 `db`의 **postflow 전용 role**(슈퍼유저 금지) |
-| `SPRING_DATASOURCE_URL`(선택) | 기본 `jdbc:postgresql://db:5432/postflow` |
-| `SSO_AUDIENCE=synub-postflow` | 이 제품의 토큰 audience(앱별 고유) |
-| `CORS_ALLOWED_ORIGINS=https://postflow.synub.io` | 허용 프론트 |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://db:5432/postflow` (공용 유저 `synub`가 이 DB에 접속 — 앱 격리) |
+| `SSO_AUDIENCE` | `synub-postflow` (이 제품 토큰 audience, 앱별 고유) |
+| `CORS_ALLOWED_ORIGINS` | `https://postflow.synub.io` |
+| `AWS_S3_PUBLIC_BASE_URL` | 업로드 공개 URL(예: `https://synub-prod-uploads-haru.s3.ap-northeast-2.amazonaws.com`) |
 | `ANTHROPIC_API_KEY` | AI 생성(이 제품 키) |
 | `THREADS_APP_ID` / `THREADS_APP_SECRET` | 이 제품의 Threads 앱 |
 | `THREADS_REDIRECT_URI` / `THREADS_FRONTEND_REDIRECT_URL` | Threads 콜백/복귀(고정 https) |
 | `AUTH_STATE_SECRET` | Threads OAuth state 서명(≥32B, 로그인용 아님) |
+| `SERVICE_API_KEY` / `BILLING_WEBHOOK_SECRET` | 빌링 연동(공용값이면 §2-1로 이동) |
 
 ## 3. DB (공유 host 앱별 격리)
-- 공유 postgres `db`에 **DB `postflow`** + **스키마 `postflow`** + **전용 role**(해당 DB/스키마 권한만).
-- Flyway가 부팅 시 V1~V25 자동 적용. 로컬 PG 버전 = prod 버전 맞출 것.
+- 공유 postgres `db`(postgres:16)에 **DB `postflow`** + **스키마 `postflow`** 생성.
+- 접속 유저는 공용 `synub`(공용 `.env`의 `SPRING_DATASOURCE_USERNAME`) — 이 유저가 `postflow` DB에 접근하도록 **grant** 필요.
+- Flyway가 부팅 시 V1~V25 자동 적용. 로컬 PG 버전 = prod(16) 맞출 것.
 
 ## 4. Web (Vercel — Vite SPA)
 - Vercel 프로젝트 **Root Directory = `apps/web`** (install/build override 금지 — 루트 lockfile 워크스페이스 해석).
