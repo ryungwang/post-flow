@@ -27,9 +27,9 @@ public class EntitlementService {
     private final String serviceCode;
 
     public EntitlementService(UserService userService,
-                              @Value("${billing.base-url}") String billingBaseUrl,
-                              @Value("${billing.service-key}") String serviceKey,
-                              @Value("${billing.service-code:threads}") String serviceCode) {
+                              @Value("${synub.billing.base-url}") String billingBaseUrl,
+                              @Value("${synub.billing.service-key}") String serviceKey,
+                              @Value("${synub.billing.service-code:post-flow}") String serviceCode) {
         this.userService = userService;
         this.billing = RestClient.create(billingBaseUrl);
         this.serviceKey = serviceKey;

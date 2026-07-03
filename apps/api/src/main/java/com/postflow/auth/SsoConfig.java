@@ -22,9 +22,11 @@ import java.util.List;
 public class SsoConfig {
 
     @Bean
-    public JwtDecoder ssoJwtDecoder(@Value("${sso.jwks-uri}") String jwksUri,
-                                    @Value("${sso.issuer}") String issuer,
-                                    @Value("${sso.audience}") String audience) {
+    public JwtDecoder ssoJwtDecoder(@Value("${synub.sso.base-url}") String ssoBaseUrl,
+                                    @Value("${synub.sso.issuer}") String issuer,
+                                    @Value("${synub.sso.audience}") String audience) {
+        // jwks는 SSO base-url에서 파생(office 컨벤션) — 별도 URL env 없음.
+        String jwksUri = ssoBaseUrl + "/.well-known/jwks.json";
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri).build();
         OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuer);
         OAuth2TokenValidator<Jwt> withAudience = jwt ->

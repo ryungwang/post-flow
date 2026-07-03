@@ -1,20 +1,20 @@
 # prod 프로필 — 시크릿은 디폴트 금지(${ENV}), 공유 db의 앱 전용 DB(postflow)+스키마(postflow).
 # 리버스프록시/HTTPS는 Caddy(서버 관리). 앱은 내부 8080만 노출.
 spring:
+  # 공유 postgres(호스트 db)만 공용. 데이터베이스는 post-flow 전용(synub_postflow), 스키마는 postflow.
   datasource:
-    # URL은 시크릿 아님 → 공용 postgres(compose 서비스 db)의 postflow 고정 기본값, 유저/비번만 env.
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/postflow}
+    # URL은 시크릿 아님 → yml 기본값(공용 db의 synub_postflow), 유저/비번만 env.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/synub_postflow}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       connection-init-sql: ${SPRING_DATASOURCE_INIT_SQL:SET search_path TO postflow}
 
 storage:
-  # 운영은 S3(업로드 이미지/영상). 자격증명=인스턴스 롤/AWS_* env(DefaultCredentialsProvider).
-  # bucket/region은 공유, prefix는 app 고정 네임스페이스(다른 앱과 격리).
+  # 운영은 S3(업로드 이미지/영상). 자격증명=AWS_* env(DefaultCredentialsProvider, s3.env).
+  # bucket/region은 공유 s3.env, prefix는 AWS_S3_PREFIX로 앱별 격리(기본 synub-postflow).
   s3:
     bucket: ${AWS_S3_BUCKET}
     region: ${AWS_REGION}
-    # 공유 s3.env의 AWS_S3_PREFIX가 덮어쓰지 않도록 app 고정 네임스페이스로 하드코딩(앱별 격리).
-    prefix: synub-postflow
-    public-base-url: ${AWS_S3_PUBLIC_BASE_URL}
+    prefix: ${AWS_S3_PREFIX:synub-postflow}
+    public-base-url: ${AWS_S3_PUBLIC_BASE_URL:}

@@ -42,7 +42,7 @@ public class BillingWebhookController {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public BillingWebhookController(UserService userService,
-                                    @Value("${billing.webhook-secret}") String secret) {
+                                    @Value("${synub.billing.webhook-secret}") String secret) {
         this.userService = userService;
         this.secret = secret;
     }

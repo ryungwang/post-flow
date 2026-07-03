@@ -39,7 +39,7 @@ management:
         enabled: true
 
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 ai:
   provider: ${AI_PROVIDER:claude}
@@ -50,23 +50,25 @@ ai:
       STANDARD: claude-sonnet-4-6
       PREMIUM: claude-opus-4-8
 
-# 로그인은 synub-sso(통합계정)로 중앙화. post-flow는 SSO RS256 토큰을 JWKS로 검증.
-sso:
-  base-url: ${SSO_BASE_URL:http://localhost:8090}
-  issuer: ${SSO_ISSUER:https://accounts.synub.io}
-  audience: ${SSO_AUDIENCE:synub-postflow}
-  jwks-uri: ${SSO_JWKS_URL:http://localhost:8090/.well-known/jwks.json}
+# synub 통합 시스템 연동(office 컨벤션과 동일). 로그인=SSO 토큰 검증, 구독=중앙 빌링.
+synub:
+  sso:
+    # RS256 토큰은 base-url의 JWKS(base-url + /.well-known/jwks.json)로 검증.
+    base-url: ${SYNUB_SSO_BASE_URL:http://localhost:8090}
+    issuer: ${SYNUB_SSO_ISSUER:https://accounts.synub.io}
+    audience: ${SYNUB_SSO_AUDIENCE:synub-postflow}
+  billing:
+    # 결제는 post-flow가 하지 않고, 웹훅 수신·entitlements 조회만.
+    base-url: ${SYNUB_BILLING_BASE_URL:http://localhost:8088}
+    service-code: ${SYNUB_BILLING_SERVICE_CODE:post-flow}
+    # 빌링의 SERVICE_API_KEY와 동일. 웹훅 시크릿은 빌링 app.webhook.secret과 동일.
+    service-key: ${SYNUB_BILLING_SERVICE_KEY:local-service-key}
+    webhook-secret: ${SYNUB_BILLING_WEBHOOK_SECRET:local-dev-webhook-secret}
+    portal-url: ${SYNUB_BILLING_PORTAL_URL:https://app.synub.io}
 
 auth:
   # Threads OAuth state 서명용(내부 전용). 로그인용 아님.
   state-secret: ${AUTH_STATE_SECRET:dev-only-insecure-state-secret-change-me-32b!}
-
-# synub-billing 연동(구독의 진실). entitlements pull + 웹훅 수신.
-billing:
-  base-url: ${BILLING_BASE_URL:http://localhost:8088}
-  service-code: ${BILLING_SERVICE_CODE:post-flow}
-  service-key: ${SERVICE_API_KEY:local-service-key}
-  webhook-secret: ${BILLING_WEBHOOK_SECRET:local-dev-webhook-secret}
 
 threads:
   app-id: ${THREADS_APP_ID:}
