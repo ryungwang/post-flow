@@ -3,9 +3,11 @@ package com.postflow.threads;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.postflow.threads.dto.ThreadsAccountDto;
 import com.postflow.threads.dto.ThreadsStatusResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -102,7 +104,8 @@ public class ThreadsController {
      */
     @RequestMapping(value = "/data-deletion", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<Map<String, String>> dataDeletion(
-            @RequestParam(name = "signed_request", required = false) String signedRequest) {
+            @RequestParam(name = "signed_request", required = false) String signedRequest,
+            HttpServletRequest request) {
         String code = "del_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         JsonNode payload = MetaSignedRequest.verify(signedRequest, props.appSecret());
         if (payload != null) {
@@ -113,8 +116,9 @@ public class ThreadsController {
                         threadsUserId, removed, code);
             }
         }
-        // 상태 확인 페이지 URL(사람이 읽을 수 있는 처리 상태) + 확인 코드.
-        String statusUrl = props.apiBaseUrl() + "/threads/data-deletion/status?code=" + code;
+        // 상태 확인 페이지 URL — 이 콜백을 받은 실제 호스트(=API 호스트)에서 파생(env 오설정에 견고).
+        String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+        String statusUrl = base + "/threads/data-deletion/status?code=" + code;
         return ResponseEntity.ok(Map.of("url", statusUrl, "confirmation_code", code));
     }
 
