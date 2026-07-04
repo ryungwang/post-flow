@@ -28,7 +28,7 @@ export function CompetitorPage() {
   const pick = (u: string) => { setUsername(u); setNotFound(false); mutate(u); };
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
+    <div className="mx-auto max-w-5xl p-6">
       <h1 className="text-2xl font-bold tracking-tight">경쟁사 분석</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         벤치마킹할 계정의 @아이디를 넣으면 팔로워·최근 7일 성과를 보여줘요. 잘 되는 계정을 참고해 전략을 세우세요.

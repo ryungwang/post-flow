@@ -94,7 +94,7 @@ export function ThreadsInsightsPage() {
   const loading = postsQ.isLoading || insQ.isLoading;
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
+    <div className="mx-auto max-w-5xl p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Threads 인사이트</h1>
