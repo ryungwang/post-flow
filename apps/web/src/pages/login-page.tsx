@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { authApi, DEMO_LOGIN } from "@/lib/auth-api";
+import { ApiError } from "@/lib/api";
 import { setRefreshToken, useAuth } from "@/store/auth";
 import { LEGAL } from "@/lib/legal";
 
@@ -47,8 +48,14 @@ export function LoginPage() {
       const user = await authApi.me();
       setAuth(tokens.accessToken, user);
       navigate("/", { replace: true });
-    } catch {
-      setError("로그인에 실패했어요. 이메일·비밀번호를 확인해 주세요.");
+    } catch (e) {
+      // SSO 인증은 됐지만 접근 허가 계정이 아님(비공개 베타) → 백엔드 403 메시지 노출.
+      if (e instanceof ApiError && e.status === 403) {
+        useAuth.getState().clear();
+        setError(e.message);
+      } else {
+        setError("로그인에 실패했어요. 이메일·비밀번호를 확인해 주세요.");
+      }
     } finally {
       setLoading(false);
     }

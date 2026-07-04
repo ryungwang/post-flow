@@ -69,6 +69,10 @@ synub:
 auth:
   # Threads OAuth state 서명용(내부 전용). 로그인용 아님.
   state-secret: ${AUTH_STATE_SECRET:dev-only-insecure-state-secret-change-me-32b!}
+  # 비공개 베타 접근 허용목록(external_id, 쉼표구분). 오픈 전이라 이 계정들만 로그인 가능.
+  # 데모 계정(demo-user)은 이와 별개로 항상 허용(읽기전용 체험). 공개 시 빈 값으로 두면 전체 허용.
+  # haru=usr_admin_haru, sky=usr_office_sky, admin=usr_office_admin
+  allowed-external-ids: ${AUTH_ALLOWED_EXTERNAL_IDS:usr_admin_haru,usr_office_sky,usr_office_admin}
 
 threads:
   app-id: ${THREADS_APP_ID:}
