@@ -79,6 +79,35 @@ public class Post extends BaseTimeEntity {
         return p;
     }
 
+    /**
+     * 실제 발행에 나갈 전체 텍스트 = 본문 + 해시태그 + CTA (미리보기 카드와 동일 순서).
+     * 해시태그/CTA를 붙이지 않으면 Threads엔 본문만 올라간다(누락 버그).
+     */
+    public String toPublishText() {
+        StringBuilder sb = new StringBuilder(content == null ? "" : content.strip());
+        if (hashtags != null && !hashtags.isEmpty()) {
+            StringBuilder tags = new StringBuilder();
+            for (String t : hashtags) {
+                if (t == null || t.isBlank()) {
+                    continue;
+                }
+                String tag = t.strip();
+                tag = tag.startsWith("#") ? tag : "#" + tag;
+                if (tags.length() > 0) {
+                    tags.append(' ');
+                }
+                tags.append(tag);
+            }
+            if (tags.length() > 0) {
+                sb.append("\n\n").append(tags);
+            }
+        }
+        if (cta != null && !cta.isBlank()) {
+            sb.append("\n\n").append(cta.strip());
+        }
+        return sb.toString();
+    }
+
     /** Set or clear the attached media URL (null clears). */
     public void updateMedia(String mediaUrl) {
         this.mediaUrl = mediaUrl;

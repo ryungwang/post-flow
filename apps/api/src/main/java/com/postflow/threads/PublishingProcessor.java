@@ -63,7 +63,7 @@ public class PublishingProcessor {
         post.startPublishing();
         return Optional.of(new PublishTask(
                 postId, account.getThreadsUserId(), account.getAccessToken(),
-                post.getContent(), post.getMediaUrl()));
+                post.toPublishText(), post.getMediaUrl())); // 본문+해시태그+CTA 전체
     }
 
     @Transactional
