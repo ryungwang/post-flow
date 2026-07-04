@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { AtSign, ExternalLink, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { AtSign, ExternalLink, Loader2, Search } from "lucide-react";
 import { threadsApi } from "@/lib/threads-api";
 import { AccountSelector } from "@/components/account-selector";
 import { useThreadsAccount } from "@/store/threads-account";
@@ -7,10 +8,15 @@ import { useThreadsAccount } from "@/store/threads-account";
 /** 나를 멘션한 게시물 인박스 — 응대 기회를 놓치지 않게. */
 export function MentionsPage() {
   const accountId = useThreadsAccount((s) => s.accountId);
+  const [q, setQ] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["threads-mentions", accountId],
     queryFn: () => threadsApi.mentions(accountId),
   });
+  const kw = q.trim().toLowerCase();
+  const mentions = (data?.posts ?? []).filter(
+    (m) => !kw || (m.text ?? "").toLowerCase().includes(kw) || (m.username ?? "").toLowerCase().includes(kw),
+  );
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -22,7 +28,20 @@ export function MentionsPage() {
         <div className="shrink-0"><AccountSelector /></div>
       </div>
 
-      <div className="mt-6 rounded-xl border bg-card/40">
+      {/* 검색 — 멘션 있을 때만 */}
+      {data?.available && (data.posts.length > 0) && (
+        <div className="relative mt-5 max-w-sm">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="멘션 내용·아이디 검색…"
+            className="h-9 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none focus:border-brand"
+          />
+        </div>
+      )}
+
+      <div className="mt-4 rounded-xl border bg-card/40">
         {isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
         ) : data && !data.available ? (
@@ -31,9 +50,11 @@ export function MentionsPage() {
           </p>
         ) : !data || data.posts.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">아직 멘션이 없어요.</p>
+        ) : mentions.length === 0 ? (
+          <p className="p-8 text-center text-sm text-muted-foreground">검색 결과가 없어요.</p>
         ) : (
           <ul className="divide-y divide-border/60">
-            {data.posts.map((m) => (
+            {mentions.map((m) => (
               <li key={m.id} className="p-4">
                 <div className="mb-1 flex items-center gap-1.5 text-sm">
                   <AtSign className="size-3.5 text-brand" />

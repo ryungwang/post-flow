@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MessageSquareReply, Play, Plus, Trash2 } from "lucide-react";
+import { Loader2, MessageSquareReply, Play, Plus, Search, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,14 @@ export function AutomationPage() {
   const [template, setTemplate] = useState("관심 가져주셔서 감사해요! 여기서 받아보세요 👉 {link}");
   const [postId, setPostId] = useState<string>(ALL);
   const [ctaLinkId, setCtaLinkId] = useState<string>(NONE);
+
+  // 규칙 목록 필터
+  const [ruleQ, setRuleQ] = useState("");
+  const [ruleActive, setRuleActive] = useState<"all" | "active" | "inactive">("all");
+  const rkw = ruleQ.trim().toLowerCase();
+  const shownRules = rules
+    .filter((r) => ruleActive === "all" || (ruleActive === "active" ? r.active : !r.active))
+    .filter((r) => !rkw || r.keyword.toLowerCase().includes(rkw) || (r.replyTemplate ?? "").toLowerCase().includes(rkw));
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["comment-rules"] });
 
@@ -110,9 +118,30 @@ export function AutomationPage() {
 
         {/* list */}
         <Card className="p-0">
-          <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
-            <h2 className="font-semibold">규칙 목록</h2>
-            {!isLoading && <span className="text-sm text-muted-foreground">{rules.length}개</span>}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-6 py-4">
+            <h2 className="font-semibold">규칙 목록 <span className="ml-1 text-sm font-normal text-muted-foreground">{!isLoading && `${shownRules.length}${shownRules.length !== rules.length ? `/${rules.length}` : ""}개`}</span></h2>
+            {rules.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={ruleQ}
+                    onChange={(e) => setRuleQ(e.target.value)}
+                    placeholder="키워드·답글 검색"
+                    className="h-8 w-40 rounded-lg border bg-background pl-8 pr-3 text-sm outline-none focus:border-brand"
+                  />
+                </div>
+                <div className="flex rounded-lg border p-0.5 text-xs">
+                  {([["all", "전체"], ["active", "활성"], ["inactive", "비활성"]] as const).map(([k, label]) => (
+                    <button key={k} onClick={() => setRuleActive(k)}
+                      className={cn("rounded-md px-2.5 py-1 font-medium transition-colors",
+                        ruleActive === k ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
@@ -125,9 +154,11 @@ export function AutomationPage() {
               </div>
               <p className="text-sm text-muted-foreground">아직 규칙이 없어요. 왼쪽에서 추가해 보세요.</p>
             </div>
+          ) : shownRules.length === 0 ? (
+            <p className="py-16 text-center text-sm text-muted-foreground">조건에 맞는 규칙이 없어요.</p>
           ) : (
             <ul className="divide-y divide-border/60">
-              {rules.map((r) => (
+              {shownRules.map((r) => (
                 <RuleRow key={r.id} rule={r} onToggle={() => toggle.mutate(r)} onRemove={() => remove.mutate(r.id)} busy={toggle.isPending || remove.isPending} />
               ))}
             </ul>

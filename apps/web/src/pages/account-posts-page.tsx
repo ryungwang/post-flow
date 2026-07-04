@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Eye, ExternalLink, Heart, Loader2, MessageCircle, Repeat2, RefreshCw, Send, Trash2 } from "lucide-react";
+import { ChevronDown, Eye, ExternalLink, Heart, Loader2, MessageCircle, Repeat2, RefreshCw, Search, Send, Trash2 } from "lucide-react";
 import { threadsApi, type ThreadsAccountPost } from "@/lib/threads-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,6 +127,26 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
   );
 }
 
+/** 작은 세그먼트 토글(필터/정렬용). */
+function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: [T, string][] }) {
+  return (
+    <div className="flex rounded-lg border p-0.5 text-xs">
+      {options.map(([k, label]) => (
+        <button
+          key={k}
+          onClick={() => onChange(k)}
+          className={cn(
+            "rounded-md px-2.5 py-1.5 font-medium transition-colors whitespace-nowrap",
+            value === k ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** 연결된 Threads 계정에 실제 올라간 게시물 목록 — 무한 스크롤 + PostFlow/외부 구분. */
 export function AccountPostsPage() {
   const accountId = useThreadsAccount((s) => s.accountId);
@@ -138,7 +158,24 @@ export function AccountPostsPage() {
       getNextPageParam: (last) => last.nextCursor ?? undefined,
     });
 
-  const posts = data?.pages.flatMap((pg) => pg.posts) ?? [];
+  const [q, setQ] = useState("");
+  const [source, setSource] = useState<"all" | "postflow" | "external">("all");
+  const [sort, setSort] = useState<"recent" | "engagement" | "views">("recent");
+
+  const loaded = data?.pages.flatMap((pg) => pg.posts) ?? [];
+  const rate = (p: ThreadsAccountPost) => {
+    const v = p.views ?? 0;
+    return v > 0 ? ((p.likes ?? 0) + (p.replies ?? 0) + (p.reposts ?? 0) + (p.quotes ?? 0)) / v : 0;
+  };
+  const kw = q.trim().toLowerCase();
+  const posts = loaded
+    .filter((p) => source === "all" || (source === "postflow" ? p.fromPostflow : !p.fromPostflow))
+    .filter((p) => !kw || (p.text ?? "").toLowerCase().includes(kw))
+    .slice()
+    .sort((a, b) =>
+      sort === "recent" ? 0 : sort === "views" ? (b.views ?? 0) - (a.views ?? 0) : rate(b) - rate(a),
+    );
+  const filtering = kw !== "" || source !== "all" || sort !== "recent";
 
   // 스크롤 센티넬 — 화면에 들어오면 다음 페이지 로드.
   const sentinel = useRef<HTMLDivElement | null>(null);
@@ -170,7 +207,30 @@ export function AccountPostsPage() {
         </div>
       </div>
 
-      <div className="mt-6">
+      {/* 필터 바 — 검색 · 출처 · 정렬 (로드된 게시물 기준) */}
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="게시물 내용 검색…"
+            className="h-9 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none focus:border-brand"
+          />
+        </div>
+        <Segmented
+          value={source}
+          onChange={setSource}
+          options={[["all", "전체"], ["postflow", "✨ PostFlow"], ["external", "외부"]]}
+        />
+        <Segmented
+          value={sort}
+          onChange={setSort}
+          options={[["recent", "최신순"], ["engagement", "참여율순"], ["views", "조회순"]]}
+        />
+      </div>
+
+      <div className="mt-4">
         {isLoading ? (
           <div className="flex items-center justify-center rounded-xl border bg-card/40 py-20">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -181,10 +241,17 @@ export function AccountPostsPage() {
           </p>
         ) : posts.length === 0 ? (
           <p className="rounded-xl border bg-card/40 p-10 text-center text-sm text-muted-foreground">
-            아직 게시물이 없어요. Threads에 글을 올리거나 PostFlow에서 발행해 보세요.
+            {filtering
+              ? "조건에 맞는 게시물이 없어요. 필터를 바꾸거나 더 불러와 보세요."
+              : "아직 게시물이 없어요. Threads에 글을 올리거나 PostFlow에서 발행해 보세요."}
           </p>
         ) : (
           <>
+            {sort !== "recent" && hasNextPage && (
+              <p className="mb-2 text-xs text-muted-foreground">
+                ※ 정렬·필터는 <b>불러온 {loaded.length}개</b> 기준이에요. 아래 "더 보기"로 더 불러오면 반영돼요.
+              </p>
+            )}
             <ul className="flex flex-col gap-3">
               {posts.map((p) => (
                 <PostRow key={p.id} p={p} />
@@ -196,7 +263,9 @@ export function AccountPostsPage() {
               ) : hasNextPage ? (
                 <Button variant="ghost" size="sm" onClick={() => fetchNextPage()}>더 보기</Button>
               ) : (
-                <span className="text-xs text-muted-foreground">마지막 게시물이에요</span>
+                <span className="text-xs text-muted-foreground">
+                  {filtering ? `조건에 맞는 ${posts.length}개 · 마지막이에요` : "마지막 게시물이에요"}
+                </span>
               )}
             </div>
           </>
