@@ -32,7 +32,7 @@ export function AccountPostsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className="w-full p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">내 Threads 게시물</h1>
@@ -82,17 +82,19 @@ export function AccountPostsPage() {
                   <p className="whitespace-pre-wrap break-words text-sm text-foreground/90">
                     {p.text || <span className="text-muted-foreground">(텍스트 없음)</span>}
                   </p>
-                  <Metrics p={p} />
-                  {p.permalink && (
-                    <a
-                      href={p.permalink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-1.5 inline-flex items-center gap-1 text-xs text-brand hover:underline"
-                    >
-                      Threads에서 보기 <ExternalLink className="size-3" />
-                    </a>
-                  )}
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <Metrics p={p} />
+                    {p.permalink && (
+                      <a
+                        href={p.permalink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ml-auto inline-flex items-center gap-1 text-xs text-brand hover:underline"
+                      >
+                        Threads에서 보기 <ExternalLink className="size-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </li>
             ))}
