@@ -178,6 +178,21 @@ public class ThreadsApiClient {
         }
     }
 
+    /** 게시물 1건의 지표(views/likes/replies/reposts/quotes/shares). threads_manage_insights. 실패 시 null. */
+    public com.postflow.threads.api.ThreadsInsights fetchMediaInsights(String mediaId, String accessToken) {
+        try {
+            return graph.get()
+                    .uri(b -> b.path("/{id}/insights")
+                            .queryParam("metric", "views,likes,replies,reposts,quotes,shares")
+                            .queryParam("access_token", accessToken)
+                            .build(mediaId))
+                    .retrieve()
+                    .body(com.postflow.threads.api.ThreadsInsights.class);
+        } catch (RestClientException e) {
+            return null;
+        }
+    }
+
     /** 연결된 계정에 실제 올라간 게시물 목록(최신순). threads_basic 권한. 실패 시 빈 목록. */
     public List<com.postflow.threads.api.ThreadsUserPost> fetchUserPosts(String threadsUserId, String accessToken, int limit) {
         try {

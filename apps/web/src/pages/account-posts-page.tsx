@@ -1,8 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
-import { threadsApi } from "@/lib/threads-api";
+import { Eye, ExternalLink, Heart, Loader2, MessageCircle, Repeat2, RefreshCw, Send } from "lucide-react";
+import { threadsApi, type ThreadsAccountPost } from "@/lib/threads-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+
+function Metrics({ p }: { p: ThreadsAccountPost }) {
+  const items = [
+    { icon: Heart, v: p.likes },
+    { icon: MessageCircle, v: p.replies },
+    { icon: Repeat2, v: (p.reposts ?? 0) + (p.quotes ?? 0) },
+    { icon: Send, v: p.shares },
+    { icon: Eye, v: p.views },
+  ];
+  if (items.every((i) => i.v == null)) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+      {items.map(({ icon: Icon, v }, i) => (
+        <span key={i} className="inline-flex items-center gap-1">
+          <Icon className="size-3.5" /> {(v ?? 0).toLocaleString()}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 /** 연결된 Threads 계정에 실제 올라간 게시물 목록 — PostFlow 발행 / 외부 구분 표시. */
 export function AccountPostsPage() {
@@ -62,6 +82,7 @@ export function AccountPostsPage() {
                   <p className="whitespace-pre-wrap break-words text-sm text-foreground/90">
                     {p.text || <span className="text-muted-foreground">(텍스트 없음)</span>}
                   </p>
+                  <Metrics p={p} />
                   {p.permalink && (
                     <a
                       href={p.permalink}

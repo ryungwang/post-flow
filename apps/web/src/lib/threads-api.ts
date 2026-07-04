@@ -32,6 +32,12 @@ export type ThreadsAccountPost = {
   mediaType: string | null;
   mediaUrl: string | null;
   fromPostflow: boolean;
+  views: number | null;
+  likes: number | null;
+  replies: number | null;
+  reposts: number | null;
+  quotes: number | null;
+  shares: number | null;
 };
 
 export const threadsApi = {

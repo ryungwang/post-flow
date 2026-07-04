@@ -62,8 +62,10 @@ public class SocialAccountService {
                 .map(Post::getThreadsMediaId)
                 .filter(id -> id != null && !id.isBlank())
                 .collect(Collectors.toSet());
-        return apiClient.fetchUserPosts(account.getThreadsUserId(), account.getAccessToken(), limit).stream()
-                .map(p -> ThreadsAccountPostDto.of(p, mine.contains(p.id())))
+        String token = account.getAccessToken();
+        return apiClient.fetchUserPosts(account.getThreadsUserId(), token, limit).stream()
+                // 게시물별 참여 지표(좋아요·댓글·리포스트·공유). 실패/미제공은 null.
+                .map(p -> ThreadsAccountPostDto.of(p, mine.contains(p.id()), apiClient.fetchMediaInsights(p.id(), token)))
                 .toList();
     }
 
