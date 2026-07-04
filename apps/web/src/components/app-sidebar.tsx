@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
+  AtSign,
   BarChart3,
   CalendarClock,
   ChevronRight,
@@ -34,21 +35,25 @@ const NAV: Item[] = [
       { label: "시리즈 생성", to: "/content/series", icon: Sparkles, pro: true },
       { label: "브랜드/제품", to: "/brands", icon: Megaphone },
       { label: "라이브러리", to: "/content/library", icon: Library },
-      { label: "내 Threads 게시물", to: "/content/threads-posts", icon: Link2 },
     ],
   },
   { label: "스케줄", to: "/schedule", icon: CalendarClock },
-  { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true },
+  {
+    label: "Threads",
+    icon: AtSign,
+    children: [
+      { label: "내 게시물", to: "/content/threads-posts", icon: Library },
+      { label: "인사이트", to: "/insights", icon: TrendingUp, pro: true },
+      { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true },
+      { label: "계정 연결", to: "/settings/threads", icon: Link2 },
+    ],
+  },
   { label: "분석", to: "/analytics", icon: BarChart3, pro: true },
-  { label: "Threads 인사이트", to: "/insights", icon: TrendingUp, pro: true },
   { label: "자주 묻는 질문", to: "/help", icon: HelpCircle },
   {
     label: "설정",
     icon: Settings,
-    children: [
-      { label: "계정", to: "/settings/account", icon: Settings },
-      { label: "Threads 연결", to: "/settings/threads", icon: Link2 },
-    ],
+    children: [{ label: "계정", to: "/settings/account", icon: Settings }],
   },
 ];
 
