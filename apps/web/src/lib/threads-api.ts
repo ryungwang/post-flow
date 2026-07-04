@@ -48,4 +48,24 @@ export const threadsApi = {
   disconnect: (id: number) => api.del<void>(`/threads/accounts/${id}`),
   posts: (accountId?: number) =>
     api.get<ThreadsAccountPost[]>(`/threads/posts${accountId ? `?accountId=${accountId}` : ""}`),
+  insights: (accountId?: number) =>
+    api.get<ThreadsInsights>(`/threads/insights${accountId ? `?accountId=${accountId}` : ""}`),
+  replies: (mediaId: string) => api.get<ThreadsReply[]>(`/threads/posts/${mediaId}/replies`),
 };
+
+/** 인구통계 한 항목(라벨=연령대/성별/국가/도시, 값=팔로워 수). */
+export type DemoEntry = { label: string; value: number };
+
+/** 계정 인사이트: 팔로워 수 + 팔로워 인구통계. */
+export type ThreadsInsights = {
+  followers: number | null;
+  demographics: {
+    age: DemoEntry[];
+    gender: DemoEntry[];
+    country: DemoEntry[];
+    city: DemoEntry[];
+  };
+};
+
+/** 게시물 댓글(답글) 한 건. */
+export type ThreadsReply = { id: string; text: string | null; username: string | null };

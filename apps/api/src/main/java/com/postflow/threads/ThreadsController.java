@@ -64,6 +64,21 @@ public class ThreadsController {
         return socialAccountService.accountPosts(userId, accountId, Math.min(Math.max(limit, 1), 100));
     }
 
+    /** 계정 인사이트: 팔로워 수 + 팔로워 인구통계(연령/성별/국가/도시). */
+    @GetMapping("/insights")
+    public com.postflow.threads.dto.ThreadsInsightsDto accountInsights(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(name = "accountId", required = false) Long accountId) {
+        return socialAccountService.accountInsights(userId, accountId);
+    }
+
+    /** 특정 게시물의 댓글(답글) 목록. */
+    @GetMapping("/posts/{mediaId}/replies")
+    public List<com.postflow.threads.api.ThreadsReply> replies(
+            @AuthenticationPrincipal Long userId, @PathVariable String mediaId) {
+        return socialAccountService.repliesFor(userId, mediaId);
+    }
+
     @PostMapping("/accounts/{id}/default")
     public void setDefault(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
         socialAccountService.setDefaultAccount(userId, id);

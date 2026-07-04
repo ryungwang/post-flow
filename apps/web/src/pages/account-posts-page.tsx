@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { Eye, ExternalLink, Heart, Loader2, MessageCircle, Repeat2, RefreshCw, Send } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Eye, ExternalLink, Heart, Loader2, MessageCircle, Repeat2, RefreshCw, Send } from "lucide-react";
 import { threadsApi, type ThreadsAccountPost } from "@/lib/threads-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function Metrics({ p }: { p: ThreadsAccountPost }) {
   const items = [
@@ -14,13 +16,79 @@ function Metrics({ p }: { p: ThreadsAccountPost }) {
   ];
   if (items.every((i) => i.v == null)) return null;
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
       {items.map(({ icon: Icon, v }, i) => (
         <span key={i} className="inline-flex items-center gap-1">
           <Icon className="size-3.5" /> {(v ?? 0).toLocaleString()}
         </span>
       ))}
     </div>
+  );
+}
+
+/** 게시물 댓글 뷰어 — 펼칠 때만 조회(lazy). */
+function Replies({ mediaId }: { mediaId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["threads-replies", mediaId],
+    queryFn: () => threadsApi.replies(mediaId),
+  });
+  if (isLoading) return <div className="py-3 text-center text-xs text-muted-foreground"><Loader2 className="mx-auto size-4 animate-spin" /></div>;
+  if (!data || data.length === 0) return <p className="py-3 text-center text-xs text-muted-foreground">아직 댓글이 없어요.</p>;
+  return (
+    <ul className="mt-2 space-y-2 border-l-2 border-border/60 pl-3">
+      {data.map((r) => (
+        <li key={r.id} className="text-sm">
+          {r.username && <span className="mr-1.5 font-medium text-foreground">@{r.username}</span>}
+          <span className="text-foreground/80">{r.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PostRow({ p }: { p: ThreadsAccountPost }) {
+  const [openComments, setOpenComments] = useState(false);
+  const hasReplies = (p.replies ?? 0) > 0;
+  return (
+    <li className="flex items-start gap-3 p-4">
+      {p.mediaUrl && p.mediaType !== "TEXT_POST" && (
+        <img src={p.mediaUrl} alt="" className="size-14 shrink-0 rounded-md object-cover" />
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 flex flex-wrap items-center gap-1.5">
+          <Badge variant={p.fromPostflow ? "success" : "secondary"}>
+            {p.fromPostflow ? "✨ PostFlow 발행" : "외부 게시"}
+          </Badge>
+          {p.mediaType && p.mediaType !== "TEXT_POST" && <Badge variant="secondary">{p.mediaType}</Badge>}
+          {p.timestamp && (
+            <span className="text-xs text-muted-foreground">{new Date(p.timestamp).toLocaleString("ko-KR")}</span>
+          )}
+        </div>
+        <p className="whitespace-pre-wrap break-words text-sm text-foreground/90">
+          {p.text || <span className="text-muted-foreground">(텍스트 없음)</span>}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <Metrics p={p} />
+          <div className="ml-auto flex items-center gap-3">
+            {hasReplies && (
+              <button
+                onClick={() => setOpenComments((o) => !o)}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                댓글 {p.replies}개 <ChevronDown className={cn("size-3.5 transition-transform", openComments && "rotate-180")} />
+              </button>
+            )}
+            {p.permalink && (
+              <a href={p.permalink} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-brand hover:underline">
+                Threads에서 보기 <ExternalLink className="size-3" />
+              </a>
+            )}
+          </div>
+        </div>
+        {openComments && <Replies mediaId={p.id} />}
+      </div>
+    </li>
   );
 }
 
@@ -61,42 +129,7 @@ export function AccountPostsPage() {
         ) : (
           <ul className="divide-y divide-border/60">
             {data.map((p) => (
-              <li key={p.id} className="flex items-start gap-3 p-4">
-                {p.mediaUrl && p.mediaType !== "TEXT_POST" && (
-                  <img src={p.mediaUrl} alt="" className="size-14 shrink-0 rounded-md object-cover" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                    <Badge variant={p.fromPostflow ? "success" : "secondary"}>
-                      {p.fromPostflow ? "✨ PostFlow 발행" : "외부 게시"}
-                    </Badge>
-                    {p.mediaType && p.mediaType !== "TEXT_POST" && (
-                      <Badge variant="secondary">{p.mediaType}</Badge>
-                    )}
-                    {p.timestamp && (
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(p.timestamp).toLocaleString("ko-KR")}
-                      </span>
-                    )}
-                  </div>
-                  <p className="whitespace-pre-wrap break-words text-sm text-foreground/90">
-                    {p.text || <span className="text-muted-foreground">(텍스트 없음)</span>}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <Metrics p={p} />
-                    {p.permalink && (
-                      <a
-                        href={p.permalink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="ml-auto inline-flex items-center gap-1 text-xs text-brand hover:underline"
-                      >
-                        Threads에서 보기 <ExternalLink className="size-3" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </li>
+              <PostRow key={p.id} p={p} />
             ))}
           </ul>
         )}

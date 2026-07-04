@@ -14,6 +14,7 @@ import {
   MessageSquareReply,
   Settings,
   Sparkles,
+  TrendingUp,
   Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const NAV: Item[] = [
   { label: "스케줄", to: "/schedule", icon: CalendarClock },
   { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true },
   { label: "분석", to: "/analytics", icon: BarChart3, pro: true },
+  { label: "Threads 인사이트", to: "/insights", icon: TrendingUp, pro: true },
   { label: "자주 묻는 질문", to: "/help", icon: HelpCircle },
   {
     label: "설정",

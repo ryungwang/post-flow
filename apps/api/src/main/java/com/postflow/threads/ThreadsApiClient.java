@@ -178,6 +178,24 @@ public class ThreadsApiClient {
         }
     }
 
+    /** 팔로워 인구통계 한 축(age|gender|country|city). threads_manage_insights. 실패 시 빈 목록. */
+    public List<com.postflow.threads.api.ThreadsDemographics.Entry> fetchFollowerDemographics(
+            String threadsUserId, String accessToken, String breakdown) {
+        try {
+            var res = graph.get()
+                    .uri(b -> b.path("/{id}/threads_insights")
+                            .queryParam("metric", "follower_demographics")
+                            .queryParam("breakdown", breakdown)
+                            .queryParam("access_token", accessToken)
+                            .build(threadsUserId))
+                    .retrieve()
+                    .body(com.postflow.threads.api.ThreadsDemographics.class);
+            return res != null ? res.entries() : List.of();
+        } catch (RestClientException e) {
+            return List.of();
+        }
+    }
+
     /** 게시물 1건의 지표(views/likes/replies/reposts/quotes/shares). threads_manage_insights. 실패 시 null. */
     public com.postflow.threads.api.ThreadsInsights fetchMediaInsights(String mediaId, String accessToken) {
         try {

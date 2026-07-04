@@ -69,6 +69,40 @@ public class SocialAccountService {
                 .toList();
     }
 
+    /** 계정 인사이트: 팔로워 수 + 팔로워 인구통계(연령/성별/국가/도시). 미연결이면 null. */
+    @Transactional(readOnly = true)
+    public com.postflow.threads.dto.ThreadsInsightsDto accountInsights(Long userId, Long accountId) {
+        SocialAccount account = accountId != null
+                ? repository.findById(accountId).filter(a -> a.getUserId().equals(userId)).orElse(null)
+                : find(userId).orElse(null);
+        if (account == null || account.getThreadsUserId() == null) {
+            return null;
+        }
+        String uid = account.getThreadsUserId();
+        String token = account.getAccessToken();
+        Long followers = apiClient.fetchFollowers(uid, token);
+        var demo = new com.postflow.threads.dto.ThreadsInsightsDto.Demographics(
+                apiClient.fetchFollowerDemographics(uid, token, "age"),
+                apiClient.fetchFollowerDemographics(uid, token, "gender"),
+                apiClient.fetchFollowerDemographics(uid, token, "country"),
+                apiClient.fetchFollowerDemographics(uid, token, "city"));
+        return new com.postflow.threads.dto.ThreadsInsightsDto(followers, demo);
+    }
+
+    /** 특정 게시물의 댓글(답글) 목록. 미연결/실패 시 빈 목록. */
+    @Transactional(readOnly = true)
+    public List<com.postflow.threads.api.ThreadsReply> repliesFor(Long userId, String mediaId) {
+        SocialAccount account = find(userId).orElse(null);
+        if (account == null || account.getAccessToken() == null) {
+            return List.of();
+        }
+        try {
+            return apiClient.getReplies(mediaId, account.getAccessToken());
+        } catch (RuntimeException e) {
+            return List.of();
+        }
+    }
+
     /** Exchange an authorization code for a long-lived token and store/refresh the connection. */
     @Transactional
     public void connectFromCode(Long userId, String code) {
