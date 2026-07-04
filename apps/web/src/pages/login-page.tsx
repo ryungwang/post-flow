@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { authApi, DEMO_LOGIN } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
-import { setRefreshToken, useAuth } from "@/store/auth";
+import { getContext, setRefreshToken, useAuth } from "@/store/auth";
 import { LEGAL } from "@/lib/legal";
 
 export function LoginPage() {
@@ -45,8 +45,9 @@ export function LoginPage() {
       const tokens = await authApi.login(mail, pw);
       setToken(tokens.accessToken); // 먼저 저장해야 /auth/me 가 Authorization 헤더에 실림
       setRefreshToken(tokens.refreshToken);
-      const user = await authApi.me();
+      const user = await authApi.me(getContext()); // 선택 컨텍스트(기본 개인)로 플랜 판정
       setAuth(tokens.accessToken, user);
+      authApi.contexts().then((cs) => useAuth.getState().setContexts(cs)).catch(() => {});
       navigate("/", { replace: true });
     } catch (e) {
       // SSO 인증은 됐지만 접근 허가 계정이 아님(비공개 베타) → 백엔드 403 메시지 노출.

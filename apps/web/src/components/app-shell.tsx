@@ -3,6 +3,7 @@ import { LogOut, Plus, Search, Sparkles } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
+import { ContextSwitcher } from "@/components/context-switcher";
 import { DemoBanner } from "@/components/demo-banner";
 import { CommandPalette } from "@/components/command-palette";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -54,6 +55,7 @@ export function AppShell() {
         <Button size="sm" className="gap-1.5" onClick={() => navigate("/content/generate")}>
           <Plus className="size-4" />새 콘텐츠
         </Button>
+        <ContextSwitcher />
         <NotificationBell />
         <ThemeToggle />
         <div className="flex items-center gap-2 pl-1">
