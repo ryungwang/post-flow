@@ -145,6 +145,25 @@ public class SocialAccountService {
         }
     }
 
+    /**
+     * Meta deauthorize/data-deletion 콜백 처리 — 해당 Threads 계정(앱스코프 user id)으로 연결된
+     * 모든 SocialAccount를 삭제(토큰 폐기). 삭제 건수 반환. 매칭 없으면 0(멱등).
+     */
+    @Transactional
+    public int disconnectByThreadsUserId(String threadsUserId) {
+        List<SocialAccount> accounts = repository.findByProviderAndThreadsUserId(THREADS, threadsUserId);
+        if (accounts.isEmpty()) {
+            return 0;
+        }
+        repository.deleteAll(accounts);
+        repository.flush();
+        // 각 사용자별로 기본 계정이 사라졌으면 남은 계정 중 하나를 기본으로 승격.
+        accounts.stream().map(SocialAccount::getUserId).distinct().forEach(uid ->
+                repository.findByUserIdAndProviderOrderByIdAsc(uid, THREADS).stream()
+                        .findFirst().ifPresent(a -> a.setDefault(true)));
+        return accounts.size();
+    }
+
     /** Connecting an additional account requires the Pro plan (multi-channel). */
     @Transactional(readOnly = true)
     public void assertCanAddAccount(Long userId) {

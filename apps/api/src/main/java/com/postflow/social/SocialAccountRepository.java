@@ -14,6 +14,9 @@ public interface SocialAccountRepository extends JpaRepository<SocialAccount, Lo
 
     Optional<SocialAccount> findByUserIdAndProviderAndThreadsUserId(Long userId, SocialProvider provider, String threadsUserId);
 
+    /** Meta deauthorize/data-deletion 콜백용 — 앱스코프 Threads user id로 (사용자 무관) 전체 조회. */
+    List<SocialAccount> findByProviderAndThreadsUserId(SocialProvider provider, String threadsUserId);
+
     Optional<SocialAccount> findFirstByUserIdAndProviderAndIsDefaultTrue(Long userId, SocialProvider provider);
 
     long countByUserIdAndProvider(Long userId, SocialProvider provider);

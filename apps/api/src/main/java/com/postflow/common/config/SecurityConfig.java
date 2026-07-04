@@ -44,7 +44,8 @@ public class SecurityConfig {
                         .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
                         .requestMatchers("/ping",
                                 "/threads/callback", "/threads/deauthorize",
-                                "/threads/data-deletion", "/r/**", "/public/**",
+                                "/threads/data-deletion", "/threads/data-deletion/status",
+                                "/r/**", "/public/**",
                                 "/webhooks/**", "/files/**").permitAll()
                         .anyRequest().authenticated()
                 )

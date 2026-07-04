@@ -39,4 +39,11 @@ public record ThreadsProperties(
         return graphBaseUrl == null || graphBaseUrl.isBlank()
                 ? "https://graph.threads.net" : graphBaseUrl;
     }
+
+    /** API 베이스 URL — redirectUri(.../threads/callback)에서 파생. data-deletion 상태 URL 등에 사용. */
+    public String apiBaseUrl() {
+        String uri = redirectUri == null ? "" : redirectUri;
+        int idx = uri.indexOf("/threads/");
+        return idx > 0 ? uri.substring(0, idx) : "http://localhost:8080";
+    }
 }
