@@ -112,7 +112,7 @@ public class SocialAccountService {
             }
             String m = msg.toString();
             if (m.contains("permission") || m.contains("\"code\":10")) {
-                return com.postflow.threads.dto.RepliesResult.unavailable(m); // TODO(debug): 확인 후 unavailable()로
+                return com.postflow.threads.dto.RepliesResult.unavailable();
             }
             return com.postflow.threads.dto.RepliesResult.ok(List.of());
         }
