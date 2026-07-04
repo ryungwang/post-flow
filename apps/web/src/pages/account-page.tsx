@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 // 문구·가격은 synub 통합 결제 카탈로그가 진실. 여기 표기는 그와 일치시킨다.
 const PLANS = [
   { key: "FREE", name: "Free", price: "₩0", features: ["총 10개 생성", "기본 기능 체험"] },
-  { key: "BASIC", name: "Basic", price: "₩15,000", features: ["월 50개 스레드", "1개 채널 연동", "기본 템플릿"] },
+  { key: "BASIC", name: "Basic", price: "₩15,000", features: ["월 50개 생성", "1개 채널 연동", "기본 템플릿"] },
   { key: "PRO", name: "Pro", price: "₩25,000", features: ["월 200개 생성", "5개 채널 연동", "예약 발행", "성과 분석", "댓글 자동화"] },
 ];
 
