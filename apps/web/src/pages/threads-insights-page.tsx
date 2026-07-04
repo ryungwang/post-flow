@@ -213,15 +213,16 @@ export function ThreadsInsightsPage() {
               </p>
             ) : (
               <>
-                <div className="flex items-end justify-between gap-2" style={{ height: 120 }}>
+                <div className="flex items-end gap-2">
                   {byDay.map((d) => {
                     const h = maxDay > 0 ? (d.value / maxDay) * 100 : 0;
                     return (
                       <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
-                        <div className="flex w-full flex-1 items-end">
+                        {/* 고정 높이 막대 트랙 — 막대 height:%가 이 트랙 기준으로 계산됨 */}
+                        <div className="flex h-32 w-full items-end">
                           <div
                             className={cn("w-full rounded-t transition-all", d.count ? "bg-brand/70" : "bg-muted")}
-                            style={{ height: `${Math.max(h, d.count ? 6 : 3)}%` }}
+                            style={{ height: `${d.count ? Math.max(h, 8) : 3}%` }}
                             title={`${pct(d.value)} · ${d.count}개`}
                           />
                         </div>
