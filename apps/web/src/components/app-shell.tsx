@@ -7,6 +7,7 @@ import { DemoBanner } from "@/components/demo-banner";
 import { CommandPalette } from "@/components/command-palette";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
+import { BILLING_WEB_URL } from "@/lib/billing-web";
 import { useAuth } from "@/store/auth";
 
 function initialOf(name?: string | null) {
@@ -66,9 +67,15 @@ export function AppShell() {
               initialOf(user?.name)
             )}
           </div>
-          <Button variant="ghost" size="icon" aria-label="로그아웃" title="로그아웃" onClick={logout}>
-            <LogOut />
-          </Button>
+          {user?.demo ? (
+            <Button size="sm" className="gap-1.5" onClick={() => window.open(`${BILLING_WEB_URL}/products`, "_blank")}>
+              <Sparkles className="size-4" />구독하러가기
+            </Button>
+          ) : (
+            <Button variant="ghost" size="icon" aria-label="로그아웃" title="로그아웃" onClick={logout}>
+              <LogOut />
+            </Button>
+          )}
         </div>
       </header>
       {/* 헤더 아래: 사이드바(메뉴) + 콘텐츠 */}
