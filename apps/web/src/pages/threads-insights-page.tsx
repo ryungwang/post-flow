@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Eye, Heart, Loader2, MessageCircle, Sparkles, TrendingUp, Users } from "lucide-react";
 import { threadsApi, type DemoEntry, type ThreadsAccountPost } from "@/lib/threads-api";
 import { AccountSelector } from "@/components/account-selector";
@@ -55,6 +56,7 @@ function BarList({ title, entries, unit }: { title: string; entries: DemoEntry[]
 
 export function ThreadsInsightsPage() {
   const accountId = useThreadsAccount((s) => s.accountId);
+  const [dayRange, setDayRange] = useState<"2w" | "all">("2w"); // 요일별 차트 기간
   const postsQ = useQuery({ queryKey: ["threads-insights-posts", accountId], queryFn: () => threadsApi.posts({ limit: 30, accountId }) });
   const insQ = useQuery({ queryKey: ["threads-insights", accountId], queryFn: () => threadsApi.insights(accountId ?? undefined) });
 
@@ -72,9 +74,14 @@ export function ThreadsInsightsPage() {
   // ── 베스트 게시물 TOP 5 (참여율) ──
   const best = [...withViews].sort((a, b) => engagementRate(b) - engagementRate(a)).slice(0, 5);
 
-  // ── 요일별 평균 참여율 ──
+  // ── 요일별 평균 참여율 (전체 / 최근 2주) ──
+  const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  const dayPosts =
+    dayRange === "2w"
+      ? withViews.filter((p) => p.timestamp && new Date(p.timestamp).getTime() >= twoWeeksAgo)
+      : withViews;
   const byDay = WEEKDAYS.map((d, i) => {
-    const ps = withViews.filter((p) => p.timestamp && new Date(p.timestamp).getDay() === i);
+    const ps = dayPosts.filter((p) => p.timestamp && new Date(p.timestamp).getDay() === i);
     const avg = ps.length ? ps.reduce((a, p) => a + engagementRate(p), 0) / ps.length : 0;
     return { label: d, value: avg, count: ps.length };
   });
@@ -206,10 +213,26 @@ export function ThreadsInsightsPage() {
 
           {/* 요일별 성과 */}
           <div className="rounded-xl border bg-card/40 p-4">
-            <h3 className="mb-3 text-sm font-semibold">요일별 평균 참여율</h3>
-            {withViews.length === 0 ? (
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">요일별 평균 참여율</h3>
+              <div className="flex rounded-lg border p-0.5 text-xs">
+                {([["2w", "최근 2주"], ["all", "전체"]] as const).map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setDayRange(k)}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 font-medium transition-colors",
+                      dayRange === k ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {dayPosts.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                지표가 있는 게시물이 쌓이면 요일별 성과를 보여드려요.
+                {dayRange === "2w" ? "최근 2주에 지표 있는 게시물이 없어요. 전체로 보거나 글이 쌓이면 표시돼요." : "지표가 있는 게시물이 쌓이면 요일별 성과를 보여드려요."}
               </p>
             ) : (
               <>
@@ -233,7 +256,7 @@ export function ThreadsInsightsPage() {
                   })}
                 </div>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
-                  막대 = 그 요일 게시물의 평균 참여율(아래 숫자=게시물 수). 잘 되는 요일에 발행을 몰아보세요.
+                  {dayRange === "2w" ? "최근 2주 기준 · " : ""}막대 = 그 요일 게시물의 평균 참여율(아래 숫자=게시물 수). 잘 되는 요일에 발행을 몰아보세요.
                 </p>
               </>
             )}
