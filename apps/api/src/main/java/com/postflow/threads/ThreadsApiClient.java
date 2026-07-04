@@ -228,6 +228,48 @@ public class ThreadsApiClient {
         }
     }
 
+    /** 나를 멘션한 게시물 목록. threads_manage_mentions. 실패 시 예외(권한 구분용). */
+    public List<com.postflow.threads.api.ThreadsTrendPost> fetchMentions(String threadsUserId, String accessToken, int limit) {
+        try {
+            var res = graph.get()
+                    .uri(b -> b.path("/{id}/mentions")
+                            .queryParam("fields", "id,text,username,permalink,timestamp,media_type")
+                            .queryParam("limit", limit)
+                            .queryParam("access_token", accessToken)
+                            .build(threadsUserId))
+                    .retrieve()
+                    .body(com.postflow.threads.api.ThreadsTrendResponse.class);
+            return res != null && res.data() != null ? res.data() : List.of();
+        } catch (RestClientException e) {
+            throw new ThreadsApiException("Failed to fetch mentions", e);
+        }
+    }
+
+    /** 게시물 삭제. threads_delete. 성공 여부 반환(실패 시 예외). */
+    public void deleteMedia(String mediaId, String accessToken) {
+        graph.method(org.springframework.http.HttpMethod.DELETE)
+                .uri(b -> b.path("/{id}").queryParam("access_token", accessToken).build(mediaId))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /** 공개 프로필 조회(경쟁사 분석). threads_profile_discovery. 실패 시 예외(권한 구분용). */
+    public com.postflow.threads.api.ThreadsProfileLookup lookupProfile(String accessToken, String username) {
+        try {
+            return graph.get()
+                    .uri(b -> b.path("/profile_lookup")
+                            .queryParam("username", username)
+                            .queryParam("fields", "username,name,biography,profile_picture_url,is_verified,"
+                                    + "follower_count,likes_count,reposts_count,quotes_count,views_count")
+                            .queryParam("access_token", accessToken)
+                            .build())
+                    .retrieve()
+                    .body(com.postflow.threads.api.ThreadsProfileLookup.class);
+        } catch (RestClientException e) {
+            throw new ThreadsApiException("Failed profile lookup", e);
+        }
+    }
+
     /** 키워드로 공개 게시물 검색(트렌드 반영 생성·둘러보기). threads_keyword_search. 실패 시 예외. */
     public List<com.postflow.threads.api.ThreadsTrendPost> keywordSearch(
             String accessToken, String keyword, String searchType, int limit) {

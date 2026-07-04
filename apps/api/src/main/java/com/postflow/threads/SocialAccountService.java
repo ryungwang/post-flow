@@ -148,6 +148,51 @@ public class SocialAccountService {
                 .toList();
     }
 
+    /** 공개 프로필(경쟁사) 조회. 권한(threads_profile_discovery) 없거나 실패면 null. */
+    @Transactional(readOnly = true)
+    public com.postflow.threads.api.ThreadsProfileLookup lookupProfile(Long userId, String username) {
+        SocialAccount account = find(userId).orElse(null);
+        if (account == null || account.getAccessToken() == null) {
+            return null;
+        }
+        try {
+            String u = username.startsWith("@") ? username.substring(1) : username;
+            return apiClient.lookupProfile(account.getAccessToken(), u.trim());
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** 나를 멘션한 게시물. 권한(threads_manage_mentions) 없으면 available=false. */
+    @Transactional(readOnly = true)
+    public com.postflow.threads.dto.TrendResult mentions(Long userId, int limit) {
+        SocialAccount account = find(userId).orElse(null);
+        if (account == null || account.getThreadsUserId() == null) {
+            return com.postflow.threads.dto.TrendResult.unavailable();
+        }
+        try {
+            return com.postflow.threads.dto.TrendResult.ok(
+                    apiClient.fetchMentions(account.getThreadsUserId(), account.getAccessToken(), limit));
+        } catch (RuntimeException e) {
+            return com.postflow.threads.dto.TrendResult.unavailable();
+        }
+    }
+
+    /** Threads 게시물 삭제(threads_delete). 성공 여부. */
+    @Transactional(readOnly = true)
+    public boolean deleteMedia(Long userId, String mediaId) {
+        SocialAccount account = find(userId).orElse(null);
+        if (account == null || account.getAccessToken() == null) {
+            return false;
+        }
+        try {
+            apiClient.deleteMedia(mediaId, account.getAccessToken());
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     /** Exchange an authorization code for a long-lived token and store/refresh the connection. */
     @Transactional
     public void connectFromCode(Long userId, String code) {

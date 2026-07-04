@@ -72,6 +72,28 @@ public class ThreadsController {
         return socialAccountService.accountInsights(userId, accountId);
     }
 
+    /** 공개 프로필(경쟁사/인플루언서) 조회. null이면 권한 미보유/미존재/팔로워 100 미만. */
+    @GetMapping("/profile-lookup")
+    public com.postflow.threads.api.ThreadsProfileLookup profileLookup(
+            @AuthenticationPrincipal Long userId, @RequestParam(name = "username") String username) {
+        return socialAccountService.lookupProfile(userId, username);
+    }
+
+    /** 나를 멘션한 게시물. available=false면 manage_mentions 권한 미보유. */
+    @GetMapping("/mentions")
+    public com.postflow.threads.dto.TrendResult mentions(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(name = "limit", defaultValue = "20") int limit) {
+        return socialAccountService.mentions(userId, Math.min(Math.max(limit, 1), 50));
+    }
+
+    /** Threads 게시물 삭제(threads_delete). */
+    @DeleteMapping("/posts/{mediaId}")
+    public java.util.Map<String, Boolean> deletePost(
+            @AuthenticationPrincipal Long userId, @PathVariable String mediaId) {
+        return java.util.Map.of("deleted", socialAccountService.deleteMedia(userId, mediaId));
+    }
+
     /** 키워드로 지금 뜨는 공개 게시물 검색(트렌드). available=false면 keyword_search 권한 미보유. */
     @GetMapping("/trends")
     public com.postflow.threads.dto.TrendResult trends(

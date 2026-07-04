@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ChevronDown, Eye, ExternalLink, Heart, Loader2, MessageCircle, Repeat2, RefreshCw, Send } from "lucide-react";
+import { ChevronDown, Eye, ExternalLink, Heart, Loader2, MessageCircle, Repeat2, RefreshCw, Send, Trash2 } from "lucide-react";
 import { threadsApi, type ThreadsAccountPost } from "@/lib/threads-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,17 @@ function Replies({ mediaId }: { mediaId: string }) {
 function PostRow({ p }: { p: ThreadsAccountPost }) {
   const [openComments, setOpenComments] = useState(false);
   const hasReplies = (p.replies ?? 0) > 0;
+  const qc = useQueryClient();
+  const del = useMutation({
+    mutationFn: () => threadsApi.deletePost(p.id),
+    onSuccess: (r) => {
+      if (r.deleted) qc.invalidateQueries({ queryKey: ["threads-account-posts"] });
+      else alert("삭제 실패 — threads_delete 권한 추가 + 재연결이 필요할 수 있어요.");
+    },
+  });
+  const onDelete = () => {
+    if (confirm("이 게시물을 Threads에서 삭제할까요? 되돌릴 수 없어요.")) del.mutate();
+  };
   return (
     <li className="flex items-start gap-3 p-4">
       {p.mediaUrl && p.mediaType !== "TEXT_POST" && (
@@ -92,6 +103,14 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
                 Threads에서 보기 <ExternalLink className="size-3" />
               </a>
             )}
+            <button
+              onClick={onDelete}
+              disabled={del.isPending}
+              title="Threads에서 삭제"
+              className="inline-flex items-center text-xs text-muted-foreground transition-colors hover:text-red-500"
+            >
+              {del.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+            </button>
           </div>
         </div>
         {openComments && <Replies mediaId={p.id} />}

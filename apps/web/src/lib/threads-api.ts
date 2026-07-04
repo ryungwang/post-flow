@@ -51,6 +51,37 @@ export const threadsApi = {
   insights: (accountId?: number) =>
     api.get<ThreadsInsights>(`/threads/insights${accountId ? `?accountId=${accountId}` : ""}`),
   replies: (mediaId: string) => api.get<RepliesResult>(`/threads/posts/${mediaId}/replies`),
+  trends: (q: string, type: "TOP" | "RECENT" = "TOP") =>
+    api.get<TrendResult>(`/threads/trends?q=${encodeURIComponent(q)}&type=${type}`),
+  profileLookup: (username: string) =>
+    api.get<ProfileLookup | null>(`/threads/profile-lookup?username=${encodeURIComponent(username)}`),
+  mentions: () => api.get<TrendResult>("/threads/mentions"),
+  deletePost: (mediaId: string) => api.del<{ deleted: boolean }>(`/threads/posts/${mediaId}`),
+};
+
+/** 키워드 트렌드/멘션 게시물 한 건. */
+export type TrendPost = {
+  id: string;
+  text: string | null;
+  username: string | null;
+  permalink: string | null;
+  timestamp: string | null;
+  mediaType: string | null;
+};
+export type TrendResult = { available: boolean; posts: TrendPost[] };
+
+/** 공개 프로필 조회(경쟁사 분석). */
+export type ProfileLookup = {
+  username: string;
+  name: string | null;
+  biography: string | null;
+  profilePictureUrl: string | null;
+  isVerified: boolean | null;
+  followerCount: number | null;
+  likesCount: number | null;
+  repostsCount: number | null;
+  quotesCount: number | null;
+  viewsCount: number | null;
 };
 
 /** 댓글 조회 결과. available=false = 앱이 threads_manage_replies 검수 미승인. */
