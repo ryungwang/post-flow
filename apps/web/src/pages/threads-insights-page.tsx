@@ -269,35 +269,44 @@ export function ThreadsInsightsPage() {
               </p>
             ) : (
               <>
-                <div className="flex items-end gap-1.5">
-                  {bars.map((b, i) => {
-                    const h = maxBar > 0 ? (b.value / maxBar) * 100 : 0;
-                    // 막대 많으면(일별) 라벨 솎아내기
-                    const showLabel = bars.length <= 14 || i % Math.ceil(bars.length / 10) === 0;
-                    return (
-                      <div key={b.key} className="group relative flex flex-1 flex-col items-center gap-1">
-                        <div className="pointer-events-none absolute -top-1 z-10 -translate-y-full whitespace-nowrap rounded-md border bg-popover px-2.5 py-1.5 text-xs opacity-0 shadow-md transition-opacity group-hover:opacity-100">
-                          <span className="font-semibold">{b.full}</span>
-                          {b.count > 0 ? (
-                            <> · 참여율 <span className="font-semibold text-brand">{pct(b.value)}</span> · {b.count}개</>
-                          ) : (
-                            <> · 게시물 없음</>
-                          )}
-                        </div>
-                        <div className="flex h-32 w-full items-end justify-center">
-                          <div
-                            className={cn("w-full rounded-t transition-all group-hover:opacity-90",
-                              chartMode === "weekday" ? "max-w-[44px]" : "max-w-[20px]",
-                              b.count ? "bg-brand/70" : "bg-muted")}
-                            style={{ height: `${b.count ? Math.max(h, 8) : 3}%` }}
-                          />
-                        </div>
-                        <span className="h-3.5 text-[10px] text-muted-foreground">{showLabel ? b.label : ""}</span>
-                        <span className="text-[10px] text-muted-foreground/70">{b.count || ""}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                {(() => {
+                  const dense = chartMode === "daily" && bars.length > 14; // 라벨 촘촘 → 45° 회전
+                  return (
+                    <div className={cn("flex items-end gap-1.5", dense && "pb-5")}>
+                      {bars.map((b) => {
+                        const h = maxBar > 0 ? (b.value / maxBar) * 100 : 0;
+                        return (
+                          <div key={b.key} className="group relative flex flex-1 flex-col items-center gap-1">
+                            <div className="pointer-events-none absolute -top-1 z-10 -translate-y-full whitespace-nowrap rounded-md border bg-popover px-2.5 py-1.5 text-xs opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                              <span className="font-semibold">{b.full}</span>
+                              {b.count > 0 ? (
+                                <> · 참여율 <span className="font-semibold text-brand">{pct(b.value)}</span> · {b.count}개</>
+                              ) : (
+                                <> · 게시물 없음</>
+                              )}
+                            </div>
+                            <div className="flex h-32 w-full items-end justify-center">
+                              <div
+                                className={cn("w-full rounded-t transition-all group-hover:opacity-90",
+                                  chartMode === "weekday" ? "max-w-[44px]" : "max-w-[20px]",
+                                  b.count ? "bg-brand/70" : "bg-muted")}
+                                style={{ height: `${b.count ? Math.max(h, 8) : 3}%` }}
+                              />
+                            </div>
+                            {dense ? (
+                              <span className="h-0 origin-top -rotate-45 whitespace-nowrap text-[10px] leading-none text-muted-foreground">
+                                {b.label}
+                              </span>
+                            ) : (
+                              <span className="h-3.5 text-[10px] text-muted-foreground">{b.label}</span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground/70">{b.count || ""}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
                 <p className="mt-2 text-center text-xs text-muted-foreground">
                   {dayRange === "2w" ? "최근 2주" : chartMode === "daily" ? "최근 30일" : "전체"} 기준 · 막대에 마우스를 올리면 상세가 보여요(아래 숫자=게시물 수).
                 </p>
