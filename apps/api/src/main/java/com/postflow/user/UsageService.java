@@ -45,16 +45,19 @@ public class UsageService {
      */
     @Transactional(readOnly = true)
     public void assertCanGenerate(Long userId) {
-        // ① 일일 어뷰징 상한(전 플랜) — Pro 무제한도 이 뒤에. 스크립트 무한호출 방어.
-        long today = aiGenerationRepository.countByUserIdAndCreatedAtAfter(userId, dayStart());
-        if (today >= PlanPolicy.DAILY_ABUSE_CAP) {
-            throw new PlanLimitException("하루 생성 한도(" + PlanPolicy.DAILY_ABUSE_CAP
-                    + "건)를 넘었어요. 잠시 후 다시 시도해 주세요.");
-        }
-        // ② 플랜별 캡(FREE 총 10개 / BASIC 월 50개 / PRO 무제한).
         Plan plan = userService.getById(userId).getPlan();
         int cap = PlanPolicy.generationCap(plan);
-        if (cap >= 0 && usedGenerations(userId, plan) >= cap) {
+        if (cap < 0) {
+            // 무제한 플랜(PRO)만: 공정사용 일일 상한으로 스크립트 무한호출 방어. FREE/BASIC은 아래 캡이 이미 낮음.
+            long today = aiGenerationRepository.countByUserIdAndCreatedAtAfter(userId, dayStart());
+            if (today >= PlanPolicy.UNLIMITED_DAILY_CAP) {
+                throw new PlanLimitException("하루 생성 한도(" + PlanPolicy.UNLIMITED_DAILY_CAP
+                        + "건)를 넘었어요. 잠시 후 다시 시도해 주세요.");
+            }
+            return;
+        }
+        // FREE 총 10개 / BASIC 월 50개.
+        if (usedGenerations(userId, plan) >= cap) {
             throw new PlanLimitException(PlanPolicy.isLifetimeCap(plan)
                     ? "무료 체험 " + cap + "개를 모두 사용했어요. 구독하면 계속 생성할 수 있어요."
                     : "이번 달 생성 한도(" + cap + "개)를 모두 사용했어요. 업그레이드하면 더 만들 수 있어요.");

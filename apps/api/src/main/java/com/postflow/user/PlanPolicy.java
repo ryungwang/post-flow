@@ -4,10 +4,10 @@ package com.postflow.user;
 public final class PlanPolicy {
 
     /**
-     * 공정사용·어뷰징 방어 — 전 플랜 공통 <b>일일 생성요청 하드 실링</b>. Pro의 "무제한"도 이 한도 뒤에 둔다
-     * (API 스크립트로 무한 호출해 API비를 폭증시키는 것 차단). FREE(총10)/BASIC(월50)는 이보다 낮아 실질 무영향.
+     * PRO(무제한) 전용 <b>공정사용 일일 상한</b> — "무제한"을 API 스크립트로 무한 호출해 API비를 폭증시키는 것 차단.
+     * FREE(총10)/BASIC(월50)는 자체 캡이 이보다 낮아 해당 없음 → 일일 상한은 무제한 플랜에만 적용한다.
      */
-    public static final int DAILY_ABUSE_CAP = 100;
+    public static final int UNLIMITED_DAILY_CAP = 100;
 
     private PlanPolicy() {
     }
