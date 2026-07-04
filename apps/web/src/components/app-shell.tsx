@@ -67,15 +67,16 @@ export function AppShell() {
               initialOf(user?.name)
             )}
           </div>
-          {user?.demo ? (
+          {user?.demo && (
             <Button size="sm" className="gap-1.5" onClick={() => window.open(`${BILLING_WEB_URL}/products`, "_blank")}>
               <Sparkles className="size-4" />구독하러가기
             </Button>
-          ) : (
-            <Button variant="ghost" size="icon" aria-label="로그아웃" title="로그아웃" onClick={logout}>
-              <LogOut />
-            </Button>
           )}
+          {/* 데모든 실계정이든 항상 나가기(로그아웃) 제공 — 데모에서 못 빠져나오는 문제 방지. */}
+          <Button variant="ghost" size="icon" aria-label={user?.demo ? "데모 나가기" : "로그아웃"}
+            title={user?.demo ? "데모 나가기" : "로그아웃"} onClick={logout}>
+            <LogOut />
+          </Button>
         </div>
       </header>
       {/* 헤더 아래: 사이드바(메뉴) + 콘텐츠 */}
