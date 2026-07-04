@@ -16,10 +16,10 @@ function Metrics({ p }: { p: ThreadsAccountPost }) {
   ];
   if (items.every((i) => i.v == null)) return null;
   return (
-    <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
       {items.map(({ icon: Icon, v }, i) => (
-        <span key={i} className="inline-flex items-center gap-1">
-          <Icon className="size-3.5" /> {(v ?? 0).toLocaleString()}
+        <span key={i} className="inline-flex items-center gap-1.5">
+          <Icon className="size-5" /> {(v ?? 0).toLocaleString()}
         </span>
       ))}
     </div>
