@@ -55,6 +55,15 @@ public class ThreadsController {
         return socialAccountService.list(userId);
     }
 
+    /** 연결된 계정에 실제 올라간 게시물 목록(+PostFlow 발행 여부). accountId 미지정=기본 계정. */
+    @GetMapping("/posts")
+    public List<com.postflow.threads.dto.ThreadsAccountPostDto> accountPosts(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(name = "accountId", required = false) Long accountId,
+            @RequestParam(name = "limit", defaultValue = "25") int limit) {
+        return socialAccountService.accountPosts(userId, accountId, Math.min(Math.max(limit, 1), 100));
+    }
+
     @PostMapping("/accounts/{id}/default")
     public void setDefault(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
         socialAccountService.setDefaultAccount(userId, id);

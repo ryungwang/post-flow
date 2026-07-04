@@ -178,6 +178,23 @@ public class ThreadsApiClient {
         }
     }
 
+    /** 연결된 계정에 실제 올라간 게시물 목록(최신순). threads_basic 권한. 실패 시 빈 목록. */
+    public List<com.postflow.threads.api.ThreadsUserPost> fetchUserPosts(String threadsUserId, String accessToken, int limit) {
+        try {
+            var res = graph.get()
+                    .uri(b -> b.path("/{id}/threads")
+                            .queryParam("fields", "id,text,timestamp,permalink,media_type,media_url")
+                            .queryParam("limit", limit)
+                            .queryParam("access_token", accessToken)
+                            .build(threadsUserId))
+                    .retrieve()
+                    .body(com.postflow.threads.api.ThreadsUserPostsResponse.class);
+            return res != null && res.data() != null ? res.data() : List.of();
+        } catch (RestClientException e) {
+            return List.of();
+        }
+    }
+
     /** List replies (comments) on a published media. */
     public List<ThreadsReply> getReplies(String mediaId, String accessToken) {
         try {

@@ -33,6 +33,7 @@ const NAV: Item[] = [
       { label: "시리즈 생성", to: "/content/series", icon: Sparkles, pro: true },
       { label: "브랜드/제품", to: "/brands", icon: Megaphone },
       { label: "라이브러리", to: "/content/library", icon: Library },
+      { label: "내 Threads 게시물", to: "/content/threads-posts", icon: Link2 },
     ],
   },
   { label: "스케줄", to: "/schedule", icon: CalendarClock },

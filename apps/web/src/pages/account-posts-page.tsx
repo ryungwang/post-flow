@@ -1,0 +1,83 @@
+import { useQuery } from "@tanstack/react-query";
+import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { threadsApi } from "@/lib/threads-api";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
+/** 연결된 Threads 계정에 실제 올라간 게시물 목록 — PostFlow 발행 / 외부 구분 표시. */
+export function AccountPostsPage() {
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ["threads-account-posts"],
+    queryFn: () => threadsApi.posts(),
+  });
+
+  return (
+    <div className="mx-auto max-w-4xl p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">내 Threads 게시물</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            연결된 Threads 계정에 실제 올라간 게시물이에요. PostFlow로 발행한 글과 외부에서 올린 글을 구분해 보여줘요.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={() => refetch()} disabled={isFetching}>
+          <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} /> 새로고침
+        </Button>
+      </div>
+
+      <div className="mt-6 rounded-xl border bg-card/40">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : isError ? (
+          <p className="p-10 text-center text-sm text-muted-foreground">
+            게시물을 불러오지 못했어요. Threads 계정 연결 상태를 확인해 주세요.
+          </p>
+        ) : !data || data.length === 0 ? (
+          <p className="p-10 text-center text-sm text-muted-foreground">
+            아직 게시물이 없어요. Threads에 글을 올리거나 PostFlow에서 발행해 보세요.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {data.map((p) => (
+              <li key={p.id} className="flex items-start gap-3 p-4">
+                {p.mediaUrl && p.mediaType !== "TEXT_POST" && (
+                  <img src={p.mediaUrl} alt="" className="size-14 shrink-0 rounded-md object-cover" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                    <Badge variant={p.fromPostflow ? "success" : "secondary"}>
+                      {p.fromPostflow ? "✨ PostFlow 발행" : "외부 게시"}
+                    </Badge>
+                    {p.mediaType && p.mediaType !== "TEXT_POST" && (
+                      <Badge variant="secondary">{p.mediaType}</Badge>
+                    )}
+                    {p.timestamp && (
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(p.timestamp).toLocaleString("ko-KR")}
+                      </span>
+                    )}
+                  </div>
+                  <p className="whitespace-pre-wrap break-words text-sm text-foreground/90">
+                    {p.text || <span className="text-muted-foreground">(텍스트 없음)</span>}
+                  </p>
+                  {p.permalink && (
+                    <a
+                      href={p.permalink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1.5 inline-flex items-center gap-1 text-xs text-brand hover:underline"
+                    >
+                      Threads에서 보기 <ExternalLink className="size-3" />
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}

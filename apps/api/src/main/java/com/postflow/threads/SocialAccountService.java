@@ -4,8 +4,11 @@ import com.postflow.social.ConnectionStatus;
 import com.postflow.social.SocialAccount;
 import com.postflow.social.SocialAccountRepository;
 import com.postflow.social.SocialProvider;
+import com.postflow.post.Post;
+import com.postflow.post.PostRepository;
 import com.postflow.threads.api.ThreadsTokenResponse;
 import com.postflow.threads.dto.ThreadsAccountDto;
+import com.postflow.threads.dto.ThreadsAccountPostDto;
 import com.postflow.threads.dto.ThreadsStatusResponse;
 import com.postflow.user.PlanLimitException;
 import com.postflow.user.PlanPolicy;
@@ -16,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Threads connection lifecycle with multi-account support: code→token exchange, in-place
@@ -30,11 +35,36 @@ public class SocialAccountService {
     private final SocialAccountRepository repository;
     private final ThreadsApiClient apiClient;
     private final UserService userService;
+    private final PostRepository postRepository;
 
-    public SocialAccountService(SocialAccountRepository repository, ThreadsApiClient apiClient, UserService userService) {
+    public SocialAccountService(SocialAccountRepository repository, ThreadsApiClient apiClient,
+                                UserService userService, PostRepository postRepository) {
         this.repository = repository;
         this.apiClient = apiClient;
         this.userService = userService;
+        this.postRepository = postRepository;
+    }
+
+    /**
+     * 연결된 Threads 계정의 실제 게시물 목록(최신순) + 각 게시물이 PostFlow 발행인지 표시.
+     * accountId=null이면 기본/첫 계정. 미연결이면 빈 목록.
+     */
+    @Transactional(readOnly = true)
+    public List<ThreadsAccountPostDto> accountPosts(Long userId, Long accountId, int limit) {
+        SocialAccount account = accountId != null
+                ? repository.findById(accountId).filter(a -> a.getUserId().equals(userId)).orElse(null)
+                : find(userId).orElse(null);
+        if (account == null || account.getThreadsUserId() == null) {
+            return List.of();
+        }
+        // PostFlow에서 발행된 게시물의 Threads media id 집합(대조용).
+        Set<String> mine = postRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(Post::getThreadsMediaId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+        return apiClient.fetchUserPosts(account.getThreadsUserId(), account.getAccessToken(), limit).stream()
+                .map(p -> ThreadsAccountPostDto.of(p, mine.contains(p.id())))
+                .toList();
     }
 
     /** Exchange an authorization code for a long-lived token and store/refresh the connection. */

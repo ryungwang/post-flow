@@ -24,6 +24,7 @@ const AutomationPage = lazyPage(() => import("@/pages/automation-page"), "Automa
 const ThreadsSettingsPage = lazyPage(() => import("@/pages/threads-settings-page"), "ThreadsSettingsPage");
 const FaqPage = lazyPage(() => import("@/pages/faq-page"), "FaqPage");
 const BrandsPage = lazyPage(() => import("@/pages/brands-page"), "BrandsPage");
+const AccountPostsPage = lazyPage(() => import("@/pages/account-posts-page"), "AccountPostsPage");
 
 /** /settings(잘못된 콜백 경로) → /settings/threads로 쿼리 보존 리다이렉트. */
 function SettingsRedirect() {
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/content/generate" element={<GeneratePage />} />
             <Route path="/content/series" element={<SeriesPage />} />
             <Route path="/content/library" element={<LibraryPage />} />
+            <Route path="/content/threads-posts" element={<AccountPostsPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/automation" element={<AutomationPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
