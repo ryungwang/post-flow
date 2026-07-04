@@ -55,7 +55,7 @@ export function AutomationPage() {
   });
 
   return (
-    <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
+    <div className="mx-auto max-w-3xl p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">댓글 자동화</h1>
         <p className="mt-1 text-sm text-muted-foreground">
