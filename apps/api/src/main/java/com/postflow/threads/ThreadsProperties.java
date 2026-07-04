@@ -26,7 +26,7 @@ public record ThreadsProperties(
 ) {
     public String scopesOrDefault() {
         return scopes == null || scopes.isBlank()
-                ? "threads_basic,threads_content_publish,threads_manage_insights"
+                ? "threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies"
                 : scopes;
     }
 
