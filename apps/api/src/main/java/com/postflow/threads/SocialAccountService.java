@@ -79,6 +79,110 @@ public class SocialAccountService {
         }
     }
 
+    private static final int DAY_ENG_MAX_PAGES = 12;   // 기간 조회 페이지 상한(폭주 방지)
+    private static final int DAY_ENG_ALL_CAP = 120;    // '전체' 집계 게시물 상한
+    private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
+
+    /**
+     * 요일별 평균 참여율(기간 조회). days>0이면 최근 days일 게시물을 since 커서로 전부 페이지네이션,
+     * days=0이면 최신 {@value #DAY_ENG_ALL_CAP}개까지. 각 게시물 지표는 병렬 조회. weekday는 KST 기준 0=일..6=토.
+     */
+    @Transactional(readOnly = true)
+    public com.postflow.threads.dto.DayEngagementDto dayEngagement(Long userId, Long accountId, int days) {
+        SocialAccount account = accountId != null
+                ? repository.findById(accountId).filter(a -> a.getUserId().equals(userId)).orElse(null)
+                : find(userId).orElse(null);
+        if (account == null || account.getThreadsUserId() == null) {
+            return new com.postflow.threads.dto.DayEngagementDto(days, 0, List.of());
+        }
+        String uid = account.getThreadsUserId();
+        String token = account.getAccessToken();
+        Instant cutoff = days > 0 ? Instant.now().minus(days, java.time.temporal.ChronoUnit.DAYS) : null;
+
+        // 1) 기간 내 게시물 수집(최신순 → 컷오프 지나면 중단). 커서 페이지네이션.
+        List<com.postflow.threads.api.ThreadsUserPost> collected = new java.util.ArrayList<>();
+        String after = null;
+        boolean done = false;
+        for (int page = 0; page < DAY_ENG_MAX_PAGES && !done; page++) {
+            var res = apiClient.fetchUserPostsPage(uid, token, 25, after);
+            var data = res.data();
+            if (data == null || data.isEmpty()) {
+                break;
+            }
+            for (var p : data) {
+                Instant ts = parseTimestamp(p.timestamp());
+                if (cutoff != null && ts != null && ts.isBefore(cutoff)) {
+                    done = true;
+                    break;
+                }
+                collected.add(p);
+                if (cutoff == null && collected.size() >= DAY_ENG_ALL_CAP) {
+                    done = true;
+                    break;
+                }
+            }
+            after = res.afterCursor();
+            if (after == null) {
+                break;
+            }
+        }
+
+        // 2) 게시물별 지표 병렬 조회 → 참여율.
+        record Eng(int weekday, double rate) {
+        }
+        List<Eng> engs;
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            engs = collected.stream()
+                    .map(p -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                        Instant ts = parseTimestamp(p.timestamp());
+                        if (ts == null) {
+                            return null;
+                        }
+                        var ins = apiClient.fetchMediaInsights(p.id(), token);
+                        if (ins == null) {
+                            return null;
+                        }
+                        long views = orZero(ins.value("views"));
+                        if (views <= 0) {
+                            return null;
+                        }
+                        long inter = orZero(ins.value("likes")) + orZero(ins.value("replies"))
+                                + orZero(ins.value("reposts")) + orZero(ins.value("quotes"));
+                        int weekday = ts.atZone(KST).getDayOfWeek().getValue() % 7; // Mon=1..Sun=7 → 0=일..6=토
+                        return new Eng(weekday, (double) inter / views);
+                    }, executor))
+                    .toList().stream()
+                    .map(java.util.concurrent.CompletableFuture::join)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+        }
+
+        // 3) 요일별 평균.
+        List<com.postflow.threads.dto.DayEngagementDto.DayStat> stats = new java.util.ArrayList<>();
+        for (int wd = 0; wd < 7; wd++) {
+            int w = wd;
+            var day = engs.stream().filter(e -> e.weekday() == w).toList();
+            double avg = day.isEmpty() ? 0 : day.stream().mapToDouble(Eng::rate).average().orElse(0);
+            stats.add(new com.postflow.threads.dto.DayEngagementDto.DayStat(wd, avg, day.size()));
+        }
+        return new com.postflow.threads.dto.DayEngagementDto(days, engs.size(), stats);
+    }
+
+    private static long orZero(Long v) {
+        return v == null ? 0 : v;
+    }
+
+    private Instant parseTimestamp(String ts) {
+        if (ts == null || ts.isBlank()) {
+            return null;
+        }
+        try {
+            return java.time.OffsetDateTime.parse(ts).toInstant();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     /** 계정 인사이트: 팔로워 수 + 팔로워 인구통계(연령/성별/국가/도시). 미연결이면 null. */
     @Transactional(readOnly = true)
     public com.postflow.threads.dto.ThreadsInsightsDto accountInsights(Long userId, Long accountId) {

@@ -74,16 +74,16 @@ export function ThreadsInsightsPage() {
   // ── 베스트 게시물 TOP 5 (참여율) ──
   const best = [...withViews].sort((a, b) => engagementRate(b) - engagementRate(a)).slice(0, 5);
 
-  // ── 요일별 평균 참여율 (전체 / 최근 2주) ──
-  const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
-  const dayPosts =
-    dayRange === "2w"
-      ? withViews.filter((p) => p.timestamp && new Date(p.timestamp).getTime() >= twoWeeksAgo)
-      : withViews;
-  const byDay = WEEKDAYS.map((d, i) => {
-    const ps = dayPosts.filter((p) => p.timestamp && new Date(p.timestamp).getDay() === i);
-    const avg = ps.length ? ps.reduce((a, p) => a + engagementRate(p), 0) / ps.length : 0;
-    return { label: d, value: avg, count: ps.length };
+  // ── 요일별 평균 참여율 (서버 기간 조회: 최근 2주 / 전체) ──
+  const dayQ = useQuery({
+    queryKey: ["threads-day-engagement", accountId, dayRange],
+    queryFn: () => threadsApi.dayEngagement(dayRange === "2w" ? 14 : 0, accountId),
+  });
+  const dayStats = dayQ.data?.stats ?? [];
+  const daySampled = dayQ.data?.sampled ?? 0;
+  const byDay = WEEKDAYS.map((label, i) => {
+    const s = dayStats.find((x) => x.weekday === i);
+    return { label, value: s?.avgEngagement ?? 0, count: s?.count ?? 0 };
   });
   const maxDay = Math.max(0.0001, ...byDay.map((d) => d.value));
 
@@ -230,7 +230,9 @@ export function ThreadsInsightsPage() {
                 ))}
               </div>
             </div>
-            {dayPosts.length === 0 ? (
+            {dayQ.isLoading ? (
+              <div className="flex justify-center py-10"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
+            ) : daySampled === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 {dayRange === "2w" ? "최근 2주에 지표 있는 게시물이 없어요. 전체로 보거나 글이 쌓이면 표시돼요." : "지표가 있는 게시물이 쌓이면 요일별 성과를 보여드려요."}
               </p>
@@ -240,13 +242,21 @@ export function ThreadsInsightsPage() {
                   {byDay.map((d) => {
                     const h = maxDay > 0 ? (d.value / maxDay) * 100 : 0;
                     return (
-                      <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
-                        {/* 고정 높이 막대 트랙 — 막대 height:%가 이 트랙 기준. 막대 폭은 좁게(블록화 방지) */}
+                      // 컬럼 전체를 hover 영역으로 + 커스텀 툴팁(빈 요일도 표시)
+                      <div key={d.label} className="group relative flex flex-1 flex-col items-center gap-1">
+                        <div className="pointer-events-none absolute -top-1 z-10 -translate-y-full whitespace-nowrap rounded-md border bg-popover px-2.5 py-1.5 text-xs opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                          <span className="font-semibold">{d.label}요일</span>
+                          {d.count > 0 ? (
+                            <> · 참여율 <span className="font-semibold text-brand">{pct(d.value)}</span> · {d.count}개</>
+                          ) : (
+                            <> · 게시물 없음</>
+                          )}
+                        </div>
                         <div className="flex h-32 w-full items-end justify-center">
                           <div
-                            className={cn("w-full max-w-[44px] rounded-t transition-all", d.count ? "bg-brand/70" : "bg-muted")}
+                            className={cn("w-full max-w-[44px] rounded-t transition-all group-hover:opacity-90",
+                              d.count ? "bg-brand/70" : "bg-muted")}
                             style={{ height: `${d.count ? Math.max(h, 8) : 3}%` }}
-                            title={`${pct(d.value)} · ${d.count}개`}
                           />
                         </div>
                         <span className="text-xs text-muted-foreground">{d.label}</span>
@@ -256,7 +266,7 @@ export function ThreadsInsightsPage() {
                   })}
                 </div>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
-                  {dayRange === "2w" ? "최근 2주 기준 · " : ""}막대 = 그 요일 게시물의 평균 참여율(아래 숫자=게시물 수). 잘 되는 요일에 발행을 몰아보세요.
+                  {dayRange === "2w" ? "최근 2주" : "최근 게시물"} 기준 · 막대에 마우스를 올리면 상세가 보여요(아래 숫자=게시물 수).
                 </p>
               </>
             )}

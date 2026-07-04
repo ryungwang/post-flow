@@ -65,6 +65,15 @@ public class ThreadsController {
         return socialAccountService.accountPosts(userId, accountId, Math.min(Math.max(limit, 1), 100), after);
     }
 
+    /** 요일별 평균 참여율(기간 조회). days>0=최근 days일, days=0=최신 일부. weekday 0=일..6=토(KST). */
+    @GetMapping("/day-engagement")
+    public com.postflow.threads.dto.DayEngagementDto dayEngagement(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(name = "accountId", required = false) Long accountId,
+            @RequestParam(name = "days", defaultValue = "14") int days) {
+        return socialAccountService.dayEngagement(userId, accountId, Math.min(Math.max(days, 0), 90));
+    }
+
     /** 계정 인사이트: 팔로워 수 + 팔로워 인구통계(연령/성별/국가/도시). */
     @GetMapping("/insights")
     public com.postflow.threads.dto.ThreadsInsightsDto accountInsights(

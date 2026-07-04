@@ -56,6 +56,11 @@ export const threadsApi = {
   },
   insights: (accountId?: number) =>
     api.get<ThreadsInsights>(`/threads/insights${accountId ? `?accountId=${accountId}` : ""}`),
+  dayEngagement: (days: number, accountId?: number | null) => {
+    const q = new URLSearchParams({ days: String(days) });
+    if (accountId) q.set("accountId", String(accountId));
+    return api.get<DayEngagement>(`/threads/day-engagement?${q.toString()}`);
+  },
   replies: (mediaId: string) => api.get<RepliesResult>(`/threads/posts/${mediaId}/replies`),
   trends: (q: string, type: "TOP" | "RECENT" = "TOP") =>
     api.get<TrendResult>(`/threads/trends?q=${encodeURIComponent(q)}&type=${type}`),
@@ -113,3 +118,10 @@ export type ThreadsInsights = {
 
 /** 게시물 댓글(답글) 한 건. */
 export type ThreadsReply = { id: string; text: string | null; username: string | null };
+
+/** 요일별 평균 참여율(기간 조회). weekday 0=일..6=토(KST). */
+export type DayEngagement = {
+  days: number;
+  sampled: number;
+  stats: { weekday: number; avgEngagement: number; count: number }[];
+};
