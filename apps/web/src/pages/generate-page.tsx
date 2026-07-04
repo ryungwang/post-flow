@@ -155,7 +155,7 @@ export function GeneratePage() {
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid items-start gap-4 sm:grid-cols-3">
             <div className="grid gap-2">
               <Label>목표</Label>
               <Select value={goal} onValueChange={setGoal}>
