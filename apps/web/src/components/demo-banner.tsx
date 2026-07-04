@@ -11,12 +11,12 @@ export function DemoBanner() {
   if (!user?.demo) return null;
 
   return (
-    <div className="flex items-center justify-center gap-2 bg-brand-gradient px-4 py-2 text-center text-xs font-medium text-brand-foreground sm:text-sm">
-      <Sparkles className="size-4 shrink-0" />
-      <span>체험 모드로 둘러보는 중이에요 — 저장·발행은 되지 않아요.</span>
+    <div className="flex h-9 shrink-0 items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/15 px-4 text-center text-xs font-medium text-amber-700 dark:text-amber-300">
+      <Sparkles className="size-3.5 shrink-0" />
+      <span>체험(데모) 모드입니다 — 둘러보기 전용이라 변경은 저장되지 않아요.</span>
       <a
         href={`${BILLING_WEB_URL}/products`}
-        className="ml-1 rounded-full bg-white/20 px-3 py-0.5 font-semibold underline-offset-2 transition-colors hover:bg-white/30"
+        className="ml-1 rounded-full bg-amber-500/25 px-2.5 py-0.5 font-semibold underline-offset-2 transition-colors hover:bg-amber-500/40"
       >
         구독하고 시작하기
       </a>
