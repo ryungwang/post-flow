@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/auth/require-auth";
@@ -24,6 +24,12 @@ const AutomationPage = lazyPage(() => import("@/pages/automation-page"), "Automa
 const ThreadsSettingsPage = lazyPage(() => import("@/pages/threads-settings-page"), "ThreadsSettingsPage");
 const FaqPage = lazyPage(() => import("@/pages/faq-page"), "FaqPage");
 const BrandsPage = lazyPage(() => import("@/pages/brands-page"), "BrandsPage");
+
+/** /settings(잘못된 콜백 경로) → /settings/threads로 쿼리 보존 리다이렉트. */
+function SettingsRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/settings/threads${search}`} replace />;
+}
 
 function PageFallback() {
   return (
@@ -53,6 +59,8 @@ export default function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/settings/account" element={<AccountPage />} />
             <Route path="/settings/threads" element={<ThreadsSettingsPage />} />
+            {/* Threads OAuth 콜백이 /settings?threads=connected로 와도 실제 페이지로(쿼리 보존). */}
+            <Route path="/settings" element={<SettingsRedirect />} />
             <Route path="/brands" element={<BrandsPage />} />
             <Route path="/help" element={<FaqPage />} />
           </Route>

@@ -82,7 +82,7 @@ threads:
   scopes: threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies
   authorize-base-url: https://threads.net
   graph-base-url: https://graph.threads.net
-  frontend-redirect-url: ${THREADS_FRONTEND_REDIRECT_URL:http://localhost:5173/settings?threads=connected}
+  frontend-redirect-url: ${THREADS_FRONTEND_REDIRECT_URL:http://localhost:5173/settings/threads?threads=connected}
   publisher:
     interval-ms: 60000
   token-refresh:
