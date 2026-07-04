@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Eye, ExternalLink, Heart, Loader2, MessageCircle, Repeat2, RefreshCw, Send, Trash2 } from "lucide-react";
 import { threadsApi, type ThreadsAccountPost } from "@/lib/threads-api";
 import { Badge } from "@/components/ui/badge";
@@ -8,18 +8,18 @@ import { cn } from "@/lib/utils";
 
 function Metrics({ p }: { p: ThreadsAccountPost }) {
   const items = [
-    { icon: Heart, v: p.likes },
-    { icon: MessageCircle, v: p.replies },
-    { icon: Repeat2, v: (p.reposts ?? 0) + (p.quotes ?? 0) },
-    { icon: Send, v: p.shares },
-    { icon: Eye, v: p.views },
+    { icon: Heart, v: p.likes, color: "text-rose-500" },
+    { icon: MessageCircle, v: p.replies, color: "text-sky-500" },
+    { icon: Repeat2, v: (p.reposts ?? 0) + (p.quotes ?? 0), color: "text-emerald-500" },
+    { icon: Send, v: p.shares, color: "text-violet-500" },
+    { icon: Eye, v: p.views, color: "text-amber-500" },
   ];
   if (items.every((i) => i.v == null)) return null;
   return (
-    <div className="flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
-      {items.map(({ icon: Icon, v }, i) => (
-        <span key={i} className="inline-flex items-center gap-1.5">
-          <Icon className="size-5" /> {(v ?? 0).toLocaleString()}
+    <div className="flex flex-wrap items-center gap-5 text-sm">
+      {items.map(({ icon: Icon, v, color }, i) => (
+        <span key={i} className="inline-flex items-center gap-1.5 font-bold text-foreground">
+          <Icon className={cn("size-5", color)} /> {(v ?? 0).toLocaleString()}
         </span>
       ))}
     </div>
@@ -125,12 +125,30 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
   );
 }
 
-/** 연결된 Threads 계정에 실제 올라간 게시물 목록 — PostFlow 발행 / 외부 구분 표시. */
+/** 연결된 Threads 계정에 실제 올라간 게시물 목록 — 무한 스크롤 + PostFlow/외부 구분. */
 export function AccountPostsPage() {
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["threads-account-posts"],
-    queryFn: () => threadsApi.posts(),
-  });
+  const { data, isLoading, isError, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: ["threads-account-posts"],
+      queryFn: ({ pageParam }) => threadsApi.posts({ after: pageParam, limit: 10 }),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.nextCursor ?? undefined,
+    });
+
+  const posts = data?.pages.flatMap((pg) => pg.posts) ?? [];
+
+  // 스크롤 센티넬 — 화면에 들어오면 다음 페이지 로드.
+  const sentinel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasNextPage) return;
+    const io = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting && !isFetchingNextPage) fetchNextPage(); },
+      { rootMargin: "300px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
     <div className="w-full p-6">
@@ -142,7 +160,7 @@ export function AccountPostsPage() {
           </p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} /> 새로고침
+          <RefreshCw className={`size-4 ${isFetching && !isFetchingNextPage ? "animate-spin" : ""}`} /> 새로고침
         </Button>
       </div>
 
@@ -155,16 +173,27 @@ export function AccountPostsPage() {
           <p className="rounded-xl border bg-card/40 p-10 text-center text-sm text-muted-foreground">
             게시물을 불러오지 못했어요. Threads 계정 연결 상태를 확인해 주세요.
           </p>
-        ) : !data || data.length === 0 ? (
+        ) : posts.length === 0 ? (
           <p className="rounded-xl border bg-card/40 p-10 text-center text-sm text-muted-foreground">
             아직 게시물이 없어요. Threads에 글을 올리거나 PostFlow에서 발행해 보세요.
           </p>
         ) : (
-          <ul className="flex flex-col gap-3">
-            {data.map((p) => (
-              <PostRow key={p.id} p={p} />
-            ))}
-          </ul>
+          <>
+            <ul className="flex flex-col gap-3">
+              {posts.map((p) => (
+                <PostRow key={p.id} p={p} />
+              ))}
+            </ul>
+            <div ref={sentinel} className="flex justify-center py-6">
+              {isFetchingNextPage ? (
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              ) : hasNextPage ? (
+                <Button variant="ghost" size="sm" onClick={() => fetchNextPage()}>더 보기</Button>
+              ) : (
+                <span className="text-xs text-muted-foreground">마지막 게시물이에요</span>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

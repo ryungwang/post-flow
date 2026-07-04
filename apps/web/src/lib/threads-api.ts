@@ -46,8 +46,13 @@ export const threadsApi = {
   accounts: () => api.get<ThreadsAccount[]>("/threads/accounts"),
   setDefault: (id: number) => api.post<void>(`/threads/accounts/${id}/default`),
   disconnect: (id: number) => api.del<void>(`/threads/accounts/${id}`),
-  posts: (accountId?: number) =>
-    api.get<ThreadsAccountPost[]>(`/threads/posts${accountId ? `?accountId=${accountId}` : ""}`),
+  posts: (opts?: { after?: string; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (opts?.after) q.set("after", opts.after);
+    if (opts?.limit) q.set("limit", String(opts.limit));
+    const s = q.toString();
+    return api.get<AccountPostsPage>(`/threads/posts${s ? `?${s}` : ""}`);
+  },
   insights: (accountId?: number) =>
     api.get<ThreadsInsights>(`/threads/insights${accountId ? `?accountId=${accountId}` : ""}`),
   replies: (mediaId: string) => api.get<RepliesResult>(`/threads/posts/${mediaId}/replies`),
@@ -58,6 +63,9 @@ export const threadsApi = {
   mentions: () => api.get<TrendResult>("/threads/mentions"),
   deletePost: (mediaId: string) => api.del<{ deleted: boolean }>(`/threads/posts/${mediaId}`),
 };
+
+/** 내 게시물 한 페이지 + 다음 커서(null=마지막). 무한 스크롤용. */
+export type AccountPostsPage = { posts: ThreadsAccountPost[]; nextCursor: string | null };
 
 /** 키워드 트렌드/멘션 게시물 한 건. */
 export type TrendPost = {

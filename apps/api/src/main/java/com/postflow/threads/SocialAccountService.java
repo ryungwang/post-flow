@@ -50,12 +50,12 @@ public class SocialAccountService {
      * accountId=null이면 기본/첫 계정. 미연결이면 빈 목록.
      */
     @Transactional(readOnly = true)
-    public List<ThreadsAccountPostDto> accountPosts(Long userId, Long accountId, int limit) {
+    public com.postflow.threads.dto.AccountPostsPage accountPosts(Long userId, Long accountId, int limit, String after) {
         SocialAccount account = accountId != null
                 ? repository.findById(accountId).filter(a -> a.getUserId().equals(userId)).orElse(null)
                 : find(userId).orElse(null);
         if (account == null || account.getThreadsUserId() == null) {
-            return List.of();
+            return new com.postflow.threads.dto.AccountPostsPage(List.of(), null);
         }
         // PostFlow에서 발행된 게시물의 Threads media id 집합(대조용).
         Set<String> mine = postRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
@@ -63,10 +63,20 @@ public class SocialAccountService {
                 .filter(id -> id != null && !id.isBlank())
                 .collect(Collectors.toSet());
         String token = account.getAccessToken();
-        return apiClient.fetchUserPosts(account.getThreadsUserId(), token, limit).stream()
-                // 게시물별 참여 지표(좋아요·댓글·리포스트·공유). 실패/미제공은 null.
-                .map(p -> ThreadsAccountPostDto.of(p, mine.contains(p.id()), apiClient.fetchMediaInsights(p.id(), token)))
-                .toList();
+        var page = apiClient.fetchUserPostsPage(account.getThreadsUserId(), token, limit, after);
+        var posts = page.data() != null ? page.data() : List.<com.postflow.threads.api.ThreadsUserPost>of();
+        // 게시물별 지표는 각 1회 API 호출 → 순차면 글 많을수록 느림. 가상 스레드로 병렬(한 번 지연으로 끝).
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            List<java.util.concurrent.CompletableFuture<ThreadsAccountPostDto>> futures = posts.stream()
+                    .map(p -> java.util.concurrent.CompletableFuture.supplyAsync(
+                            () -> ThreadsAccountPostDto.of(p, mine.contains(p.id()),
+                                    apiClient.fetchMediaInsights(p.id(), token)),
+                            executor))
+                    .toList();
+            List<ThreadsAccountPostDto> dtos = futures.stream()
+                    .map(java.util.concurrent.CompletableFuture::join).toList();
+            return new com.postflow.threads.dto.AccountPostsPage(dtos, page.afterCursor());
+        }
     }
 
     /** 계정 인사이트: 팔로워 수 + 팔로워 인구통계(연령/성별/국가/도시). 미연결이면 null. */

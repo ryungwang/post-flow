@@ -55,13 +55,14 @@ public class ThreadsController {
         return socialAccountService.list(userId);
     }
 
-    /** 연결된 계정에 실제 올라간 게시물 목록(+PostFlow 발행 여부). accountId 미지정=기본 계정. */
+    /** 연결된 계정 게시물 한 페이지(+PostFlow 발행 여부, 다음 커서). 무한 스크롤용. */
     @GetMapping("/posts")
-    public List<com.postflow.threads.dto.ThreadsAccountPostDto> accountPosts(
+    public com.postflow.threads.dto.AccountPostsPage accountPosts(
             @AuthenticationPrincipal Long userId,
             @RequestParam(name = "accountId", required = false) Long accountId,
-            @RequestParam(name = "limit", defaultValue = "25") int limit) {
-        return socialAccountService.accountPosts(userId, accountId, Math.min(Math.max(limit, 1), 100));
+            @RequestParam(name = "limit", defaultValue = "10") int limit,
+            @RequestParam(name = "after", required = false) String after) {
+        return socialAccountService.accountPosts(userId, accountId, Math.min(Math.max(limit, 1), 100), after);
     }
 
     /** 계정 인사이트: 팔로워 수 + 팔로워 인구통계(연령/성별/국가/도시). */

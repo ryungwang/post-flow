@@ -211,21 +211,33 @@ public class ThreadsApiClient {
         }
     }
 
-    /** 연결된 계정에 실제 올라간 게시물 목록(최신순). threads_basic 권한. 실패 시 빈 목록. */
-    public List<com.postflow.threads.api.ThreadsUserPost> fetchUserPosts(String threadsUserId, String accessToken, int limit) {
+    /** 연결된 계정 게시물 한 페이지(최신순 + 다음 커서). threads_basic. 실패 시 빈 페이지. */
+    public com.postflow.threads.api.ThreadsUserPostsResponse fetchUserPostsPage(
+            String threadsUserId, String accessToken, int limit, String after) {
         try {
             var res = graph.get()
-                    .uri(b -> b.path("/{id}/threads")
-                            .queryParam("fields", "id,text,timestamp,permalink,media_type,media_url")
-                            .queryParam("limit", limit)
-                            .queryParam("access_token", accessToken)
-                            .build(threadsUserId))
+                    .uri(b -> {
+                        b.path("/{id}/threads")
+                                .queryParam("fields", "id,text,timestamp,permalink,media_type,media_url")
+                                .queryParam("limit", limit)
+                                .queryParam("access_token", accessToken);
+                        if (after != null && !after.isBlank()) {
+                            b.queryParam("after", after);
+                        }
+                        return b.build(threadsUserId);
+                    })
                     .retrieve()
                     .body(com.postflow.threads.api.ThreadsUserPostsResponse.class);
-            return res != null && res.data() != null ? res.data() : List.of();
+            return res != null ? res : new com.postflow.threads.api.ThreadsUserPostsResponse(List.of(), null);
         } catch (RestClientException e) {
-            return List.of();
+            return new com.postflow.threads.api.ThreadsUserPostsResponse(List.of(), null);
         }
+    }
+
+    /** 게시물 목록(페이징 없이). 인사이트 집계 등 첫 페이지만 필요할 때. */
+    public List<com.postflow.threads.api.ThreadsUserPost> fetchUserPosts(String threadsUserId, String accessToken, int limit) {
+        var page = fetchUserPostsPage(threadsUserId, accessToken, limit, null);
+        return page.data() != null ? page.data() : List.of();
     }
 
     /** 나를 멘션한 게시물 목록. threads_manage_mentions. 실패 시 예외(권한 구분용). */

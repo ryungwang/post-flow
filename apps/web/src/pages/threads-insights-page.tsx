@@ -51,10 +51,10 @@ function BarList({ title, entries, unit }: { title: string; entries: DemoEntry[]
 }
 
 export function ThreadsInsightsPage() {
-  const postsQ = useQuery({ queryKey: ["threads-account-posts"], queryFn: () => threadsApi.posts() });
+  const postsQ = useQuery({ queryKey: ["threads-insights-posts"], queryFn: () => threadsApi.posts({ limit: 30 }) });
   const insQ = useQuery({ queryKey: ["threads-insights"], queryFn: () => threadsApi.insights() });
 
-  const posts = postsQ.data ?? [];
+  const posts = postsQ.data?.posts ?? [];
   const withViews = posts.filter((p) => p.views != null);
 
   // ── 총계 & 참여율 (게시물 지표 합산) ──
