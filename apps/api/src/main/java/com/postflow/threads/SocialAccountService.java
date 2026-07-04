@@ -172,14 +172,22 @@ public class SocialAccountService {
         return v == null ? 0 : v;
     }
 
+    // Threads 타임스탬프는 "+0000"(콜론 없음) — ISO 파서는 "+00:00"만 되므로 패턴 폴백.
+    private static final java.time.format.DateTimeFormatter TS_FMT =
+            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
+
     private Instant parseTimestamp(String ts) {
         if (ts == null || ts.isBlank()) {
             return null;
         }
         try {
             return java.time.OffsetDateTime.parse(ts).toInstant();
-        } catch (Exception e) {
-            return null;
+        } catch (Exception ignore) {
+            try {
+                return java.time.OffsetDateTime.parse(ts, TS_FMT).toInstant();
+            } catch (Exception e) {
+                return null;
+            }
         }
     }
 
