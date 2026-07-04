@@ -214,6 +214,8 @@ function UsageBar() {
           { label: "예약 발행", on: data.canSchedule },
           { label: "시리즈 생성", on: data.canSeries },
           { label: "다중 계정", on: data.canMultiAccount },
+          { label: "성과 분석", on: data.canAnalytics },
+          { label: "댓글 자동화", on: data.canAutomation },
         ].map((f) => (
           <Badge key={f.label} variant={f.on ? "success" : "secondary"}>
             {f.on ? "✓" : "🔒"} {f.label}

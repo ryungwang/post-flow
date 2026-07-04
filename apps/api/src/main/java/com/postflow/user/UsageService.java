@@ -27,6 +27,10 @@ public class UsageService {
         return now.withDayOfMonth(1).toLocalDate().atStartOfDay(KST).toInstant();
     }
 
+    private Instant dayStart() {
+        return ZonedDateTime.now(KST).toLocalDate().atStartOfDay(KST).toInstant();
+    }
+
     /** FREE=누적(총), 유료=이번 달 생성 수. */
     @Transactional(readOnly = true)
     public long usedGenerations(Long userId, Plan plan) {
@@ -35,15 +39,39 @@ public class UsageService {
                 : aiGenerationRepository.countByUserIdAndCreatedAtAfter(userId, monthStart());
     }
 
-    /** Throw if the user is at/over their generation cap (FREE 총 10개 / 유료 월 한도). */
+    /**
+     * 생성 가능 여부 강제. 순서: ① 전 플랜 공통 일일 어뷰징 상한(하드 실링) → ② 플랜별 캡.
+     * 백엔드 강제라 API 직접 호출 어뷰징도 차단된다.
+     */
     @Transactional(readOnly = true)
     public void assertCanGenerate(Long userId) {
+        // ① 일일 어뷰징 상한(전 플랜) — Pro 무제한도 이 뒤에. 스크립트 무한호출 방어.
+        long today = aiGenerationRepository.countByUserIdAndCreatedAtAfter(userId, dayStart());
+        if (today >= PlanPolicy.DAILY_ABUSE_CAP) {
+            throw new PlanLimitException("하루 생성 한도(" + PlanPolicy.DAILY_ABUSE_CAP
+                    + "건)를 넘었어요. 잠시 후 다시 시도해 주세요.");
+        }
+        // ② 플랜별 캡(FREE 총 10개 / BASIC 월 50개 / PRO 무제한).
         Plan plan = userService.getById(userId).getPlan();
         int cap = PlanPolicy.generationCap(plan);
         if (cap >= 0 && usedGenerations(userId, plan) >= cap) {
             throw new PlanLimitException(PlanPolicy.isLifetimeCap(plan)
                     ? "무료 체험 " + cap + "개를 모두 사용했어요. 구독하면 계속 생성할 수 있어요."
                     : "이번 달 생성 한도(" + cap + "개)를 모두 사용했어요. 업그레이드하면 더 만들 수 있어요.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void assertCanAutomation(Long userId) {
+        if (!PlanPolicy.canAutomation(userService.getById(userId).getPlan())) {
+            throw new PlanLimitException("댓글 자동화는 Pro 플랜부터 사용할 수 있어요.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void assertCanAnalytics(Long userId) {
+        if (!PlanPolicy.canAnalytics(userService.getById(userId).getPlan())) {
+            throw new PlanLimitException("성과 분석은 Pro 플랜부터 사용할 수 있어요.");
         }
     }
 
@@ -62,7 +90,8 @@ public class UsageService {
     }
 
     public record UsageDto(String plan, long used, int limit, boolean canSchedule, boolean canSeries,
-                           boolean canMultiAccount, boolean cancelScheduled, java.time.Instant currentPeriodEnd,
+                           boolean canMultiAccount, boolean canAnalytics, boolean canAutomation,
+                           boolean cancelScheduled, java.time.Instant currentPeriodEnd,
                            boolean lifetimeCap) {
     }
 
@@ -77,6 +106,8 @@ public class UsageService {
                 PlanPolicy.canSchedule(plan),
                 PlanPolicy.canSeries(plan),
                 PlanPolicy.canMultiAccount(plan),
+                PlanPolicy.canAnalytics(plan),
+                PlanPolicy.canAutomation(plan),
                 user.isCancelScheduled(),
                 user.getCurrentPeriodEnd(),
                 PlanPolicy.isLifetimeCap(plan));

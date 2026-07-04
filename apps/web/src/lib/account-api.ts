@@ -9,6 +9,8 @@ export type Usage = {
   canSchedule: boolean;
   canSeries: boolean;
   canMultiAccount: boolean;
+  canAnalytics: boolean;
+  canAutomation: boolean;
   cancelScheduled: boolean;
   currentPeriodEnd: string | null;
   lifetimeCap: boolean; // FREE=누적(총) 한도, 유료=월 한도

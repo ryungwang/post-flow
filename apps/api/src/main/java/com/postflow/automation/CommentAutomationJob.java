@@ -36,6 +36,7 @@ public class CommentAutomationJob {
     private final SocialAccountRepository socialAccountRepository;
     private final ThreadsApiClient apiClient;
     private final ThreadsPublishService publishService;
+    private final com.postflow.user.UserService userService;
 
     public CommentAutomationJob(CommentRuleRepository ruleRepository,
                                 CommentReplyRepository replyRepository,
@@ -43,7 +44,8 @@ public class CommentAutomationJob {
                                 PostRepository postRepository,
                                 SocialAccountRepository socialAccountRepository,
                                 ThreadsApiClient apiClient,
-                                ThreadsPublishService publishService) {
+                                ThreadsPublishService publishService,
+                                com.postflow.user.UserService userService) {
         this.ruleRepository = ruleRepository;
         this.replyRepository = replyRepository;
         this.ruleService = ruleService;
@@ -51,6 +53,7 @@ public class CommentAutomationJob {
         this.socialAccountRepository = socialAccountRepository;
         this.apiClient = apiClient;
         this.publishService = publishService;
+        this.userService = userService;
     }
 
     @Scheduled(fixedDelayString = "${automation.comment-poll-ms:120000}", initialDelay = 30_000)
@@ -58,6 +61,10 @@ public class CommentAutomationJob {
         List<CommentRule> rules = ruleRepository.findByActiveTrue();
         for (CommentRule rule : rules) {
             try {
+                // Pro 강등 유저의 규칙은 실행하지 않음(자동화 = Pro 전용). 결제 상태 변화 반영.
+                if (!com.postflow.user.PlanPolicy.canAutomation(userService.getById(rule.getUserId()).getPlan())) {
+                    continue;
+                }
                 processRule(rule);
             } catch (Exception e) {
                 log.warn("Comment rule {} failed: {}", rule.getId(), e.getMessage());

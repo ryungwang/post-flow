@@ -3,6 +3,12 @@ package com.postflow.user;
 /** Per-plan limits & feature flags (single source of truth for gating). */
 public final class PlanPolicy {
 
+    /**
+     * 공정사용·어뷰징 방어 — 전 플랜 공통 <b>일일 생성요청 하드 실링</b>. Pro의 "무제한"도 이 한도 뒤에 둔다
+     * (API 스크립트로 무한 호출해 API비를 폭증시키는 것 차단). FREE(총10)/BASIC(월50)는 이보다 낮아 실질 무영향.
+     */
+    public static final int DAILY_ABUSE_CAP = 100;
+
     private PlanPolicy() {
     }
 
@@ -32,6 +38,16 @@ public final class PlanPolicy {
 
     /** 다중 계정(채널) — PRO 전용(5개 채널). */
     public static boolean canMultiAccount(Plan plan) {
+        return plan == Plan.PRO;
+    }
+
+    /** 성과 분석(분석 페이지) — PRO 전용(카탈로그). */
+    public static boolean canAnalytics(Plan plan) {
+        return plan == Plan.PRO;
+    }
+
+    /** 댓글 자동화 — PRO 전용. */
+    public static boolean canAutomation(Plan plan) {
         return plan == Plan.PRO;
     }
 }

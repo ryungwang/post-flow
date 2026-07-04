@@ -3,6 +3,7 @@ package com.postflow.automation;
 import com.postflow.automation.CommentRuleService.TestResult;
 import com.postflow.automation.dto.CommentRuleDto;
 import com.postflow.automation.dto.CommentRuleRequest;
+import com.postflow.user.UsageService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,9 +25,11 @@ import java.util.Map;
 public class CommentRuleController {
 
     private final CommentRuleService service;
+    private final UsageService usageService;
 
-    public CommentRuleController(CommentRuleService service) {
+    public CommentRuleController(CommentRuleService service, UsageService usageService) {
         this.service = service;
+        this.usageService = usageService;
     }
 
     @GetMapping
@@ -37,12 +40,14 @@ public class CommentRuleController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CommentRuleDto create(@AuthenticationPrincipal Long userId, @Valid @RequestBody CommentRuleRequest req) {
+        usageService.assertCanAutomation(userId); // 댓글 자동화 = Pro 전용
         return service.create(userId, req);
     }
 
     @PutMapping("/{id}")
     public CommentRuleDto update(@AuthenticationPrincipal Long userId, @PathVariable Long id,
                                  @RequestBody CommentRuleRequest req) {
+        usageService.assertCanAutomation(userId); // Pro 전용
         return service.update(userId, id, req);
     }
 
