@@ -3,25 +3,19 @@ package com.postflow.user;
 /** Per-plan limits & feature flags (single source of truth for gating). */
 public final class PlanPolicy {
 
-    /**
-     * PRO(무제한) 전용 <b>공정사용 일일 상한</b> — "무제한"을 API 스크립트로 무한 호출해 API비를 폭증시키는 것 차단.
-     * FREE(총10)/BASIC(월50)는 자체 캡이 이보다 낮아 해당 없음 → 일일 상한은 무제한 플랜에만 적용한다.
-     */
-    public static final int UNLIMITED_DAILY_CAP = 200;
-
     private PlanPolicy() {
     }
 
-    /** AI 생성 한도(-1=무제한). FREE=총 10개(누적 무료체험), BASIC=월 50개, PRO=무제한. */
+    /** AI 생성 한도. FREE=총 10개(누적 무료체험), BASIC=월 50개, PRO=월 200개. '무제한' 아님(손익·어뷰징 관리). */
     public static int generationCap(Plan plan) {
         return switch (plan) {
             case FREE -> 10;
             case BASIC -> 50;
-            case PRO -> -1;
+            case PRO -> 200;
         };
     }
 
-    /** FREE는 누적(총) 한도, 유료는 월 한도. */
+    /** FREE는 누적(총) 한도, 유료(BASIC/PRO)는 월 한도. */
     public static boolean isLifetimeCap(Plan plan) {
         return plan == Plan.FREE;
     }

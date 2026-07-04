@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 const PLANS = [
   { key: "FREE", name: "Free", price: "₩0", features: ["총 10개 생성", "기본 기능 체험"] },
   { key: "BASIC", name: "Basic", price: "₩15,000", features: ["월 50개 스레드", "1개 채널 연동", "기본 템플릿"] },
-  { key: "PRO", name: "Pro", price: "₩25,000", features: ["무제한 스레드", "5개 채널 연동", "예약 발행", "성과 분석"] },
+  { key: "PRO", name: "Pro", price: "₩25,000", features: ["월 200개 생성", "5개 채널 연동", "예약 발행", "성과 분석", "댓글 자동화"] },
 ];
 
 const THEMES = [
@@ -189,8 +189,7 @@ export function AccountPage() {
 function UsageBar() {
   const { data } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
   if (!data) return null;
-  const unlimited = data.limit < 0;
-  const pct = unlimited ? 100 : Math.min(100, Math.round((data.used / Math.max(1, data.limit)) * 100));
+  const pct = Math.min(100, Math.round((data.used / Math.max(1, data.limit)) * 100));
   return (
     <div className="mb-5 rounded-xl border border-border/60 p-4">
       {data.cancelScheduled && (
@@ -201,10 +200,10 @@ function UsageBar() {
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">{data.lifetimeCap ? "무료 체험 생성 (총)" : "이번 달 AI 생성"}</span>
         <span className="tabular-nums text-muted-foreground">
-          {unlimited ? `${data.used} / 무제한` : `${data.used} / ${data.limit}`}
+          {data.used} / {data.limit}
         </span>
       </div>
-      {!unlimited && (
+      {(
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
           <div className={cn("h-full rounded-full", pct >= 100 ? "bg-rose-500" : "bg-brand-gradient")} style={{ width: `${pct}%` }} />
         </div>
@@ -245,7 +244,7 @@ function AccountSummaryCard() {
     { label: "연결 채널", value: `${accounts?.length ?? 0}개` },
     {
       label: usage?.lifetimeCap ? "무료 체험 (총)" : "이번 달 생성",
-      value: usage ? `${usage.used} / ${usage.limit < 0 ? "무제한" : usage.limit}` : "—",
+      value: usage ? `${usage.used} / ${usage.limit}` : "—",
     },
   ];
   return (
