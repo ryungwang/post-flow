@@ -56,7 +56,8 @@ function BarList({ title, entries, unit }: { title: string; entries: DemoEntry[]
 
 export function ThreadsInsightsPage() {
   const accountId = useThreadsAccount((s) => s.accountId);
-  const [dayRange, setDayRange] = useState<"2w" | "all">("2w"); // 요일별 차트 기간
+  const [dayRange, setDayRange] = useState<"2w" | "all">("2w"); // 차트 기간
+  const [chartMode, setChartMode] = useState<"weekday" | "daily">("weekday"); // 요일별 / 일별
   const postsQ = useQuery({ queryKey: ["threads-insights-posts", accountId], queryFn: () => threadsApi.posts({ limit: 30, accountId }) });
   const insQ = useQuery({ queryKey: ["threads-insights", accountId], queryFn: () => threadsApi.insights(accountId ?? undefined) });
 
@@ -79,13 +80,25 @@ export function ThreadsInsightsPage() {
     queryKey: ["threads-day-engagement", accountId, dayRange],
     queryFn: () => threadsApi.dayEngagement(dayRange === "2w" ? 14 : 0, accountId),
   });
-  const dayStats = dayQ.data?.stats ?? [];
   const daySampled = dayQ.data?.sampled ?? 0;
-  const byDay = WEEKDAYS.map((label, i) => {
-    const s = dayStats.find((x) => x.weekday === i);
-    return { label, value: s?.avgEngagement ?? 0, count: s?.count ?? 0 };
-  });
-  const maxDay = Math.max(0.0001, ...byDay.map((d) => d.value));
+  // 요일별 또는 일별 막대 데이터로 통일(label/value/count/full).
+  const bars =
+    chartMode === "weekday"
+      ? WEEKDAYS.map((label, i) => {
+          const s = dayQ.data?.stats.find((x) => x.weekday === i);
+          return { key: label, label, value: s?.avgEngagement ?? 0, count: s?.count ?? 0, full: `${label}요일` };
+        })
+      : (dayQ.data?.daily ?? []).map((s) => {
+          const d = new Date(s.date + "T00:00:00");
+          return {
+            key: s.date,
+            label: `${d.getMonth() + 1}/${d.getDate()}`,
+            value: s.avgEngagement,
+            count: s.count,
+            full: d.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" }),
+          };
+        });
+  const maxBar = Math.max(0.0001, ...bars.map((b) => b.value));
 
   // ── PostFlow vs 외부 ──
   const grp = (fromPf: boolean) => {
@@ -213,21 +226,39 @@ export function ThreadsInsightsPage() {
 
           {/* 요일별 성과 */}
           <div className="rounded-xl border bg-card/40 p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">요일별 평균 참여율</h3>
-              <div className="flex rounded-lg border p-0.5 text-xs">
-                {([["2w", "최근 2주"], ["all", "전체"]] as const).map(([k, label]) => (
-                  <button
-                    key={k}
-                    onClick={() => setDayRange(k)}
-                    className={cn(
-                      "rounded-md px-2.5 py-1 font-medium transition-colors",
-                      dayRange === k ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">{chartMode === "weekday" ? "요일별" : "일별"} 평균 참여율</h3>
+              <div className="flex items-center gap-2">
+                {/* 요일별 / 일별 */}
+                <div className="flex rounded-lg border p-0.5 text-xs">
+                  {([["weekday", "요일별"], ["daily", "일별"]] as const).map(([k, label]) => (
+                    <button
+                      key={k}
+                      onClick={() => setChartMode(k)}
+                      className={cn(
+                        "rounded-md px-2.5 py-1 font-medium transition-colors",
+                        chartMode === k ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {/* 최근 2주 / 전체 */}
+                <div className="flex rounded-lg border p-0.5 text-xs">
+                  {([["2w", "최근 2주"], ["all", "전체"]] as const).map(([k, label]) => (
+                    <button
+                      key={k}
+                      onClick={() => setDayRange(k)}
+                      className={cn(
+                        "rounded-md px-2.5 py-1 font-medium transition-colors",
+                        dayRange === k ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             {dayQ.isLoading ? (
@@ -238,35 +269,37 @@ export function ThreadsInsightsPage() {
               </p>
             ) : (
               <>
-                <div className="flex items-end gap-2">
-                  {byDay.map((d) => {
-                    const h = maxDay > 0 ? (d.value / maxDay) * 100 : 0;
+                <div className="flex items-end gap-1.5">
+                  {bars.map((b, i) => {
+                    const h = maxBar > 0 ? (b.value / maxBar) * 100 : 0;
+                    // 막대 많으면(일별) 라벨 솎아내기
+                    const showLabel = bars.length <= 14 || i % Math.ceil(bars.length / 10) === 0;
                     return (
-                      // 컬럼 전체를 hover 영역으로 + 커스텀 툴팁(빈 요일도 표시)
-                      <div key={d.label} className="group relative flex flex-1 flex-col items-center gap-1">
+                      <div key={b.key} className="group relative flex flex-1 flex-col items-center gap-1">
                         <div className="pointer-events-none absolute -top-1 z-10 -translate-y-full whitespace-nowrap rounded-md border bg-popover px-2.5 py-1.5 text-xs opacity-0 shadow-md transition-opacity group-hover:opacity-100">
-                          <span className="font-semibold">{d.label}요일</span>
-                          {d.count > 0 ? (
-                            <> · 참여율 <span className="font-semibold text-brand">{pct(d.value)}</span> · {d.count}개</>
+                          <span className="font-semibold">{b.full}</span>
+                          {b.count > 0 ? (
+                            <> · 참여율 <span className="font-semibold text-brand">{pct(b.value)}</span> · {b.count}개</>
                           ) : (
                             <> · 게시물 없음</>
                           )}
                         </div>
                         <div className="flex h-32 w-full items-end justify-center">
                           <div
-                            className={cn("w-full max-w-[44px] rounded-t transition-all group-hover:opacity-90",
-                              d.count ? "bg-brand/70" : "bg-muted")}
-                            style={{ height: `${d.count ? Math.max(h, 8) : 3}%` }}
+                            className={cn("w-full rounded-t transition-all group-hover:opacity-90",
+                              chartMode === "weekday" ? "max-w-[44px]" : "max-w-[20px]",
+                              b.count ? "bg-brand/70" : "bg-muted")}
+                            style={{ height: `${b.count ? Math.max(h, 8) : 3}%` }}
                           />
                         </div>
-                        <span className="text-xs text-muted-foreground">{d.label}</span>
-                        <span className="text-[10px] text-muted-foreground/70">{d.count || ""}</span>
+                        <span className="h-3.5 text-[10px] text-muted-foreground">{showLabel ? b.label : ""}</span>
+                        <span className="text-[10px] text-muted-foreground/70">{b.count || ""}</span>
                       </div>
                     );
                   })}
                 </div>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
-                  {dayRange === "2w" ? "최근 2주" : "최근 게시물"} 기준 · 막대에 마우스를 올리면 상세가 보여요(아래 숫자=게시물 수).
+                  {dayRange === "2w" ? "최근 2주" : chartMode === "daily" ? "최근 30일" : "전체"} 기준 · 막대에 마우스를 올리면 상세가 보여요(아래 숫자=게시물 수).
                 </p>
               </>
             )}

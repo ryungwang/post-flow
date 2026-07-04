@@ -93,7 +93,7 @@ public class SocialAccountService {
                 ? repository.findById(accountId).filter(a -> a.getUserId().equals(userId)).orElse(null)
                 : find(userId).orElse(null);
         if (account == null || account.getThreadsUserId() == null) {
-            return new com.postflow.threads.dto.DayEngagementDto(days, 0, List.of());
+            return new com.postflow.threads.dto.DayEngagementDto(days, 0, List.of(), List.of());
         }
         String uid = account.getThreadsUserId();
         String token = account.getAccessToken();
@@ -127,8 +127,8 @@ public class SocialAccountService {
             }
         }
 
-        // 2) 게시물별 지표 병렬 조회 → 참여율.
-        record Eng(int weekday, double rate) {
+        // 2) 게시물별 지표 병렬 조회 → 참여율(요일 + 날짜).
+        record Eng(int weekday, java.time.LocalDate date, double rate) {
         }
         List<Eng> engs;
         try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
@@ -148,8 +148,9 @@ public class SocialAccountService {
                         }
                         long inter = orZero(ins.value("likes")) + orZero(ins.value("replies"))
                                 + orZero(ins.value("reposts")) + orZero(ins.value("quotes"));
-                        int weekday = ts.atZone(KST).getDayOfWeek().getValue() % 7; // Mon=1..Sun=7 → 0=일..6=토
-                        return new Eng(weekday, (double) inter / views);
+                        var zdt = ts.atZone(KST);
+                        int weekday = zdt.getDayOfWeek().getValue() % 7; // Mon=1..Sun=7 → 0=일..6=토
+                        return new Eng(weekday, zdt.toLocalDate(), (double) inter / views);
                     }, executor))
                     .toList().stream()
                     .map(java.util.concurrent.CompletableFuture::join)
@@ -165,7 +166,19 @@ public class SocialAccountService {
             double avg = day.isEmpty() ? 0 : day.stream().mapToDouble(Eng::rate).average().orElse(0);
             stats.add(new com.postflow.threads.dto.DayEngagementDto.DayStat(wd, avg, day.size()));
         }
-        return new com.postflow.threads.dto.DayEngagementDto(days, engs.size(), stats);
+
+        // 4) 일별 연속 구간(빈 날 포함). 창=days(전체는 최근 30일).
+        int dailyWindow = days > 0 ? days : 30;
+        java.time.LocalDate today = Instant.now().atZone(KST).toLocalDate();
+        java.time.LocalDate start = today.minusDays(dailyWindow - 1L);
+        List<com.postflow.threads.dto.DayEngagementDto.DateStat> daily = new java.util.ArrayList<>();
+        for (java.time.LocalDate d = start; !d.isAfter(today); d = d.plusDays(1)) {
+            java.time.LocalDate cur = d;
+            var day = engs.stream().filter(e -> e.date().equals(cur)).toList();
+            double avg = day.isEmpty() ? 0 : day.stream().mapToDouble(Eng::rate).average().orElse(0);
+            daily.add(new com.postflow.threads.dto.DayEngagementDto.DateStat(d.toString(), avg, day.size()));
+        }
+        return new com.postflow.threads.dto.DayEngagementDto(days, engs.size(), stats, daily);
     }
 
     private static long orZero(Long v) {

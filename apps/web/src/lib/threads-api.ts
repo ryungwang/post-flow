@@ -124,4 +124,5 @@ export type DayEngagement = {
   days: number;
   sampled: number;
   stats: { weekday: number; avgEngagement: number; count: number }[];
+  daily: { date: string; avgEngagement: number; count: number }[];
 };
