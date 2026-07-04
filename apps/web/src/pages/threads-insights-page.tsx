@@ -218,10 +218,10 @@ export function ThreadsInsightsPage() {
                     const h = maxDay > 0 ? (d.value / maxDay) * 100 : 0;
                     return (
                       <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
-                        {/* 고정 높이 막대 트랙 — 막대 height:%가 이 트랙 기준으로 계산됨 */}
-                        <div className="flex h-32 w-full items-end">
+                        {/* 고정 높이 막대 트랙 — 막대 height:%가 이 트랙 기준. 막대 폭은 좁게(블록화 방지) */}
+                        <div className="flex h-32 w-full items-end justify-center">
                           <div
-                            className={cn("w-full rounded-t transition-all", d.count ? "bg-brand/70" : "bg-muted")}
+                            className={cn("w-full max-w-[44px] rounded-t transition-all", d.count ? "bg-brand/70" : "bg-muted")}
                             style={{ height: `${d.count ? Math.max(h, 8) : 3}%` }}
                             title={`${pct(d.value)} · ${d.count}개`}
                           />
