@@ -228,6 +228,26 @@ public class ThreadsApiClient {
         }
     }
 
+    /**
+     * 게시물 전체 대화(모든 깊이 댓글 평탄화). {@code /replies}는 최상위 직속 댓글만 주므로
+     * 대댓글까지 다 보려면 {@code /conversation}을 써야 한다(댓글 뷰어용). 실패 시 빈 목록.
+     */
+    public List<ThreadsReply> getConversation(String mediaId, String accessToken) {
+        try {
+            ThreadsRepliesResponse res = graph.get()
+                    .uri(b -> b.path("/{id}/conversation")
+                            .queryParam("fields", "id,text,username,timestamp")
+                            .queryParam("reverse", "false")
+                            .queryParam("access_token", accessToken)
+                            .build(mediaId))
+                    .retrieve()
+                    .body(ThreadsRepliesResponse.class);
+            return res != null && res.data() != null ? res.data() : List.of();
+        } catch (RestClientException e) {
+            return List.of();
+        }
+    }
+
     /** List replies (comments) on a published media. */
     public List<ThreadsReply> getReplies(String mediaId, String accessToken) {
         try {

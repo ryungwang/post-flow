@@ -96,11 +96,8 @@ public class SocialAccountService {
         if (account == null || account.getAccessToken() == null) {
             return List.of();
         }
-        try {
-            return apiClient.getReplies(mediaId, account.getAccessToken());
-        } catch (RuntimeException e) {
-            return List.of();
-        }
+        // 전체 대화(대댓글 포함) — /replies는 최상위만 주므로 뷰어는 conversation 사용.
+        return apiClient.getConversation(mediaId, account.getAccessToken());
     }
 
     /** Exchange an authorization code for a long-lived token and store/refresh the connection. */
