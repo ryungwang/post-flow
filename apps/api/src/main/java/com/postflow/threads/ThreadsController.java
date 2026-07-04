@@ -72,9 +72,9 @@ public class ThreadsController {
         return socialAccountService.accountInsights(userId, accountId);
     }
 
-    /** 특정 게시물의 댓글(답글) 목록. */
+    /** 특정 게시물의 댓글(전체 대화). available=false면 앱 검수(threads_manage_replies) 미승인. */
     @GetMapping("/posts/{mediaId}/replies")
-    public List<com.postflow.threads.api.ThreadsReply> replies(
+    public com.postflow.threads.dto.RepliesResult replies(
             @AuthenticationPrincipal Long userId, @PathVariable String mediaId) {
         return socialAccountService.repliesFor(userId, mediaId);
     }

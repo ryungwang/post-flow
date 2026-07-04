@@ -89,15 +89,33 @@ public class SocialAccountService {
         return new com.postflow.threads.dto.ThreadsInsightsDto(followers, demo);
     }
 
-    /** 특정 게시물의 댓글(답글) 목록. 미연결/실패 시 빈 목록. */
+    /**
+     * 특정 게시물의 댓글(전체 대화, 대댓글 포함). 앱이 threads_manage_replies 검수 미승인이면
+     * available=false로 구분(코드10 권한 오류) — 프론트가 "검수 후 이용 가능" 안내.
+     */
     @Transactional(readOnly = true)
-    public List<com.postflow.threads.api.ThreadsReply> repliesFor(Long userId, String mediaId) {
+    public com.postflow.threads.dto.RepliesResult repliesFor(Long userId, String mediaId) {
         SocialAccount account = find(userId).orElse(null);
         if (account == null || account.getAccessToken() == null) {
-            return List.of();
+            return com.postflow.threads.dto.RepliesResult.ok(List.of());
         }
-        // 전체 대화(대댓글 포함) — /replies는 최상위만 주므로 뷰어는 conversation 사용.
-        return apiClient.getConversation(mediaId, account.getAccessToken());
+        try {
+            return com.postflow.threads.dto.RepliesResult.ok(
+                    apiClient.getConversation(mediaId, account.getAccessToken()));
+        } catch (RuntimeException e) {
+            // 예외 + cause 체인 전체에서 권한 오류 탐지(원본 "permission"/code 10은 cause에 있음).
+            StringBuilder msg = new StringBuilder();
+            for (Throwable t = e; t != null; t = t.getCause()) {
+                if (t.getMessage() != null) {
+                    msg.append(t.getMessage()).append(' ');
+                }
+            }
+            String m = msg.toString();
+            if (m.contains("permission") || m.contains("\"code\":10")) {
+                return com.postflow.threads.dto.RepliesResult.unavailable();
+            }
+            return com.postflow.threads.dto.RepliesResult.ok(List.of());
+        }
     }
 
     /** Exchange an authorization code for a long-lived token and store/refresh the connection. */

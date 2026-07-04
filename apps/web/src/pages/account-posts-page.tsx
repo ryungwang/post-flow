@@ -33,10 +33,18 @@ function Replies({ mediaId }: { mediaId: string }) {
     queryFn: () => threadsApi.replies(mediaId),
   });
   if (isLoading) return <div className="py-3 text-center text-xs text-muted-foreground"><Loader2 className="mx-auto size-4 animate-spin" /></div>;
-  if (!data || data.length === 0) return <p className="py-3 text-center text-xs text-muted-foreground">아직 댓글이 없어요.</p>;
+  // 앱이 threads_manage_replies 검수 미승인 → 조회 불가.
+  if (data && !data.available)
+    return (
+      <p className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+        댓글 조회는 Threads 앱 검수(threads_manage_replies) 승인 후 이용할 수 있어요.
+      </p>
+    );
+  const replies = data?.replies ?? [];
+  if (replies.length === 0) return <p className="py-3 text-center text-xs text-muted-foreground">아직 댓글이 없어요.</p>;
   return (
     <ul className="mt-2 space-y-2 border-l-2 border-border/60 pl-3">
-      {data.map((r) => (
+      {replies.map((r) => (
         <li key={r.id} className="text-sm">
           {r.username && <span className="mr-1.5 font-medium text-foreground">@{r.username}</span>}
           <span className="text-foreground/80">{r.text}</span>

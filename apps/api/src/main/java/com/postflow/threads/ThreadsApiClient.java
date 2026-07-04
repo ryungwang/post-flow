@@ -244,8 +244,8 @@ public class ThreadsApiClient {
                     .body(ThreadsRepliesResponse.class);
             return res != null && res.data() != null ? res.data() : List.of();
         } catch (RestClientException e) {
-            // TODO(debug): 원인 확인용 임시 노출 — 확인 후 List.of()로 복구.
-            return List.of(new ThreadsReply("_debug", "conversation error: " + e.getMessage(), "_error", null));
+            // 권한 미승인(App Review 전) 등은 상위에서 구분 처리하도록 예외로 전달.
+            throw new ThreadsApiException("Failed to fetch conversation", e);
         }
     }
 

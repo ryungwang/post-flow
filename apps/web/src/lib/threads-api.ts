@@ -50,8 +50,11 @@ export const threadsApi = {
     api.get<ThreadsAccountPost[]>(`/threads/posts${accountId ? `?accountId=${accountId}` : ""}`),
   insights: (accountId?: number) =>
     api.get<ThreadsInsights>(`/threads/insights${accountId ? `?accountId=${accountId}` : ""}`),
-  replies: (mediaId: string) => api.get<ThreadsReply[]>(`/threads/posts/${mediaId}/replies`),
+  replies: (mediaId: string) => api.get<RepliesResult>(`/threads/posts/${mediaId}/replies`),
 };
+
+/** 댓글 조회 결과. available=false = 앱이 threads_manage_replies 검수 미승인. */
+export type RepliesResult = { available: boolean; replies: ThreadsReply[] };
 
 /** 인구통계 한 항목(라벨=연령대/성별/국가/도시, 값=팔로워 수). */
 export type DemoEntry = { label: string; value: number };
