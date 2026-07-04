@@ -173,10 +173,12 @@ public class SocialAccountService {
         }
     }
 
-    /** 나를 멘션한 게시물. 권한(threads_manage_mentions) 없으면 available=false. */
+    /** 나를 멘션한 게시물. 권한(threads_manage_mentions) 없으면 available=false. accountId=null이면 기본 계정. */
     @Transactional(readOnly = true)
-    public com.postflow.threads.dto.TrendResult mentions(Long userId, int limit) {
-        SocialAccount account = find(userId).orElse(null);
+    public com.postflow.threads.dto.TrendResult mentions(Long userId, Long accountId, int limit) {
+        SocialAccount account = accountId != null
+                ? repository.findById(accountId).filter(a -> a.getUserId().equals(userId)).orElse(null)
+                : find(userId).orElse(null);
         if (account == null || account.getThreadsUserId() == null) {
             return com.postflow.threads.dto.TrendResult.unavailable();
         }

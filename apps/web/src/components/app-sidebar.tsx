@@ -44,10 +44,10 @@ const NAV: Item[] = [
     icon: AtSign,
     children: [
       { label: "내 게시물", to: "/content/threads-posts", icon: Library },
-      { label: "인사이트", to: "/insights", icon: TrendingUp, pro: true },
-      { label: "경쟁사 분석", to: "/competitors", icon: Search, pro: true },
       { label: "멘션", to: "/mentions", icon: AtSign },
       { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true },
+      { label: "인사이트", to: "/insights", icon: TrendingUp, pro: true },
+      { label: "경쟁사 분석", to: "/competitors", icon: Search, pro: true },
       { label: "계정 연결", to: "/settings/threads", icon: Link2 },
     ],
   },

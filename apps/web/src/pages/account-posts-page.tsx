@@ -4,6 +4,8 @@ import { ChevronDown, Eye, ExternalLink, Heart, Loader2, MessageCircle, Repeat2,
 import { threadsApi, type ThreadsAccountPost } from "@/lib/threads-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AccountSelector } from "@/components/account-selector";
+import { useThreadsAccount } from "@/store/threads-account";
 import { cn } from "@/lib/utils";
 
 function Metrics({ p }: { p: ThreadsAccountPost }) {
@@ -127,10 +129,11 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
 
 /** 연결된 Threads 계정에 실제 올라간 게시물 목록 — 무한 스크롤 + PostFlow/외부 구분. */
 export function AccountPostsPage() {
+  const accountId = useThreadsAccount((s) => s.accountId);
   const { data, isLoading, isError, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
-      queryKey: ["threads-account-posts"],
-      queryFn: ({ pageParam }) => threadsApi.posts({ after: pageParam, limit: 10 }),
+      queryKey: ["threads-account-posts", accountId],
+      queryFn: ({ pageParam }) => threadsApi.posts({ after: pageParam, limit: 10, accountId }),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (last) => last.nextCursor ?? undefined,
     });
@@ -151,7 +154,7 @@ export function AccountPostsPage() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
-    <div className="w-full p-6">
+    <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">내 Threads 게시물</h1>
@@ -159,9 +162,12 @@ export function AccountPostsPage() {
             연결된 Threads 계정에 실제 올라간 게시물이에요. PostFlow로 발행한 글과 외부에서 올린 글을 구분해 보여줘요.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw className={`size-4 ${isFetching && !isFetchingNextPage ? "animate-spin" : ""}`} /> 새로고침
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <AccountSelector />
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`size-4 ${isFetching && !isFetchingNextPage ? "animate-spin" : ""}`} /> 새로고침
+          </Button>
+        </div>
       </div>
 
       <div className="mt-6">

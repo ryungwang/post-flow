@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Eye, Heart, Loader2, MessageCircle, Sparkles, TrendingUp, Users } from "lucide-react";
 import { threadsApi, type DemoEntry, type ThreadsAccountPost } from "@/lib/threads-api";
+import { AccountSelector } from "@/components/account-selector";
+import { useThreadsAccount } from "@/store/threads-account";
+import { cn } from "@/lib/utils";
 
 /** 참여율 = (좋아요+댓글+리포스트+인용) / 조회. 조회 0이면 0. */
 function engagementRate(p: ThreadsAccountPost) {
@@ -51,8 +54,9 @@ function BarList({ title, entries, unit }: { title: string; entries: DemoEntry[]
 }
 
 export function ThreadsInsightsPage() {
-  const postsQ = useQuery({ queryKey: ["threads-insights-posts"], queryFn: () => threadsApi.posts({ limit: 30 }) });
-  const insQ = useQuery({ queryKey: ["threads-insights"], queryFn: () => threadsApi.insights() });
+  const accountId = useThreadsAccount((s) => s.accountId);
+  const postsQ = useQuery({ queryKey: ["threads-insights-posts", accountId], queryFn: () => threadsApi.posts({ limit: 30, accountId }) });
+  const insQ = useQuery({ queryKey: ["threads-insights", accountId], queryFn: () => threadsApi.insights(accountId ?? undefined) });
 
   const posts = postsQ.data?.posts ?? [];
   const withViews = posts.filter((p) => p.views != null);
@@ -90,12 +94,15 @@ export function ThreadsInsightsPage() {
   const loading = postsQ.isLoading || insQ.isLoading;
 
   return (
-    <div className="w-full p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Threads 인사이트</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          연결된 Threads 계정의 실제 성과 데이터예요. 팔로워·참여율·인구통계와 어떤 글이 잘 되는지 한눈에.
-        </p>
+    <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Threads 인사이트</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            연결된 Threads 계정의 실제 성과 데이터예요. 팔로워·참여율·인구통계와 어떤 글이 잘 되는지 한눈에.
+          </p>
+        </div>
+        <div className="shrink-0"><AccountSelector /></div>
       </div>
 
       {loading ? (
@@ -112,16 +119,29 @@ export function ThreadsInsightsPage() {
             <Kpi icon={TrendingUp} label="평균 참여율" value={pct(avgEng)} sub="(상호작용/조회)" />
           </div>
 
-          {/* 인구통계 */}
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">팔로워 인구통계</h2>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-              <BarList title="연령대" entries={ins?.demographics.age ?? []} unit="명" />
-              <BarList title="성별" entries={ins?.demographics.gender ?? []} unit="명" />
-              <BarList title="국가" entries={ins?.demographics.country ?? []} unit="명" />
-              <BarList title="도시" entries={ins?.demographics.city ?? []} unit="명" />
-            </div>
-          </div>
+          {/* 인구통계 — 전부 비면(팔로워 100 미만) 4칸 대신 한 줄 안내로 축약 */}
+          {(() => {
+            const d = ins?.demographics;
+            const anyDemo = !!d && [d.age, d.gender, d.country, d.city].some((e) => e && e.length > 0);
+            return (
+              <div>
+                <h2 className="mb-3 text-sm font-semibold text-muted-foreground">팔로워 인구통계</h2>
+                {anyDemo ? (
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                    <BarList title="연령대" entries={d!.age} unit="명" />
+                    <BarList title="성별" entries={d!.gender} unit="명" />
+                    <BarList title="국가" entries={d!.country} unit="명" />
+                    <BarList title="도시" entries={d!.city} unit="명" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-xl border bg-card/40 px-4 py-3 text-sm text-muted-foreground">
+                    <Users className="size-4 shrink-0" />
+                    팔로워 100명 이상이 되면 연령·성별·국가·도시 인구통계가 여기에 표시돼요.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 베스트 게시물 + PostFlow 비교 */}
           <div className="grid gap-3 lg:grid-cols-3">
@@ -187,23 +207,35 @@ export function ThreadsInsightsPage() {
           {/* 요일별 성과 */}
           <div className="rounded-xl border bg-card/40 p-4">
             <h3 className="mb-3 text-sm font-semibold">요일별 평균 참여율</h3>
-            <div className="flex items-end justify-between gap-2" style={{ height: 120 }}>
-              {byDay.map((d) => (
-                <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
-                  <div className="flex w-full flex-1 items-end">
-                    <div
-                      className="w-full rounded-t bg-brand/70 transition-all"
-                      style={{ height: `${(d.value / maxDay) * 100}%`, minHeight: d.count ? 2 : 0 }}
-                      title={`${pct(d.value)} · ${d.count}개`}
-                    />
-                  </div>
-                  <span className="text-xs text-muted-foreground">{d.label}</span>
+            {withViews.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                지표가 있는 게시물이 쌓이면 요일별 성과를 보여드려요.
+              </p>
+            ) : (
+              <>
+                <div className="flex items-end justify-between gap-2" style={{ height: 120 }}>
+                  {byDay.map((d) => {
+                    const h = maxDay > 0 ? (d.value / maxDay) * 100 : 0;
+                    return (
+                      <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
+                        <div className="flex w-full flex-1 items-end">
+                          <div
+                            className={cn("w-full rounded-t transition-all", d.count ? "bg-brand/70" : "bg-muted")}
+                            style={{ height: `${Math.max(h, d.count ? 6 : 3)}%` }}
+                            title={`${pct(d.value)} · ${d.count}개`}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground">{d.label}</span>
+                        <span className="text-[10px] text-muted-foreground/70">{d.count || ""}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              막대 = 그 요일 게시물의 평균 참여율. 잘 되는 요일에 발행을 몰아보세요.
-            </p>
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  막대 = 그 요일 게시물의 평균 참여율(아래 숫자=게시물 수). 잘 되는 요일에 발행을 몰아보세요.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

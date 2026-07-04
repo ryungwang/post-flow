@@ -46,10 +46,11 @@ export const threadsApi = {
   accounts: () => api.get<ThreadsAccount[]>("/threads/accounts"),
   setDefault: (id: number) => api.post<void>(`/threads/accounts/${id}/default`),
   disconnect: (id: number) => api.del<void>(`/threads/accounts/${id}`),
-  posts: (opts?: { after?: string; limit?: number }) => {
+  posts: (opts?: { after?: string; limit?: number; accountId?: number | null }) => {
     const q = new URLSearchParams();
     if (opts?.after) q.set("after", opts.after);
     if (opts?.limit) q.set("limit", String(opts.limit));
+    if (opts?.accountId) q.set("accountId", String(opts.accountId));
     const s = q.toString();
     return api.get<AccountPostsPage>(`/threads/posts${s ? `?${s}` : ""}`);
   },
@@ -60,7 +61,8 @@ export const threadsApi = {
     api.get<TrendResult>(`/threads/trends?q=${encodeURIComponent(q)}&type=${type}`),
   profileLookup: (username: string) =>
     api.get<ProfileLookup | null>(`/threads/profile-lookup?username=${encodeURIComponent(username)}`),
-  mentions: () => api.get<TrendResult>("/threads/mentions"),
+  mentions: (accountId?: number | null) =>
+    api.get<TrendResult>(`/threads/mentions${accountId ? `?accountId=${accountId}` : ""}`),
   deletePost: (mediaId: string) => api.del<{ deleted: boolean }>(`/threads/posts/${mediaId}`),
 };
 

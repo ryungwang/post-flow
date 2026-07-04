@@ -24,15 +24,17 @@ export function CompetitorPage() {
   };
 
   const p: ProfileLookup | null | undefined = data;
+  const EXAMPLES = ["zuck", "mosseri", "threads", "meta"];
+  const pick = (u: string) => { setUsername(u); setNotFound(false); mutate(u); };
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
+    <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
       <h1 className="text-2xl font-bold tracking-tight">경쟁사 분석</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         벤치마킹할 계정의 @아이디를 넣으면 팔로워·최근 7일 성과를 보여줘요. 잘 되는 계정을 참고해 전략을 세우세요.
       </p>
 
-      <div className="mt-5 flex gap-2">
+      <div className="mt-5 flex max-w-2xl gap-2">
         <Input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -45,13 +47,38 @@ export function CompetitorPage() {
       </div>
 
       {notFound && (
-        <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-sm text-amber-600 dark:text-amber-400">
+        <p className="mt-4 max-w-2xl rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-sm text-amber-600 dark:text-amber-400">
           프로필을 못 찾았어요. 공개 계정 + 팔로워 100명 이상만 조회돼요. (threads_profile_discovery 권한·재연결 필요)
         </p>
       )}
 
+      {/* 검색 전 빈 상태 — 예시 계정으로 바로 체험 */}
+      {!p && !isPending && !notFound && (
+        <div className="mt-8 flex flex-col items-center gap-4 rounded-xl border border-dashed bg-card/30 py-14 text-center">
+          <div className="flex size-14 items-center justify-center rounded-full bg-brand/10">
+            <Search className="size-7 text-brand" />
+          </div>
+          <div>
+            <p className="font-medium">분석할 계정을 검색해 보세요</p>
+            <p className="mt-1 text-sm text-muted-foreground">팔로워 · 조회수 · 좋아요 · 리포스트(최근 7일)를 한눈에.</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            <span className="self-center text-xs text-muted-foreground">예시:</span>
+            {EXAMPLES.map((u) => (
+              <button
+                key={u}
+                onClick={() => pick(u)}
+                className="rounded-full border bg-background px-3 py-1 text-sm transition-colors hover:bg-accent"
+              >
+                @{u}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {p && (
-        <div className="mt-5 rounded-xl border bg-card/40 p-5">
+        <div className="mt-5 max-w-2xl rounded-xl border bg-card/40 p-5">
           <div className="flex items-center gap-4">
             {p.profilePictureUrl ? (
               <img src={p.profilePictureUrl} alt="" className="size-16 rounded-full object-cover" />

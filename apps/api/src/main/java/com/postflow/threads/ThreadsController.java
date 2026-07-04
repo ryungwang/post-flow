@@ -84,8 +84,9 @@ public class ThreadsController {
     @GetMapping("/mentions")
     public com.postflow.threads.dto.TrendResult mentions(
             @AuthenticationPrincipal Long userId,
+            @RequestParam(name = "accountId", required = false) Long accountId,
             @RequestParam(name = "limit", defaultValue = "20") int limit) {
-        return socialAccountService.mentions(userId, Math.min(Math.max(limit, 1), 50));
+        return socialAccountService.mentions(userId, accountId, Math.min(Math.max(limit, 1), 50));
     }
 
     /** Threads 게시물 삭제(threads_delete). */
