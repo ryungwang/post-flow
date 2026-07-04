@@ -131,7 +131,9 @@ export function LoginPage() {
           <form className="mt-7 space-y-3" onSubmit={onSubmit}>
             <div className="space-y-1.5">
               <Label htmlFor="email">이메일</Label>
-              <Input id="email" type="email" autoComplete="email" placeholder="you@example.com"
+              {/* type=text: 일반 유저는 이메일, 운영 계정(haru/sky/admin)은 아이디 로그인 —
+                  type=email이면 '@' 없는 아이디가 브라우저 검증에 막힌다. 인증은 SSO가 게이트. */}
+              <Input id="email" type="text" autoComplete="username" placeholder="you@example.com"
                 value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-1.5">

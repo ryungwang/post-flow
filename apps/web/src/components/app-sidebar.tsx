@@ -88,13 +88,7 @@ function NavGroup({ group }: { group: Group }) {
 export function AppSidebar() {
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-card/40">
-      <div className="flex h-14 items-center gap-2 border-b px-5">
-        <div className="bg-brand-gradient shadow-brand flex size-7 items-center justify-center rounded-md text-brand-foreground">
-          <Sparkles className="size-4" />
-        </div>
-        <span className="text-gradient-brand text-base font-bold tracking-tight">PostFlow</span>
-      </div>
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3 pt-4">
         {NAV.map((item) =>
           isGroup(item) ? (
             <NavGroup key={item.label} group={item} />

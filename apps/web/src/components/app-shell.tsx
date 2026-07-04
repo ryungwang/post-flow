@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, Plus, Search } from "lucide-react";
+import { LogOut, Plus, Search, Sparkles } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
@@ -31,6 +31,17 @@ export function AppShell() {
       <div className="app-ambient flex min-w-0 flex-1 flex-col">
         <DemoBanner />
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border/60 bg-background/70 px-6 backdrop-blur-xl">
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2"
+            aria-label="PostFlow 홈"
+          >
+            <span className="bg-brand-gradient shadow-brand flex size-7 items-center justify-center rounded-md text-brand-foreground">
+              <Sparkles className="size-4" />
+            </span>
+            <span className="text-gradient-brand hidden text-base font-bold tracking-tight sm:inline">PostFlow</span>
+          </button>
+          <div className="mx-1 hidden h-5 w-px bg-border/60 sm:block" />
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
             className="hidden items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent sm:flex"
