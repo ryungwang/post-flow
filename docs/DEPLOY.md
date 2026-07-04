@@ -53,6 +53,7 @@ env 이름·구조는 **office(같은 소비자 제품)와 동일** — `SYNUB_S
 | `THREADS_APP_ID` / `THREADS_APP_SECRET` | 이 제품의 Threads 앱 |
 | `THREADS_REDIRECT_URI` / `THREADS_FRONTEND_REDIRECT_URL` | Threads 콜백/복귀(고정 https) |
 | `AUTH_STATE_SECRET` | Threads OAuth state 서명(≥32B, 로그인용 아님) |
+| `AUTH_ALLOWED_EXTERNAL_IDS` | **비공개 베타 접근 허용목록**(external_id, 쉼표구분). **선택** — yml 기본값 `usr_admin_haru,usr_office_sky,usr_office_admin`이라 안 넣어도 3계정 게이트 적용. 데모(`demo-user`)는 항상 허용. **정식 오픈 시 빈 값**으로 두면 전체 허용(코드 재배포 불필요). ⚠️ post-flow 전용 — **공용 env에 넣지 말 것**(office 등은 이 키를 안 읽고 전체 허용). |
 
 **postflow `.env` 붙여넣기용** (`<...>`만 실제 값으로 채우기):
 ```dotenv
