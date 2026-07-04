@@ -69,12 +69,18 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
     if (confirm("이 게시물을 Threads에서 삭제할까요? 되돌릴 수 없어요.")) del.mutate();
   };
   return (
-    <li className="flex items-start gap-3 p-4">
+    <li
+      className={cn(
+        "flex items-start gap-3 rounded-xl border bg-card/40 p-4 pl-5 transition-colors hover:bg-accent/30",
+        "relative overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-1",
+        p.fromPostflow ? "before:bg-emerald-500" : "before:bg-border",
+      )}
+    >
       {p.mediaUrl && p.mediaType !== "TEXT_POST" && (
         <img src={p.mediaUrl} alt="" className="size-14 shrink-0 rounded-md object-cover" />
       )}
       <div className="min-w-0 flex-1">
-        <div className="mb-1 flex flex-wrap items-center gap-1.5">
+        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
           <Badge variant={p.fromPostflow ? "success" : "secondary"}>
             {p.fromPostflow ? "✨ PostFlow 발행" : "외부 게시"}
           </Badge>
@@ -140,21 +146,21 @@ export function AccountPostsPage() {
         </Button>
       </div>
 
-      <div className="mt-6 rounded-xl border bg-card/40">
+      <div className="mt-6">
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center rounded-xl border bg-card/40 py-20">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : isError ? (
-          <p className="p-10 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border bg-card/40 p-10 text-center text-sm text-muted-foreground">
             게시물을 불러오지 못했어요. Threads 계정 연결 상태를 확인해 주세요.
           </p>
         ) : !data || data.length === 0 ? (
-          <p className="p-10 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border bg-card/40 p-10 text-center text-sm text-muted-foreground">
             아직 게시물이 없어요. Threads에 글을 올리거나 PostFlow에서 발행해 보세요.
           </p>
         ) : (
-          <ul className="divide-y divide-border/60">
+          <ul className="flex flex-col gap-3">
             {data.map((p) => (
               <PostRow key={p.id} p={p} />
             ))}
