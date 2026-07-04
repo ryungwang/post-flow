@@ -13,7 +13,7 @@ export function MentionsPage() {
   });
 
   return (
-    <div className="w-full px-6 py-7 lg:px-8 xl:px-10">
+    <div className="mx-auto max-w-3xl p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">멘션</h1>
@@ -22,7 +22,7 @@ export function MentionsPage() {
         <div className="shrink-0"><AccountSelector /></div>
       </div>
 
-      <div className="mt-6 max-w-3xl rounded-xl border bg-card/40">
+      <div className="mt-6 rounded-xl border bg-card/40">
         {isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
         ) : data && !data.available ? (
