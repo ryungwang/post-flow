@@ -17,7 +17,8 @@ public record GenerateContentRequest(
         String goal,
         String tone,
         @Min(1) @Max(30) int quantity,
-        Long brandId
+        Long brandId,
+        String trendKeyword
 ) {
     public String goalOrDefault() {
         return goal == null || goal.isBlank() ? "Engagement" : goal;
@@ -25,5 +26,10 @@ public record GenerateContentRequest(
 
     public String toneOrDefault() {
         return tone == null || tone.isBlank() ? "Friendly" : tone;
+    }
+
+    /** 트렌드 반영 생성 키워드(공백/빈값이면 미사용). */
+    public String trendKeywordOrNull() {
+        return trendKeyword == null || trendKeyword.isBlank() ? null : trendKeyword.trim();
     }
 }

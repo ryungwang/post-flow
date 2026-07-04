@@ -228,6 +228,26 @@ public class ThreadsApiClient {
         }
     }
 
+    /** 키워드로 공개 게시물 검색(트렌드 반영 생성·둘러보기). threads_keyword_search. 실패 시 예외. */
+    public List<com.postflow.threads.api.ThreadsTrendPost> keywordSearch(
+            String accessToken, String keyword, String searchType, int limit) {
+        try {
+            var res = graph.get()
+                    .uri(b -> b.path("/keyword_search")
+                            .queryParam("q", keyword)
+                            .queryParam("search_type", searchType)
+                            .queryParam("fields", "id,text,username,permalink,timestamp,media_type")
+                            .queryParam("limit", limit)
+                            .queryParam("access_token", accessToken)
+                            .build())
+                    .retrieve()
+                    .body(com.postflow.threads.api.ThreadsTrendResponse.class);
+            return res != null && res.data() != null ? res.data() : List.of();
+        } catch (RestClientException e) {
+            throw new ThreadsApiException("Failed keyword search", e);
+        }
+    }
+
     /**
      * 게시물 전체 대화(모든 깊이 댓글 평탄화). {@code /replies}는 최상위 직속 댓글만 주므로
      * 대댓글까지 다 보려면 {@code /conversation}을 써야 한다(댓글 뷰어용). 실패 시 빈 목록.

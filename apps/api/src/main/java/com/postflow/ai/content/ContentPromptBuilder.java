@@ -3,6 +3,8 @@ package com.postflow.ai.content;
 import com.postflow.ai.content.dto.GenerateContentRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
  * Builds the system/user prompts for content generation.
  *
@@ -47,11 +49,16 @@ public class ContentPromptBuilder {
 
     /** Per-request user prompt. {@code brandContext} may be empty (no product selected). */
     public String userPrompt(GenerateContentRequest request, String brandContext) {
+        return userPrompt(request, brandContext, null);
+    }
+
+    public String userPrompt(GenerateContentRequest request, String brandContext, String trendBlock) {
         return """
                 Topic: %s
                 Goal: %s
                 %s
                 Tone: %s
+                %s
                 %s
                 Generate %d distinct posts as a JSON array.
                 """.formatted(
@@ -60,7 +67,29 @@ public class ContentPromptBuilder {
                 goalGuidance(request.goalOrDefault()),
                 request.toneOrDefault(),
                 brandContext == null ? "" : brandContext,
+                trendBlock == null ? "" : trendBlock,
                 request.quantity());
+    }
+
+    /** 지금 뜨는 실제 게시물 샘플을 프롬프트에 주입 — 알고리즘 타는 훅·포맷·주제를 반영하게. */
+    public String trendBlock(String keyword, List<String> trendTexts) {
+        if (trendTexts == null || trendTexts.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("\nTREND CONTEXT — '").append(keyword)
+                .append("' 키워드로 지금 Threads에서 반응 좋은 실제 게시물 샘플:\n");
+        int i = 1;
+        for (String t : trendTexts) {
+            String one = t.replace("\n", " ").trim();
+            if (one.length() > 200) {
+                one = one.substring(0, 200) + "…";
+            }
+            sb.append(i++).append(". ").append(one).append('\n');
+        }
+        sb.append("위 샘플이 지금 이 주제에서 먹히는 훅·포맷·어조·길이감이다. 그대로 베끼지 말고 "
+                + "이 트렌드 감각(도입 훅, 리듬, 화제성)을 반영해 더 나은 오리지널 게시물을 만들어라.\n");
+        return sb.toString();
     }
 
     /** Concrete writing instructions per goal so the goal actually shapes the post. */

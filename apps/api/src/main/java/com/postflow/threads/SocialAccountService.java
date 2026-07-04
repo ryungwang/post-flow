@@ -118,6 +118,36 @@ public class SocialAccountService {
         }
     }
 
+    /**
+     * 키워드로 지금 뜨는 공개 게시물 검색(트렌드). 권한(threads_keyword_search) 미보유면 available=false.
+     * searchType: TOP(인기) / RECENT(최신).
+     */
+    @Transactional(readOnly = true)
+    public com.postflow.threads.dto.TrendResult searchTrends(Long userId, String keyword, String searchType, int limit) {
+        SocialAccount account = find(userId).orElse(null);
+        if (account == null || account.getAccessToken() == null) {
+            return com.postflow.threads.dto.TrendResult.unavailable();
+        }
+        try {
+            String type = "RECENT".equalsIgnoreCase(searchType) ? "RECENT" : "TOP";
+            return com.postflow.threads.dto.TrendResult.ok(
+                    apiClient.keywordSearch(account.getAccessToken(), keyword, type, limit));
+        } catch (RuntimeException e) {
+            return com.postflow.threads.dto.TrendResult.unavailable();
+        }
+    }
+
+    /** 트렌드 게시물 텍스트만(생성 프롬프트 주입용). 권한 없거나 결과 없으면 빈 목록. */
+    @Transactional(readOnly = true)
+    public List<String> trendTexts(Long userId, String keyword, int limit) {
+        var result = searchTrends(userId, keyword, "TOP", limit);
+        return result.posts().stream()
+                .map(com.postflow.threads.api.ThreadsTrendPost::text)
+                .filter(t -> t != null && !t.isBlank())
+                .limit(limit)
+                .toList();
+    }
+
     /** Exchange an authorization code for a long-lived token and store/refresh the connection. */
     @Transactional
     public void connectFromCode(Long userId, String code) {

@@ -72,6 +72,16 @@ public class ThreadsController {
         return socialAccountService.accountInsights(userId, accountId);
     }
 
+    /** 키워드로 지금 뜨는 공개 게시물 검색(트렌드). available=false면 keyword_search 권한 미보유. */
+    @GetMapping("/trends")
+    public com.postflow.threads.dto.TrendResult trends(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(name = "q") String keyword,
+            @RequestParam(name = "type", defaultValue = "TOP") String type,
+            @RequestParam(name = "limit", defaultValue = "15") int limit) {
+        return socialAccountService.searchTrends(userId, keyword, type, Math.min(Math.max(limit, 1), 30));
+    }
+
     /** 특정 게시물의 댓글(전체 대화). available=false면 앱 검수(threads_manage_replies) 미승인. */
     @GetMapping("/posts/{mediaId}/replies")
     public com.postflow.threads.dto.RepliesResult replies(

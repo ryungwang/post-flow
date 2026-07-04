@@ -37,26 +37,36 @@ public class ContentGenerationService {
     private final ObjectMapper objectMapper;
     private final UsageService usageService;
     private final com.postflow.brand.BrandRepository brandRepository;
+    private final com.postflow.threads.SocialAccountService socialAccountService;
 
     public ContentGenerationService(LLMProvider llmProvider,
                                     ContentPromptBuilder promptBuilder,
                                     AiGenerationRepository aiGenerationRepository,
                                     ObjectMapper objectMapper,
                                     UsageService usageService,
-                                    com.postflow.brand.BrandRepository brandRepository) {
+                                    com.postflow.brand.BrandRepository brandRepository,
+                                    com.postflow.threads.SocialAccountService socialAccountService) {
         this.llmProvider = llmProvider;
         this.promptBuilder = promptBuilder;
         this.aiGenerationRepository = aiGenerationRepository;
         this.objectMapper = objectMapper;
         this.usageService = usageService;
         this.brandRepository = brandRepository;
+        this.socialAccountService = socialAccountService;
     }
 
     @Transactional
     public GenerateContentResponse generate(Long userId, GenerateContentRequest request) {
         usageService.assertCanGenerate(userId);
         String systemPrompt = promptBuilder.systemPrompt();
-        String userPrompt = promptBuilder.userPrompt(request, brandContext(userId, request.brandId()));
+        // 트렌드 반영: 키워드가 있으면 지금 뜨는 실제 게시물을 검색해 프롬프트에 주입(권한 없으면 조용히 스킵).
+        String trendBlock = null;
+        String kw = request.trendKeywordOrNull();
+        if (kw != null) {
+            List<String> trends = socialAccountService.trendTexts(userId, kw, 8);
+            trendBlock = promptBuilder.trendBlock(kw, trends);
+        }
+        String userPrompt = promptBuilder.userPrompt(request, brandContext(userId, request.brandId()), trendBlock);
 
         GenerationRequest llmRequest = GenerationRequest.builder()
                 .systemPrompt(systemPrompt)

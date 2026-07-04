@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, BookmarkPlus, Check, Copy, Eye, Loader2, Megaphone, Pencil, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { AlertTriangle, BookmarkPlus, Check, Copy, Eye, Loader2, Megaphone, Pencil, Send, Sparkles, Trash2, TrendingUp, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,8 @@ export function GeneratePage() {
   const currentGoal = GOALS.find((g) => g.value === goal) ?? GOALS[0];
   const noBrand = brandId === "none";
   const [quantity, setQuantity] = useState(5);
+  const [useTrend, setUseTrend] = useState(false);
+  const [trendKeyword, setTrendKeyword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export function GeneratePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await contentApi.generate({ topic: topic.trim(), goal, tone, quantity, brandId: brandId === "none" ? null : Number(brandId) });
+      const res = await contentApi.generate({ topic: topic.trim(), goal, tone, quantity, brandId: brandId === "none" ? null : Number(brandId), trendKeyword: useTrend ? (trendKeyword.trim() || topic.trim()) : null });
       setCards(res.cards);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
@@ -202,6 +204,26 @@ export function GeneratePage() {
                 ))}
               </div>
             </div>
+          </div>
+
+          <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={useTrend} onChange={(e) => setUseTrend(e.target.checked)} className="size-4 accent-[var(--brand)]" />
+              <TrendingUp className="size-4 text-brand" /> 트렌드 반영 생성
+              <span className="text-xs font-normal text-muted-foreground">지금 뜨는 실제 게시물을 참고해 알고리즘 타는 글로</span>
+            </label>
+            {useTrend && (
+              <div className="mt-2.5">
+                <Input
+                  value={trendKeyword}
+                  onChange={(e) => setTrendKeyword(e.target.value)}
+                  placeholder="트렌드 키워드 (예: 재테크, 아침루틴) — 비우면 주제로 검색"
+                />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  이 키워드로 지금 반응 좋은 Threads 글을 찾아 AI가 그 훅·포맷을 반영해요. (Threads 연결 + keyword_search 권한 필요)
+                </p>
+              </div>
+            )}
           </div>
 
           {currentGoal.need === "required" && noBrand && (
