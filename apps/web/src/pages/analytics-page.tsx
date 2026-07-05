@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Download, Eye, Heart, Loader2, MessageCircle, Repeat2, Quote, Share2 } from "lucide-react";
+import { Activity, Download, Eye, Heart, MessageCircle, Repeat2, Quote, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageLoading } from "@/components/page-loading";
 import { analyticsApi, type AnalyticsDashboard } from "@/lib/analytics-api";
 import { roiApi } from "@/lib/roi-api";
 import { RoiView } from "@/components/roi-view";
@@ -89,9 +90,7 @@ export function AnalyticsPage() {
       {tab === "roi" ? (
         <RoiView days={days} />
       ) : isLoading ? (
-        <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> 불러오는 중…
-        </div>
+        <PageLoading />
       ) : isError || !data ? (
         <Card className="py-20 text-center text-sm text-destructive">분석 데이터를 불러오지 못했어요.</Card>
       ) : (

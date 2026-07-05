@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Eye, Heart, Loader2, MessageCircle, Sparkles, TrendingUp, Users } from "lucide-react";
 import { threadsApi, type DemoEntry, type ThreadsAccountPost } from "@/lib/threads-api";
 import { AccountSelector } from "@/components/account-selector";
+import { PageLoading } from "@/components/page-loading";
 import { useThreadsAccount } from "@/store/threads-account";
 import { cn } from "@/lib/utils";
 
@@ -126,9 +127,7 @@ export function ThreadsInsightsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
+        <PageLoading />
       ) : (
         <div className="mt-6 space-y-6">
           {/* KPI */}

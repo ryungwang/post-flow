@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Library, Loader2, Search, Send, Trash2 } from "lucide-react";
+import { Copy, Library, Search, Send, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { PageLoading } from "@/components/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -171,9 +172,7 @@ export function LibraryPage() {
         )}
 
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> 불러오는 중…
-          </div>
+          <PageLoading />
         ) : isError ? (
           <div className="py-16 text-center text-sm text-destructive">불러오기에 실패했어요.</div>
         ) : posts.length === 0 ? (
