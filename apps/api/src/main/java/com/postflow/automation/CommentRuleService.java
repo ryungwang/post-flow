@@ -15,15 +15,18 @@ import java.util.List;
 public class CommentRuleService {
 
     private final CommentRuleRepository ruleRepository;
+    private final CommentReplyRepository replyRepository;
     private final CtaLinkRepository ctaLinkRepository;
     private final CtaLinkService ctaLinkService;
     private final PostRepository postRepository;
 
     public CommentRuleService(CommentRuleRepository ruleRepository,
+                              CommentReplyRepository replyRepository,
                               CtaLinkRepository ctaLinkRepository,
                               CtaLinkService ctaLinkService,
                               PostRepository postRepository) {
         this.ruleRepository = ruleRepository;
+        this.replyRepository = replyRepository;
         this.ctaLinkRepository = ctaLinkRepository;
         this.ctaLinkService = ctaLinkService;
         this.postRepository = postRepository;
@@ -65,7 +68,9 @@ public class CommentRuleService {
 
     @Transactional
     public void delete(Long userId, Long id) {
-        ruleRepository.delete(loadOwned(userId, id));
+        CommentRule rule = loadOwned(userId, id);
+        replyRepository.deleteByRuleId(id); // 자동응답 로그(FK 참조) 먼저 정리 후 규칙 삭제
+        ruleRepository.delete(rule);
     }
 
     /** Preview: does {@code sampleComment} trigger the rule, and what would the reply be? */
