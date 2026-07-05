@@ -73,6 +73,8 @@ export default function App() {
             <Route path="/help" element={<FaqPage />} />
           </Route>
         </Route>
+        {/* 미지 경로(오타·죽은 링크) → 홈으로. 빈 화면 방지. */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );
