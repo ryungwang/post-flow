@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { threadsApi } from "@/lib/threads-api";
 import { accountApi } from "@/lib/account-api";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast";
 import { CountUp } from "@/components/count-up";
 
 const STATUS_META: Record<string, { label: string; variant: "success" | "warning" | "muted" }> = {
@@ -143,14 +144,23 @@ function Stat({ label, value }: { label: string; value: number | null }) {
 function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean }) {
   const qc = useQueryClient();
   const confirm = useConfirm();
+  const toast = useToast();
   const { data: accounts } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
   const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["threads-accounts"] });
     qc.invalidateQueries({ queryKey: ["threads-status"] });
   };
-  const setDefault = useMutation({ mutationFn: (id: number) => threadsApi.setDefault(id), onSuccess: invalidate });
-  const disconnect = useMutation({ mutationFn: (id: number) => threadsApi.disconnect(id), onSuccess: invalidate });
+  const setDefault = useMutation({
+    mutationFn: (id: number) => threadsApi.setDefault(id),
+    onSuccess: () => { invalidate(); toast.show("기본 계정으로 설정했어요.", "success"); },
+    onError: () => toast.show("설정에 실패했어요.", "error"),
+  });
+  const disconnect = useMutation({
+    mutationFn: (id: number) => threadsApi.disconnect(id),
+    onSuccess: () => { invalidate(); toast.show("연결을 해제했어요.", "success"); },
+    onError: () => toast.show("연결 해제에 실패했어요.", "error"),
+  });
   const askDisconnect = async (username: string, id: number) => {
     const ok = await confirm({
       title: "연결 해제",
@@ -158,7 +168,9 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
       confirmText: "연결 해제",
       destructive: true,
     });
-    if (ok) disconnect.mutate(id);
+    if (!ok) return;
+    const tid = toast.show("연결 해제 중…", "loading");
+    disconnect.mutate(id, { onSettled: () => toast.dismiss(tid) });
   };
   const list = accounts ?? [];
   if (list.length === 0) return null;

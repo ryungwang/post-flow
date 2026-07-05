@@ -5,6 +5,8 @@ import { threadsApi, type ThreadsAccountPost } from "@/lib/threads-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AccountSelector } from "@/components/account-selector";
+import { useConfirm } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast";
 import { useThreadsAccount } from "@/store/threads-account";
 import { cn } from "@/lib/utils";
 
@@ -60,15 +62,30 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
   const [openComments, setOpenComments] = useState(false);
   const hasReplies = (p.replies ?? 0) > 0;
   const qc = useQueryClient();
+  const confirm = useConfirm();
+  const toast = useToast();
   const del = useMutation({
     mutationFn: () => threadsApi.deletePost(p.id),
     onSuccess: (r) => {
-      if (r.deleted) qc.invalidateQueries({ queryKey: ["threads-account-posts"] });
-      else alert("삭제 실패 — threads_delete 권한 추가 + 재연결이 필요할 수 있어요.");
+      if (r.deleted) {
+        toast.show("게시물을 삭제했어요.", "success");
+        qc.invalidateQueries({ queryKey: ["threads-account-posts"] });
+      } else {
+        toast.show("삭제에 실패했어요. threads_delete 권한 추가 + 재연결이 필요할 수 있어요.", "error");
+      }
     },
+    onError: () => toast.show("삭제 중 오류가 났어요. 잠시 후 다시 시도해 주세요.", "error"),
   });
-  const onDelete = () => {
-    if (confirm("이 게시물을 Threads에서 삭제할까요? 되돌릴 수 없어요.")) del.mutate();
+  const onDelete = async () => {
+    const ok = await confirm({
+      title: "게시물 삭제",
+      description: "이 게시물을 Threads에서 삭제할까요? 되돌릴 수 없어요.",
+      confirmText: "삭제",
+      destructive: true,
+    });
+    if (!ok) return;
+    const id = toast.show("삭제 중…", "loading");
+    del.mutate(undefined, { onSettled: () => toast.dismiss(id) });
   };
   return (
     <li
@@ -76,6 +93,7 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
         "flex items-start gap-3 rounded-xl border bg-card/40 p-4 pl-5 transition-colors hover:bg-accent/30",
         "relative overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-1",
         p.fromPostflow ? "before:bg-emerald-500" : "before:bg-border",
+        del.isPending && "pointer-events-none opacity-50",
       )}
     >
       {p.mediaUrl && p.mediaType !== "TEXT_POST" && (

@@ -17,6 +17,9 @@ import {
 import { commentRulesApi, type CommentRule, type TestResult } from "@/lib/comment-rules-api";
 import { postsApi } from "@/lib/posts-api";
 import { roiApi } from "@/lib/roi-api";
+import { ApiError } from "@/lib/api";
+import { useConfirm } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast";
 import { cn } from "@/lib/utils";
 
 const ALL = "__all__";
@@ -24,6 +27,8 @@ const NONE = "__none__";
 
 export function AutomationPage() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
+  const toast = useToast();
   const { data, isLoading } = useQuery({ queryKey: ["comment-rules"], queryFn: commentRulesApi.list });
   const { data: posts } = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
   const { data: links } = useQuery({ queryKey: ["cta-links"], queryFn: roiApi.listCtaLinks });
@@ -51,16 +56,25 @@ export function AutomationPage() {
       postId: postId === ALL ? null : Number(postId),
       ctaLinkId: ctaLinkId === NONE ? null : Number(ctaLinkId),
     }),
-    onSuccess: () => { setKeyword(""); invalidate(); },
+    onSuccess: () => { setKeyword(""); invalidate(); toast.show("규칙을 추가했어요.", "success"); },
+    onError: (e) => toast.show(e instanceof ApiError && e.status === 402 ? e.message : "규칙 추가에 실패했어요.", "error"),
   });
   const toggle = useMutation({
     mutationFn: (r: CommentRule) => commentRulesApi.update(r.id, { keyword: r.keyword, replyTemplate: r.replyTemplate, ctaLinkId: r.ctaLinkId, active: !r.active }),
-    onSuccess: invalidate,
+    onSuccess: (_d, r) => { invalidate(); toast.show(r.active ? "규칙을 껐어요." : "규칙을 켰어요.", "success"); },
+    onError: () => toast.show("변경에 실패했어요.", "error"),
   });
   const remove = useMutation({
     mutationFn: (id: number) => commentRulesApi.remove(id),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate(); toast.show("규칙을 삭제했어요.", "success"); },
+    onError: () => toast.show("삭제에 실패했어요.", "error"),
   });
+  const askRemove = async (id: number) => {
+    const ok = await confirm({ title: "규칙 삭제", description: "이 자동화 규칙을 삭제할까요?", confirmText: "삭제", destructive: true });
+    if (!ok) return;
+    const tid = toast.show("삭제 중…", "loading");
+    remove.mutate(id, { onSettled: () => toast.dismiss(tid) });
+  };
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -159,7 +173,7 @@ export function AutomationPage() {
           ) : (
             <ul className="divide-y divide-border/60">
               {shownRules.map((r) => (
-                <RuleRow key={r.id} rule={r} onToggle={() => toggle.mutate(r)} onRemove={() => remove.mutate(r.id)} busy={toggle.isPending || remove.isPending} />
+                <RuleRow key={r.id} rule={r} onToggle={() => toggle.mutate(r)} onRemove={() => askRemove(r.id)} busy={toggle.isPending || remove.isPending} />
               ))}
             </ul>
           )}
