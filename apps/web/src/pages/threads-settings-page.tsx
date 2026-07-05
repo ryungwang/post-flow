@@ -231,7 +231,7 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
           ))}
         </ul>
         {!usage?.canMultiAccount && list.length >= 1 && (
-          <p className="mt-3 text-xs text-muted-foreground">다중 채널은 Pro 플랜부터 — 추가 연결 시 현재 계정이 교체됩니다.</p>
+          <p className="mt-3 text-xs text-muted-foreground">여러 채널을 동시에 연결하려면 <b className="text-foreground/70">Pro 플랜</b>이 필요해요.</p>
         )}
         {usage?.canMultiAccount && (
           <div className="mt-3 flex items-start gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">

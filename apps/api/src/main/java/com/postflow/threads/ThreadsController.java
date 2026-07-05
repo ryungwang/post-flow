@@ -33,13 +33,16 @@ public class ThreadsController {
     private final ThreadsOAuthService oAuthService;
     private final SocialAccountService socialAccountService;
     private final ThreadsProperties props;
+    private final com.postflow.user.UsageService usageService;
 
     public ThreadsController(ThreadsOAuthService oAuthService,
                              SocialAccountService socialAccountService,
-                             ThreadsProperties props) {
+                             ThreadsProperties props,
+                             com.postflow.user.UsageService usageService) {
         this.oAuthService = oAuthService;
         this.socialAccountService = socialAccountService;
         this.props = props;
+        this.usageService = usageService;
     }
 
     /** Returns the Threads authorize URL for the frontend to redirect the browser to. */
@@ -71,6 +74,7 @@ public class ThreadsController {
             @AuthenticationPrincipal Long userId,
             @RequestParam(name = "accountId", required = false) Long accountId,
             @RequestParam(name = "days", defaultValue = "14") int days) {
+        usageService.assertCanAnalytics(userId); // Threads 인사이트 = Pro 전용
         return socialAccountService.dayEngagement(userId, accountId, Math.min(Math.max(days, 0), 90));
     }
 
@@ -79,6 +83,7 @@ public class ThreadsController {
     public com.postflow.threads.dto.ThreadsInsightsDto accountInsights(
             @AuthenticationPrincipal Long userId,
             @RequestParam(name = "accountId", required = false) Long accountId) {
+        usageService.assertCanAnalytics(userId); // Threads 인사이트 = Pro 전용
         return socialAccountService.accountInsights(userId, accountId);
     }
 
@@ -86,6 +91,7 @@ public class ThreadsController {
     @GetMapping("/profile-lookup")
     public com.postflow.threads.api.ThreadsProfileLookup profileLookup(
             @AuthenticationPrincipal Long userId, @RequestParam(name = "username") String username) {
+        usageService.assertCanAnalytics(userId); // 경쟁사 분석 = Pro 전용
         return socialAccountService.lookupProfile(userId, username);
     }
 

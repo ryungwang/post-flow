@@ -1,5 +1,7 @@
 package com.postflow.analytics;
 
+import com.postflow.user.UsageService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -9,10 +11,17 @@ import java.util.List;
 /**
  * Recommended posting windows for Threads. Heuristic baseline (works without keys); once
  * real Insights data accumulates this can be blended with the user's own engagement.
+ * 분석(Pro) 기능 — canAnalytics 게이팅.
  */
 @RestController
 @RequestMapping("/analytics/best-times")
 public class BestTimeController {
+
+    private final UsageService usageService;
+
+    public BestTimeController(UsageService usageService) {
+        this.usageService = usageService;
+    }
 
     public record BestTime(String label, int score) {
     }
@@ -27,7 +36,8 @@ public class BestTimeController {
     );
 
     @GetMapping
-    public List<BestTime> bestTimes() {
+    public List<BestTime> bestTimes(@AuthenticationPrincipal Long userId) {
+        usageService.assertCanAnalytics(userId); // 분석 = Pro 전용
         return SLOTS;
     }
 }
