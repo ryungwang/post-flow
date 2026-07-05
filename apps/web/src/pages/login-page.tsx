@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { BarChart3, CalendarClock, Loader2, MessageSquareReply, Sparkles, TrendingUp, Wand2 } from "lucide-react";
+import { BarChart3, CalendarClock, Loader2, MessageSquareReply, TrendingUp, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,10 +90,8 @@ export function LoginPage() {
               <div className="animate-float absolute -bottom-28 -right-16 size-[26rem] rounded-full bg-white/10 blur-3xl" style={{ animationDelay: "2s" }} />
             </div>
 
-            <div className="relative flex items-center gap-2">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
-                <Sparkles className="size-5" />
-              </div>
+            <div className="relative flex items-center gap-2.5">
+              <img src="/icon-192.png" alt="" className="size-10 rounded-[10px] shadow-lg" />
               <span className="text-xl font-bold tracking-tight">PostFlow</span>
             </div>
 
@@ -125,9 +123,7 @@ export function LoginPage() {
           <div className="flex flex-col justify-center bg-card p-7 sm:p-10">
             {/* 모바일 브랜드 헤더 */}
             <div className="mb-6 flex flex-col items-center text-center md:hidden">
-              <div className="bg-brand-gradient shadow-brand mb-3 flex size-12 items-center justify-center rounded-2xl text-brand-foreground">
-                <Sparkles className="size-6" />
-              </div>
+              <img src="/icon-192.png" alt="" className="mb-3 size-14 rounded-2xl shadow-lg" />
               <h1 className="text-gradient-brand text-2xl font-bold tracking-tight">PostFlow</h1>
             </div>
             {/* 데스크톱 제목 */}

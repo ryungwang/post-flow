@@ -1,12 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#736bff"/>
-      <stop offset="1" stop-color="#e041d9"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="116" fill="url(#g)"/>
-  <g transform="translate(256 256) scale(13.5) translate(-12 -12)" fill="#fff">
-    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0Z"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+ <defs>
+  <linearGradient id="g" x1="24" y1="0" x2="216" y2="240" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#7C5CFF"/><stop offset=".5" stop-color="#C43EE6"/><stop offset="1" stop-color="#FF5C93"/>
+  </linearGradient>
+  <radialGradient id="v" cx="72" cy="48" r="200" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#fff" stop-opacity=".32"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="d" x="-30%" y="-30%" width="160%" height="160%">
+   <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#4A1580" flood-opacity=".5"/>
+  </filter>
+ </defs>
+ <rect width="240" height="240" rx="56" fill="url(#g)"/>
+ <rect width="240" height="240" rx="56" fill="url(#v)"/>
+ <g filter="url(#d)" fill="#fff">
+  <rect x="56" y="72"  width="128" height="28" rx="14"/>
+  <rect x="56" y="112" width="128" height="28" rx="14" fill-opacity=".92"/>
+  <rect x="56" y="152" width="82"  height="28" rx="14" fill-opacity=".8"/>
+ </g>
 </svg>

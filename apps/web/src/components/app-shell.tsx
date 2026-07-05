@@ -38,9 +38,7 @@ export function AppShell() {
           className="flex items-center gap-2"
           aria-label="PostFlow 홈"
         >
-          <span className="bg-brand-gradient shadow-brand flex size-7 items-center justify-center rounded-md text-brand-foreground">
-            <Sparkles className="size-4" />
-          </span>
+          <img src="/icon-192.png" alt="" className="size-7 rounded-[7px]" />
           <span className="text-gradient-brand text-base font-bold tracking-tight">PostFlow</span>
         </button>
         <div className="mx-1 hidden h-5 w-px bg-border/60 sm:block" />
