@@ -80,7 +80,8 @@ threads:
   redirect-uri: ${THREADS_REDIRECT_URI:http://localhost:8080/threads/callback}
   # threads_read_replies = 답글 '읽기'(댓글 뷰어·자동화 키워드 감지), threads_manage_replies = 답글 '관리'(숨김·답장).
   # 둘은 별개 권한 — 읽기만 하려 해도 read_replies 없으면 code10(permission denied). basic 제외 검수 대상.
-  scopes: threads_basic,threads_content_publish,threads_manage_insights,threads_read_replies,threads_manage_replies,threads_keyword_search,threads_profile_discovery,threads_manage_mentions,threads_delete,threads_share_to_instagram
+  # threads_share_to_instagram은 실제 발행 연결 전까지 제외(미사용 권한 요청은 App Review 반려 사유). 연결 시 재추가.
+  scopes: threads_basic,threads_content_publish,threads_manage_insights,threads_read_replies,threads_manage_replies,threads_keyword_search,threads_profile_discovery,threads_manage_mentions,threads_delete
   authorize-base-url: https://threads.net
   graph-base-url: https://graph.threads.net
   frontend-redirect-url: ${THREADS_FRONTEND_REDIRECT_URL:http://localhost:5173/settings/threads?threads=connected}

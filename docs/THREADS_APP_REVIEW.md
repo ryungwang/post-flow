@@ -1,135 +1,159 @@
 # Threads(Meta) 앱 검수 제출 가이드 — PostFlow
 
-Threads API를 정식(모든 사용자) 사용하려면 Meta App Review가 필요하다. 이 문서는 **개발자 콘솔에서 그대로 입력할 값**과 **권한별 스크린캐스트 시나리오**, 제출 전 체크리스트를 담는다.
+Threads API를 **모든 사용자에게** 쓰려면 각 권한을 **Advanced Access**로 올려야 하고, 그건 App Review 승인이 필요하다.
+이 문서는 **개발자 콘솔에 그대로 입력할 값 + 권한별 Use Case 문구 + 스크린캐스트 시나리오 + 제출 체크리스트**를 담는다.
 
-> 앱은 이미 콜백(OAuth·deauthorize·data-deletion)을 스펙대로 구현·배포했다. 남은 건 **Meta 콘솔 설정 + 검수 제출**(사람 작업).
+> 현황: OAuth·deauthorize·data-deletion 콜백 구현·배포 완료. haru 계정 연결·발행·댓글 조회 실동작 확인.
+> 남은 건 **Meta 콘솔 설정 + 권한별 검수 제출**(사람 작업).
 
 ---
 
-## ⚠️ 0-0. 먼저 고칠 것 — 서버 env `THREADS_REDIRECT_URI` (필수)
+## 0. Standard vs Advanced Access (핵심 개념)
 
-현재 prod `THREADS_REDIRECT_URI`가 **프론트 도메인**(`https://postflow.synub.io/...`)으로 설정돼 있음 → OAuth 콜백이 Vercel(SPA)로 가서 **code 교환이 안 됨 = Threads 연결 자체가 실패**. 서버 `~/synub-prod` postflow `.env`를 **API 호스트**로 고칠 것:
-```
-THREADS_REDIRECT_URI=https://postflow-api.synub.io/threads/callback
-```
-그리고 **Meta 콘솔의 Redirect Callback URL도 동일**하게(`postflow-api.synub.io`) 맞춰야 함. (앱 재시작 필요)
+| 상태 | 의미 |
+|---|---|
+| **Standard Access** ("테스트 준비 완료") | 앱에 권한 추가만 하면 됨. **앱 역할(admin/tester) 계정 본인 데이터**엔 검수 없이 동작. |
+| **Advanced Access** (검수 승인 후) | **모든 사용자 + 타인 공개 데이터**까지. App Review 통과 필요. |
 
-## 0. 사전 요건 (검수 전 반드시)
+- 지금 haru 계정으로 되는 것(발행·인사이트·댓글·멘션·삭제) = Standard로 충분.
+- **트렌드 생성(keyword_search)·경쟁사 분석(profile_discovery)의 "타인 공개 데이터"** = **Advanced 필수**. 승인 전엔 "내 글만" 검색됨.
+- **정식 출시(일반 사용자)** = 사용하는 모든 권한을 Advanced로 올려야 함.
+
+---
+
+## 1. 사전 요건 (검수 전 반드시)
 
 | 항목 | 설명 |
 |---|---|
-| **Meta 개발자 계정 + 앱** | developers.facebook.com → 앱 생성 시 **Use case = "Access the Threads API"** 선택. Threads 앱 ID/시크릿은 Facebook 앱과 별개. |
-| **Tech Provider 인증** | `threads_content_publish` 등 고급 권한은 **기술 제공자(Tech Provider) 신원 인증** 필요 — 표준 개발자 등록과 별개, 약 1주 소요. |
-| **비즈니스 인증**(필요 시) | 조직 계정이면 Business Verification 요구될 수 있음. |
+| **Meta 개발자 계정 + 앱** | developers.facebook.com → Use case = "Access the Threads API". |
+| **Tech Provider 인증** | content_publish 등 고급 권한 전제. 신원 인증, 약 1주. |
+| **비즈니스 인증(Business Verification)** | **`threads_keyword_search`·`threads_profile_discovery`는 사실상 필수**(타인 공개 데이터 접근). 사업자등록·D-U-N-S 등으로 조직 인증. 시간이 오래 걸리니 **가장 먼저 착수**. |
+| **테스터 계정** | 앱 역할에 Threads Tester 등록(수락 필요) → 스크린캐스트 촬영용. |
 
-**중요**: 검수 승인 전에도 **본인 계정 + 앱에 등록한 테스터 계정**으로는 발행·테스트 가능. → 스크린캐스트를 이 테스터 계정으로 찍으면 된다.
+**중요**: 검수 전에도 테스터 계정 본인 데이터는 동작 → 스크린캐스트는 테스터 실계정으로 촬영.
 
 ---
 
-## 1. 앱 대시보드 설정값 (그대로 입력)
+## 2. 앱 대시보드 설정값 (그대로 입력)
 
-### OAuth / Redirect
+### OAuth / Redirect (HTTPS 필수, 배포 완료)
 | 필드 | 값 |
 |---|---|
 | **Redirect Callback URLs** | `https://postflow-api.synub.io/threads/callback` |
 | **Deauthorize callback URL** | `https://postflow-api.synub.io/threads/deauthorize` |
 | **Data Deletion Request URL** | `https://postflow-api.synub.io/threads/data-deletion` |
 
-> 3개 모두 **HTTPS 필수**(Meta는 HTTP로 요청 안 보냄). 구현·배포 완료 상태.
+> ✅ 서버 `THREADS_REDIRECT_URI`가 API 호스트(`postflow-api.synub.io/threads/callback`)로 설정됨 — haru 연결 성공으로 확인됨. Meta 콘솔 Redirect도 동일해야 함.
 
 ### 앱 기본 정보
 | 필드 | 값 |
 |---|---|
 | 앱 이름 | PostFlow |
 | 카테고리 | Business / Productivity |
-| **개인정보 처리방침 URL** | `https://center.synub.io/ko/policies/privacy` |
-| **서비스 약관 URL** | `https://center.synub.io/ko/policies/terms` |
-| 앱 아이콘 | PostFlow 로고(1024×1024, `apps/web/public/icon-512.png` 기반 업스케일) |
+| **개인정보 처리방침** | `https://center.synub.io/ko/policies/privacy` |
+| **서비스 약관** | `https://center.synub.io/ko/policies/terms` |
+| 앱 아이콘 | PostFlow 로고 1024×1024 (`apps/web/public/icon-512.png` 업스케일) |
 | 웹사이트 | `https://postflow.synub.io` |
 
 ---
 
-## 2. 요청 권한 (Permissions) + Use Case 설명
+## 3. 요청 권한 + Use Case (검수 설명란에 그대로 기재)
 
-앱이 실제로 요청하는 스코프(코드 기준): `threads_basic`, `threads_content_publish`, `threads_manage_insights`, `threads_manage_replies`.
-`threads_basic`은 기본 제공(검수 불필요). 나머지 3개는 **각각 검수 제출 + 스크린캐스트** 필요(권한당 2~4주).
+코드가 요청하는 scope(application.yml):
+`threads_basic, threads_content_publish, threads_manage_insights, threads_read_replies, threads_manage_replies, threads_keyword_search, threads_profile_discovery, threads_manage_mentions, threads_delete, threads_share_to_instagram`
 
-| 권한 | 앱에서의 용도 (검수 설명란에 기재) |
+### 3.1 자동 (검수 불필요)
+| 권한 | 용도 |
 |---|---|
-| **threads_content_publish** | 사용자가 PostFlow에서 작성/AI 생성한 콘텐츠를 **본인 Threads 계정에 발행·예약 발행**. 사용자가 명시적으로 "발행" 또는 "예약"을 누를 때만 전송. |
-| **threads_manage_insights** | 발행한 게시물의 **조회수·좋아요·답글 등 인사이트를 조회**해 대시보드/분석 화면에 성과를 표시. |
-| **threads_manage_replies** | 사용자가 설정한 규칙에 따라 **본인 게시물의 답글(댓글)을 읽고, 자동 답글을 발행**(댓글 자동화 기능). 사용자가 규칙을 켠 계정에서만 동작. |
+| **threads_basic** | 계정 연결·프로필·게시물 목록 조회의 기본. |
 
-**공통 데이터 사용 설명**: PostFlow는 콘텐츠 자동화 SaaS로, 사용자를 대신해 사용자 **본인 Threads 계정**에만 접근한다. 타인 데이터 수집·판매 없음. 액세스 토큰은 암호화 저장, 연결 해제/삭제 요청 시 즉시 폐기.
+### 3.2 핵심 — 본인 데이터 (Advanced로 올려 제출)
+| 권한 | Use Case 문구 |
+|---|---|
+| **threads_content_publish** | 사용자가 PostFlow에서 작성/AI 생성한 콘텐츠를 **본인 Threads 계정에 발행·예약 발행**. "발행"/"예약" 클릭 시에만 전송. |
+| **threads_manage_insights** | 발행 게시물의 **조회·좋아요·답글·리포스트 인사이트**를 조회해 인사이트/대시보드에 성과 표시. |
+| **threads_read_replies** | 사용자 게시물의 **댓글(답글)을 읽어** 앱 내 댓글 뷰어에 표시. |
+| **threads_manage_replies** | 사용자가 설정한 규칙에 따라 **본인 게시물 답글에 자동 응답 발행**(댓글 자동화). |
+| **threads_manage_mentions** | 사용자를 **멘션한 게시물을 조회**해 멘션 인박스에 표시(응대 지원). |
+| **threads_delete** | 사용자가 앱에서 **본인 게시물을 삭제**(내 게시물 목록의 삭제 버튼). |
 
----
+### 3.3 고급 — 타인 공개 데이터 (**비즈니스 인증 + Advanced 필수**)
+| 권한 | Use Case 문구 |
+|---|---|
+| **threads_keyword_search** | 사용자가 입력한 **키워드로 지금 인기 있는 공개 게시물을 검색**해, AI 콘텐츠 생성에 트렌드(훅·포맷)를 반영("트렌드 반영 생성"). |
+| **threads_profile_discovery** | 사용자가 입력한 **공개 계정(@id)의 프로필·최근 성과를 조회**해 경쟁사/벤치마킹 분석 제공. 공개+팔로워 100+ 계정만. |
 
-## 3. 테스터 계정 등록 (스크린캐스트 촬영용)
+### 3.4 ⚠️ 이번 제출 제외 — threads_share_to_instagram
+- 인스타 교차 게시 **UI/실제 발행 파라미터 미연결(보류)** 상태 → **데모 불가 → 이번 검수에서 제외**.
+- scope에서 빼거나, 파라미터 확정+연결+데모 촬영 후 **다음 제출**에 포함. (미사용 권한 제출 시 Meta 반려)
 
-1. 앱 대시보드 → **App roles → Roles → Testers 탭 → Add People**
-2. Additional Roles = **Threads Tester** 선택, Threads 사용자명 입력해 초대
-3. 초대받은 계정이 **수락**해야 활성 (Threads 앱/알림에서 수락)
-4. 이후 그 계정으로 PostFlow에서 연결 → 발행/분석/자동답글 **실제 동작 촬영 가능**
-
-권장 테스터: haru 본인 Threads 계정 + 팀원 1개.
-
----
-
-## 4. 스크린캐스트 시나리오 (권한별 — 전체 사용자 여정을 보여줄 것)
-
-Meta는 "엔드포인트를 호출한다"가 아니라 **사용자가 그 기능을 쓰는 전체 흐름**을 요구한다. 각 권한마다 아래 흐름을 화면 녹화(음성/자막 설명 권장).
-
-### ① threads_content_publish
-1. PostFlow 로그인 → 대시보드
-2. **AI 생성**에서 키워드 입력 → 콘텐츠 생성
-3. **Threads 계정 연결**(설정 → Threads 연결 → OAuth 동의화면 → 복귀)
-4. 생성 콘텐츠를 **"발행"** 클릭 → 성공 → 실제 Threads 앱에서 그 게시물 확인
-5. (예약도 보여주면 가점) 스케줄에 예약 → 예약 목록 노출
-
-### ② threads_manage_insights
-1. 이미 발행된 게시물이 있는 상태
-2. **분석/대시보드** 이동 → 조회수·좋아요·참여율 지표가 표시되는 화면
-3. 특정 게시물 상세의 인사이트 확인
-
-### ③ threads_manage_replies
-1. **댓글 자동화** 메뉴 → 규칙 생성(예: 특정 키워드 답글에 자동 응답)
-2. 규칙 저장 → 대상 게시물에 실제 답글이 달림 → PostFlow가 **자동 답글 발행**
-3. 결과를 Threads 앱에서 확인
-
-> 촬영 팁: 데모 계정 말고 **테스터 실계정**으로 찍을 것(데모는 read-only라 발행 불가). 각 클립은 해당 권한 흐름만 깔끔히.
+**공통 데이터 사용 설명**: PostFlow는 콘텐츠 자동화 SaaS. 사용자를 대신해 **본인 계정**에 접근하며, keyword_search/profile_discovery의 공개 데이터는 **사용자에게 트렌드·경쟁 분석을 보여주기 위해서만** 사용. 타인 데이터 저장·판매 없음. 토큰 암호화 저장, 연결 해제/삭제 시 즉시 폐기.
 
 ---
 
-## 5. 콜백 동작 요약 (검수 문의 대비)
+## 4. 테스터 계정 등록 (스크린캐스트용)
+1. 앱 대시보드 → **App roles → Roles → Testers → Add People**
+2. Additional Roles = **Threads Tester**, Threads 사용자명 입력해 초대
+3. 초대받은 계정이 **수락**(Threads 앱/알림)
+4. 그 계정으로 PostFlow 연결 → 실제 동작 촬영 가능
+
+권장: haru 본인 계정 + 팀원 1개.
+
+---
+
+## 5. 스크린캐스트 시나리오 (권한별 — 사용자 전체 여정)
+
+Meta는 "엔드포인트 호출"이 아니라 **사용자가 그 기능을 쓰는 전체 흐름**을 요구. 음성/자막 설명 권장. 각 클립은 해당 권한만 깔끔히.
+
+| # | 권한 | 촬영 흐름 |
+|---|---|---|
+| ① | **content_publish** | 로그인 → AI 생성 → Threads 연결(OAuth 동의) → "발행" 클릭 → Threads 앱에서 게시물 확인 (+예약 보여주면 가점) |
+| ② | **manage_insights** | Threads → 인사이트 이동 → 팔로워·조회·좋아요·참여율 표시 → 베스트 게시물/요일별 차트 |
+| ③ | **read_replies** | 내 게시물 → 댓글 있는 글의 "댓글 N개" 펼침 → 실제 댓글 목록 표시 |
+| ④ | **manage_replies** | 댓글 자동화 → 규칙 생성(키워드→자동답글) → 대상 글에 댓글 달림 → 자동 답글 발행 → Threads에서 확인 |
+| ⑤ | **manage_mentions** | 멘션 메뉴 → 나를 언급한 게시물 목록 표시 → "Threads에서 응답" |
+| ⑥ | **delete** | 내 게시물 → 삭제 버튼 → 확인 → Threads에서 해당 글 사라짐 확인 |
+| ⑦ | **keyword_search** | AI 생성 → "트렌드 반영 생성" 켜고 키워드 입력 → 검색된 실제 인기글이 생성에 반영되는 흐름 |
+| ⑧ | **profile_discovery** | 경쟁사 분석 → @공개계정 입력 → 프로필·팔로워·7일 성과 카드 표시 |
+
+> 데모 계정 말고 **테스터 실계정**으로 촬영(데모는 read-only).
+
+---
+
+## 6. 콜백 동작 요약 (검수 문의 대비)
 
 | 콜백 | URL | 동작 |
 |---|---|---|
-| OAuth 콜백 | `/threads/callback` | code 교환 → 토큰 저장 → 프론트 복귀 |
-| Deauthorize | `/threads/deauthorize` | `signed_request` HMAC-SHA256 검증 → 해당 Threads 계정 연결·토큰 서버측 폐기 |
-| Data Deletion | `/threads/data-deletion` | 검증 → 데이터 삭제 → `{url, confirmation_code}` 반환 |
-| 삭제 상태 페이지 | `/threads/data-deletion/status?code=` | 사람이 읽는 처리 상태 HTML |
+| OAuth | `/threads/callback` | code 교환 → 토큰 저장 → 프론트 복귀 |
+| Deauthorize | `/threads/deauthorize` | `signed_request` HMAC-SHA256 검증 → 연결·토큰 서버측 폐기 |
+| Data Deletion | `/threads/data-deletion` | 검증 → 삭제 → `{url, confirmation_code}` 반환 |
+| 삭제 상태 | `/threads/data-deletion/status?code=` | 사람이 읽는 처리 상태 HTML |
 
-모두 배포됨(`postflow-api.synub.io`). signed_request는 앱시크릿으로 검증하며, 위조 요청은 데이터 삭제하지 않는다.
+모두 배포됨(`postflow-api.synub.io`). 위조 signed_request는 처리 거부.
 
 ---
 
-## 6. 제출 전 체크리스트
+## 7. 제출 전 체크리스트
 
-- [ ] Tech Provider 인증 완료(고급 권한 전제)
-- [ ] 개인정보/약관 URL 접속 확인(공개, 한국어)
-- [ ] Redirect/Deauthorize/DataDeletion URL 3개 콘솔 입력 + HTTPS 200 확인
-- [ ] 테스터 계정 초대·수락 완료
-- [ ] 권한 3개 각각 스크린캐스트 업로드(전체 여정)
-- [ ] 각 권한 Use Case 설명 기재(§2 문구)
+- [ ] **비즈니스 인증 착수**(keyword_search·profile_discovery 전제 — 가장 오래 걸림)
+- [ ] Tech Provider 인증 완료
+- [ ] 개인정보/약관 URL 공개·접속 확인(한국어)
+- [ ] Redirect/Deauthorize/DataDeletion 3개 콘솔 입력 + HTTPS 200
+- [ ] 테스터 계정 초대·수락
+- [ ] **share_to_instagram scope 제외**(또는 연결 후 다음 제출)
+- [ ] 핵심 6권한 스크린캐스트(①~⑥) 업로드
+- [ ] 고급 2권한 스크린캐스트(⑦~⑧) + 비즈니스 인증 첨부
+- [ ] 각 권한 Use Case 문구 기재(§3)
 - [ ] 앱 아이콘·이름·카테고리·웹사이트 입력
-- [ ] 앱을 **Live 모드**로 전환(검수 후)
+- [ ] (승인 후) 앱 **Live 모드** 전환
 
-## 7. 앱이 이미 완료한 것 (재작업 불필요)
-- OAuth 연결/토큰 저장/갱신(60일 만료 리프레시 크론)
-- 발행·예약·이미지/영상 업로드, 인사이트 수집, 댓글 자동답글
-- deauthorize·data-deletion 콜백 **signed_request 검증** 정식 구현
-- scope에 `threads_manage_replies` 포함(댓글 자동화 필수)
+## 8. 이미 완료된 것 (재작업 불필요)
+- OAuth 연결/토큰 저장/60일 리프레시 크론
+- 발행·예약·이미지/영상 업로드, 인사이트, 댓글 조회·자동응답, 멘션, 삭제, 트렌드/경쟁사(코드 준비)
+- deauthorize·data-deletion **signed_request 검증** 정식 구현
+- scope 10종 요청(share_to_instagram는 제출 제외 권장)
 
-## 참고 문서
-- Threads API 게시: https://developers.facebook.com/docs/threads
+## 참고
+- Threads API: https://developers.facebook.com/docs/threads
+- Keyword Search(고급 접근·비즈니스 인증): https://developers.facebook.com/docs/threads/keyword-search
 - Data Deletion Callback: https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback/
