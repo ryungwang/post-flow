@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Loader2 } from "lucide-react";
+import { AtSign, Info, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,11 +41,10 @@ export function ThreadsSettingsPage() {
     setConnecting(true);
     try {
       const { authorizeUrl } = await threadsApi.connectUrl();
-      // 동의 화면이 길어(권한 다수) 잘리지 않게 화면 높이에 맞춰 크게 — 특히 "다른 계정으로 로그인" 버튼이 하단에 있음.
-      const w = 640;
-      const h = Math.min(960, (window.screen?.availHeight ?? 900) - 60);
+      const w = 600;
+      const h = 720;
       const left = window.screenX + (window.outerWidth - w) / 2;
-      const top = window.screenY + Math.max(0, (window.outerHeight - h) / 2);
+      const top = window.screenY + (window.outerHeight - h) / 2;
       const popup = window.open(authorizeUrl, "threads-oauth", `width=${w},height=${h},left=${left},top=${top}`);
       if (!popup) {
         // popup blocked → fall back to full-page redirect
@@ -233,6 +232,16 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
         </ul>
         {!usage?.canMultiAccount && list.length >= 1 && (
           <p className="mt-3 text-xs text-muted-foreground">다중 채널은 Pro 플랜부터 — 추가 연결 시 현재 계정이 교체됩니다.</p>
+        )}
+        {usage?.canMultiAccount && (
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+            <Info className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              <b className="text-foreground/80">다른 계정을 추가하려면?</b> Threads는 브라우저에 로그인된 계정으로 연결돼요.
+              먼저 <a href="https://www.threads.net/settings/account" target="_blank" rel="noreferrer" className="text-brand underline">threads.net에서 로그아웃</a>하거나
+              <b> 시크릿 창</b>에서 "+ 계정 추가"를 누르면 다른 계정으로 로그인할 수 있어요.
+            </span>
+          </div>
         )}
       </CardContent>
     </Card>
