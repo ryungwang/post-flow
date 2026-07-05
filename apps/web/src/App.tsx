@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { BrandLoader } from "@/components/brand-loader";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/auth/require-auth";
 import { useSession } from "@/auth/use-session";
@@ -38,7 +38,7 @@ function SettingsRedirect() {
 function PageFallback() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
-      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      <BrandLoader />
     </div>
   );
 }

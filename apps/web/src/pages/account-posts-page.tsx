@@ -93,9 +93,16 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
         "flex items-start gap-3 rounded-xl border bg-card/40 p-4 pl-5 transition-colors hover:bg-accent/30",
         "relative overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-1",
         p.fromPostflow ? "before:bg-emerald-500" : "before:bg-border",
-        del.isPending && "pointer-events-none opacity-50",
+        del.isPending && "border-rose-500/40",
       )}
     >
+      {/* 삭제 진행 오버레이 — 명확히 구분 */}
+      {del.isPending && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-xl bg-background/70 backdrop-blur-[1px]">
+          <Loader2 className="size-4 animate-spin text-rose-500" />
+          <span className="text-sm font-medium text-rose-500">삭제 중…</span>
+        </div>
+      )}
       {p.mediaUrl && p.mediaType !== "TEXT_POST" && (
         <img src={p.mediaUrl} alt="" className="size-14 shrink-0 rounded-md object-cover" />
       )}
