@@ -274,9 +274,11 @@ function IdeaBoard() {
         </div>
       ) : (
         <ul className="mt-4 divide-y divide-border/60">
-          {(data ?? []).map((idea) => (
+          {(data ?? []).map((idea, i) => (
             <li key={idea.topic} className="flex items-center gap-3 py-3">
-              <ScoreBadge score={idea.topHook.score} />
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-sm font-bold text-amber-500">
+                {i + 1}
+              </span>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">{idea.topic}</div>
                 <div className="truncate text-xs text-muted-foreground">“{idea.topHook.hook}”</div>
