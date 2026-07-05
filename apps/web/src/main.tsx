@@ -6,8 +6,12 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import { ToastProvider, getToast } from "@/components/toast";
 import { GlobalLoadingBar } from "@/components/global-loading-bar";
+import { initSentry, Sentry } from "@/lib/sentry";
+import { ErrorFallback } from "@/components/error-fallback";
 import App from "@/App";
 import "@/index.css";
+
+initSentry();
 
 /**
  * 공통 처리 — mutation.meta로 로딩/성공/실패 토스트를 자동화(전 서비스 UX 표준).
@@ -58,7 +62,9 @@ createRoot(document.getElementById("root")!).render(
           <ToastProvider>
             <ConfirmProvider>
               <GlobalLoadingBar />
-              <App />
+              <Sentry.ErrorBoundary fallback={({ resetError }) => <ErrorFallback onReset={resetError} />}>
+                <App />
+              </Sentry.ErrorBoundary>
             </ConfirmProvider>
           </ToastProvider>
         </BrowserRouter>

@@ -1,5 +1,10 @@
 # prod 프로필 — 시크릿은 디폴트 금지(${ENV}), 공유 db의 앱 전용 DB(postflow)+스키마(postflow).
 # 리버스프록시/HTTPS는 Caddy(서버 관리). 앱은 내부 8080만 노출.
+
+# 에러 모니터링 — prod 환경 태깅(SENTRY_DSN 미설정 시 no-op)
+sentry:
+  environment: prod
+
 server:
   # Caddy 뒤 — X-Forwarded-*(호스트/프로토콜)를 존중해 절대 URL을 공개 도메인으로 생성.
   forward-headers-strategy: framework

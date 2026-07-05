@@ -41,6 +41,13 @@ management:
 cors:
   allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
+# 에러 모니터링 — SENTRY_DSN 미설정 시 완전 비활성(no-op). DSN은 배포 env로만 주입.
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENV:local}
+  traces-sample-rate: 0.1
+  send-default-pii: false
+
 ai:
   provider: ${AI_PROVIDER:claude}
   claude:

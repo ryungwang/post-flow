@@ -127,3 +127,17 @@ PostFlow가 자체적으로 발급하는 외부 키는 **Anthropic(AI)** 과 **T
 | `CORS_ALLOWED_ORIGINS` | 허용 프론트 도메인 |
 
 prod 시크릿은 yml 디폴트 없이 환경변수로만 주입한다.
+
+## 에러 모니터링 (Sentry) — 선택, 미설정 시 완전 비활성
+
+Sentry 프로젝트 2개(프론트/백엔드) 만들어 DSN 주입. **DSN 없으면 no-op**이라 안 넣어도 앱 정상 동작.
+
+| env | 어디 | 용도 |
+|---|---|---|
+| `SENTRY_DSN` | 백엔드(prod env) | Spring 미처리 예외 → Sentry |
+| `SENTRY_ENV` | 백엔드(선택) | 환경명(기본 local, prod yml은 prod 태깅) |
+| `VITE_SENTRY_DSN` | 프론트(Vercel env) | React 렌더 오류·JS 예외 → Sentry |
+| `VITE_APP_VERSION` | 프론트(선택) | 릴리스 태깅(배포 커밋 해시 등) |
+
+- 프론트: `main.tsx`의 `initSentry()`가 DSN 있을 때만 켜짐 + `Sentry.ErrorBoundary`가 렌더 오류 캐치(친근한 폴백 화면).
+- 백엔드: `sentry-spring-boot-starter-jakarta`가 미처리 예외 자동 캡처, traces 10% 샘플링.

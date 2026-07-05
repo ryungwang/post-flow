@@ -55,6 +55,9 @@ dependencies {
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
 
+    // Error monitoring — Sentry (env-gated: SENTRY_DSN 없으면 비활성)
+    implementation 'io.sentry:sentry-spring-boot-starter-jakarta:7.20.1'
+
     // AI — Anthropic (default LLMProvider implementation)
     implementation "com.anthropic:anthropic-java:${anthropicVersion}"
 
