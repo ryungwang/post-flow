@@ -32,6 +32,12 @@
   --brand-2: oklch(0.66 0.25 330);
   --brand-foreground: oklch(0.99 0 0);
   --gradient-brand: linear-gradient(135deg, oklch(0.62 0.22 280), oklch(0.66 0.25 330));
+
+  /* success (기능 불릿 체크 전용 — 브랜드 3색은 로고에만) + 로그인 카드 팝 섀도 (LOGIN_PAGE_DESIGN) */
+  --success: #15b86b;
+  --success-foreground: #0a7d4f;
+  --success-subtle: #e7f7ee;
+  --shadow-pop: 0 12px 32px -8px rgba(15, 23, 42, 0.2);
 }
 
 .dark {
@@ -59,6 +65,10 @@
   --brand-2: oklch(0.72 0.23 340);
   --brand-foreground: oklch(0.99 0 0);
   --gradient-brand: linear-gradient(135deg, oklch(0.7 0.2 300), oklch(0.72 0.23 340));
+
+  --success: #2ad19b;
+  --success-foreground: #6fe3c0;
+  --success-subtle: #14352b;
 }
 
 /* Map tokens into Tailwind's theme so `bg-background`, `text-foreground`, etc. work. */
@@ -85,6 +95,9 @@
   --color-brand: var(--brand);
   --color-brand-2: var(--brand-2);
   --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -244,6 +257,14 @@ button:active {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
   .lift:hover { transform: none; }
 }
+
+/* 로그인 카드 등장 — 아래에서 슬라이드 업 + 페이드 (LOGIN_PAGE_DESIGN 정본) */
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(28px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.animate-slide-up { animation: slide-up-fade 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .animate-slide-up { animation: none; } }
 
 @keyframes loadingbar {
   0% { transform: translateX(-120%); }
