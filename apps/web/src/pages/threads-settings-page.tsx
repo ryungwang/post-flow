@@ -41,10 +41,11 @@ export function ThreadsSettingsPage() {
     setConnecting(true);
     try {
       const { authorizeUrl } = await threadsApi.connectUrl();
-      const w = 600;
-      const h = 720;
+      // 동의 화면이 길어(권한 다수) 잘리지 않게 화면 높이에 맞춰 크게 — 특히 "다른 계정으로 로그인" 버튼이 하단에 있음.
+      const w = 640;
+      const h = Math.min(960, (window.screen?.availHeight ?? 900) - 60);
       const left = window.screenX + (window.outerWidth - w) / 2;
-      const top = window.screenY + (window.outerHeight - h) / 2;
+      const top = window.screenY + Math.max(0, (window.outerHeight - h) / 2);
       const popup = window.open(authorizeUrl, "threads-oauth", `width=${w},height=${h},left=${left},top=${top}`);
       if (!popup) {
         // popup blocked → fall back to full-page redirect
