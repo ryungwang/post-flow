@@ -67,6 +67,9 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
   const toast = useToast();
   const del = useMutation({
     mutationFn: () => threadsApi.deletePost(p.id),
+    // 로딩 토스트는 meta로(전역 MutationCache가 표시·해제) — 삭제 후 카드가 언마운트돼도
+    // 확실히 닫힘. mutate({onSettled: dismiss})는 언마운트 시 안 불려 스피너가 남던 버그.
+    meta: { loading: "삭제 중…" },
     onSuccess: (r) => {
       if (r.deleted) {
         toast.show("게시물을 삭제했어요.", "success");
@@ -85,8 +88,7 @@ function PostRow({ p }: { p: ThreadsAccountPost }) {
       destructive: true,
     });
     if (!ok) return;
-    const id = toast.show("삭제 중…", "loading");
-    del.mutate(undefined, { onSettled: () => toast.dismiss(id) });
+    del.mutate();
   };
   return (
     <li

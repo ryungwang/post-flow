@@ -67,14 +67,14 @@ export function AutomationPage() {
   });
   const remove = useMutation({
     mutationFn: (id: number) => commentRulesApi.remove(id),
+    meta: { loading: "삭제 중…" }, // 언마운트돼도 확실히 닫히게 meta로(전역 처리)
     onSuccess: () => { invalidate(); toast.show("규칙을 삭제했어요.", "success"); },
     onError: () => toast.show("삭제에 실패했어요.", "error"),
   });
   const askRemove = async (id: number) => {
     const ok = await confirm({ title: "규칙 삭제", description: "이 자동화 규칙을 삭제할까요?", confirmText: "삭제", destructive: true });
     if (!ok) return;
-    const tid = toast.show("삭제 중…", "loading");
-    remove.mutate(id, { onSettled: () => toast.dismiss(tid) });
+    remove.mutate(id);
   };
 
   return (

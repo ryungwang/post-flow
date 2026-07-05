@@ -44,11 +44,13 @@ const mutationCache = new MutationCache({
   // (안 그러면 POST만 끝나고 스피너가 먼저 꺼진 뒤 화면이 뒤늦게 바뀜). meta.noInvalidate로 opt-out.
   onSettled: async (_data, err, _vars, _ctx, mutation) => {
     const m = mutation.options.meta as ToastMeta | undefined;
-    if (!err && !m?.noInvalidate) {
-      await queryClient.invalidateQueries();
+    try {
+      if (!err && !m?.noInvalidate) await queryClient.invalidateQueries();
+    } finally {
+      // refetch가 실패/지연돼도 로딩 토스트는 반드시 닫는다(스피너 잔존 방지).
+      const id = loadingIds.get(mutation);
+      if (id != null) { getToast()?.dismiss(id); loadingIds.delete(mutation); }
     }
-    const id = loadingIds.get(mutation);
-    if (id != null) { getToast()?.dismiss(id); loadingIds.delete(mutation); }
   },
 });
 

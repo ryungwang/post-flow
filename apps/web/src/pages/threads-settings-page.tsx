@@ -153,17 +153,17 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
       qc.invalidateQueries({ queryKey: ["threads-accounts"] }),
       qc.invalidateQueries({ queryKey: ["threads-status"] }),
     ]);
+  // 로딩 토스트 = meta(전역 MutationCache가 표시·해제) — 계정 행이 언마운트돼도 확실히 닫힘.
   const setDefault = useMutation({
     mutationFn: (id: number) => threadsApi.setDefault(id),
+    meta: { loading: "기본 계정 설정 중…" },
     onSuccess: async () => { await invalidate(); toast.show("기본 계정으로 설정했어요.", "success"); },
     onError: () => toast.show("설정에 실패했어요.", "error"),
   });
-  const onSetDefault = (id: number) => {
-    const tid = toast.show("기본 계정 설정 중…", "loading");
-    setDefault.mutate(id, { onSettled: () => toast.dismiss(tid) });
-  };
+  const onSetDefault = (id: number) => setDefault.mutate(id);
   const disconnect = useMutation({
     mutationFn: (id: number) => threadsApi.disconnect(id),
+    meta: { loading: "연결 해제 중…" },
     onSuccess: async () => { await invalidate(); toast.show("연결을 해제했어요.", "success"); },
     onError: () => toast.show("연결 해제에 실패했어요.", "error"),
   });
@@ -175,8 +175,7 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
       destructive: true,
     });
     if (!ok) return;
-    const tid = toast.show("연결 해제 중…", "loading");
-    disconnect.mutate(id, { onSettled: () => toast.dismiss(tid) });
+    disconnect.mutate(id);
   };
   const list = accounts ?? [];
   if (list.length === 0) return null;
