@@ -154,6 +154,11 @@ public class Post extends BaseTimeEntity {
         this.errorMessage = null;
     }
 
+    /** Threads에서 게시물이 삭제됨 — 목록·자동화 대상에서 제외되도록 상태 변경. */
+    public void markDeleted() {
+        this.status = PostStatus.DELETED;
+    }
+
     /** Transient failure — stay SCHEDULED for the next cron tick, bump retry count. */
     public void markRetry(String error) {
         this.status = PostStatus.SCHEDULED;

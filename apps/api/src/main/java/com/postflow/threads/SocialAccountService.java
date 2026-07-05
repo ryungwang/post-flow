@@ -324,6 +324,11 @@ public class SocialAccountService {
         }
         try {
             apiClient.deleteMedia(mediaId, account.getAccessToken());
+            // 로컬 Post도 삭제 상태로 — 자동화 대상 드롭다운·목록에서 사라지게.
+            postRepository.findByUserIdAndThreadsMediaId(userId, mediaId).ifPresent(p -> {
+                p.markDeleted();
+                postRepository.save(p);
+            });
             return true;
         } catch (RuntimeException e) {
             return false;

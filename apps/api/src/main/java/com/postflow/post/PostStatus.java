@@ -6,5 +6,6 @@ public enum PostStatus {
     PUBLISHING,
     PUBLISHED,
     FAILED,
-    RECONNECT_REQUIRED
+    RECONNECT_REQUIRED,
+    DELETED
 }
