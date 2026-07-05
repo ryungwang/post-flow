@@ -156,6 +156,10 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
     onSuccess: () => { invalidate(); toast.show("기본 계정으로 설정했어요.", "success"); },
     onError: () => toast.show("설정에 실패했어요.", "error"),
   });
+  const onSetDefault = (id: number) => {
+    const tid = toast.show("기본 계정 설정 중…", "loading");
+    setDefault.mutate(id, { onSettled: () => toast.dismiss(tid) });
+  };
   const disconnect = useMutation({
     mutationFn: (id: number) => threadsApi.disconnect(id),
     onSuccess: () => { invalidate(); toast.show("연결을 해제했어요.", "success"); },
@@ -212,9 +216,13 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
                   {a.biography && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{a.biography}</p>}
                 </div>
                 {!a.isDefault && (
-                  <Button variant="ghost" size="sm" disabled={setDefault.isPending} onClick={() => setDefault.mutate(a.id)}>기본으로</Button>
+                  <Button variant="ghost" size="sm" disabled={setDefault.isPending} onClick={() => onSetDefault(a.id)}>
+                    {setDefault.isPending && setDefault.variables === a.id ? <Loader2 className="size-4 animate-spin" /> : "기본으로"}
+                  </Button>
                 )}
-                <Button variant="ghost" size="sm" className="text-destructive" disabled={disconnect.isPending} onClick={() => askDisconnect(a.username, a.id)}>연결 해제</Button>
+                <Button variant="ghost" size="sm" className="text-destructive" disabled={disconnect.isPending} onClick={() => askDisconnect(a.username, a.id)}>
+                  {disconnect.isPending && disconnect.variables === a.id ? <Loader2 className="size-4 animate-spin" /> : "연결 해제"}
+                </Button>
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
                 <Stat label="팔로워" value={a.followersCount} />
