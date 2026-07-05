@@ -17,6 +17,12 @@ type ToastApi = {
 
 const ToastContext = createContext<ToastApi | null>(null);
 
+/** React 밖(예: QueryClient MutationCache)에서 토스트를 쓰기 위한 싱글턴. ToastProvider가 등록. */
+let toastSingleton: ToastApi | null = null;
+export function getToast() {
+  return toastSingleton;
+}
+
 /** 어디서든 `const toast = useToast(); toast.show("저장됨","success")`. */
 export function useToast() {
   const ctx = useContext(ToastContext);
@@ -63,8 +69,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     );
   }, [show, update]);
 
+  const api: ToastApi = { show, update, dismiss, promise };
+  toastSingleton = api; // React 밖에서도 접근
+
   return (
-    <ToastContext.Provider value={{ show, update, dismiss, promise }}>
+    <ToastContext.Provider value={api}>
       {children}
       <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
         {toasts.map((t) => (
