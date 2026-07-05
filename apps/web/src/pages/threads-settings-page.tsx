@@ -147,13 +147,15 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
   const toast = useToast();
   const { data: accounts } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
   const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["threads-accounts"] });
-    qc.invalidateQueries({ queryKey: ["threads-status"] });
-  };
+  // refetch까지 기다려야 스피너(useIsMutating)가 화면 갱신 끝날 때까지 유지됨(안 그러면 스피너 먼저 꺼짐).
+  const invalidate = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ["threads-accounts"] }),
+      qc.invalidateQueries({ queryKey: ["threads-status"] }),
+    ]);
   const setDefault = useMutation({
     mutationFn: (id: number) => threadsApi.setDefault(id),
-    onSuccess: () => { invalidate(); toast.show("기본 계정으로 설정했어요.", "success"); },
+    onSuccess: async () => { await invalidate(); toast.show("기본 계정으로 설정했어요.", "success"); },
     onError: () => toast.show("설정에 실패했어요.", "error"),
   });
   const onSetDefault = (id: number) => {
@@ -162,7 +164,7 @@ function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean })
   };
   const disconnect = useMutation({
     mutationFn: (id: number) => threadsApi.disconnect(id),
-    onSuccess: () => { invalidate(); toast.show("연결을 해제했어요.", "success"); },
+    onSuccess: async () => { await invalidate(); toast.show("연결을 해제했어요.", "success"); },
     onError: () => toast.show("연결 해제에 실패했어요.", "error"),
   });
   const askDisconnect = async (username: string, id: number) => {

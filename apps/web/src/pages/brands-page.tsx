@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/components/confirm-dialog";
+import { PageLoading } from "@/components/page-loading";
 import { brandApi, type Brand, type BrandInput } from "@/lib/brand-api";
 
 const EMPTY: BrandInput = {
@@ -51,7 +52,7 @@ export function BrandsPage() {
       )}
 
       {isLoading ? (
-        <div className="flex items-center gap-2 py-16 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> 불러오는 중…</div>
+        <PageLoading />
       ) : brands.length === 0 && editing === null ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-3 py-14 text-center">

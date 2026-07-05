@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PageLoading } from "@/components/page-loading";
 import {
   Select,
   SelectContent,
@@ -158,9 +159,7 @@ export function AutomationPage() {
             )}
           </div>
           {isLoading ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> 불러오는 중…
-            </div>
+            <PageLoading />
           ) : rules.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">

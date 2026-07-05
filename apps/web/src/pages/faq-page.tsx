@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, HelpCircle, Loader2, Mail, Search } from "lucide-react";
+import { ChevronDown, HelpCircle, Mail, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { PageLoading } from "@/components/page-loading";
 import { faqApi, type Faq } from "@/lib/faq-api";
 import { cn } from "@/lib/utils";
 
@@ -81,9 +82,7 @@ export function FaqPage() {
         {/* content */}
         <div className="min-w-0">
           {isLoading ? (
-            <div className="flex items-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> 불러오는 중…
-            </div>
+            <PageLoading />
           ) : filtered.length === 0 ? (
             <div className="rounded-2xl border border-dashed py-16 text-center">
               <p className="text-sm text-muted-foreground">검색 결과가 없어요.</p>

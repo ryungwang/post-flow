@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { AtSign, ExternalLink, Loader2, Search } from "lucide-react";
+import { AtSign, ExternalLink, Search } from "lucide-react";
 import { threadsApi } from "@/lib/threads-api";
 import { AccountSelector } from "@/components/account-selector";
+import { PageLoading } from "@/components/page-loading";
 import { useThreadsAccount } from "@/store/threads-account";
 
 /** 나를 멘션한 게시물 인박스 — 응대 기회를 놓치지 않게. */
@@ -43,7 +44,7 @@ export function MentionsPage() {
 
       <div className="mt-4 rounded-xl border bg-card/40">
         {isLoading ? (
-          <div className="flex justify-center py-16"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
+          <PageLoading />
         ) : data && !data.available ? (
           <p className="p-8 text-center text-sm text-amber-600 dark:text-amber-400">
             멘션 조회는 threads_manage_mentions 권한 추가 + 재연결 후 이용할 수 있어요.

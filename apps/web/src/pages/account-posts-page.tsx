@@ -5,6 +5,7 @@ import { threadsApi, type ThreadsAccountPost } from "@/lib/threads-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AccountSelector } from "@/components/account-selector";
+import { PageLoading } from "@/components/page-loading";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast";
 import { useThreadsAccount } from "@/store/threads-account";
@@ -257,9 +258,8 @@ export function AccountPostsPage() {
 
       <div className="mt-4">
         {isLoading ? (
-          <div className="flex items-center justify-center rounded-xl border bg-card/40 py-20">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
+          <PageLoading />
+
         ) : isError ? (
           <p className="rounded-xl border bg-card/40 p-10 text-center text-sm text-muted-foreground">
             게시물을 불러오지 못했어요. Threads 계정 연결 상태를 확인해 주세요.
