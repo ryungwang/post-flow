@@ -42,7 +42,7 @@ export function AppShell() {
             aria-label="PostFlow 홈"
           >
             <img src="/icon-192.png" alt="" className="size-7 rounded-[7px]" />
-            <span className="text-gradient-brand text-base font-bold tracking-tight">PostFlow</span>
+            <span className="text-gradient-brand hidden text-base font-bold tracking-tight min-[400px]:inline">PostFlow</span>
           </button>
           <div className="mx-1 hidden h-5 w-px bg-border/60 sm:block" />
           <button
@@ -91,7 +91,7 @@ export function AppShell() {
         <div className="flex min-h-0 flex-1">
           <AppSidebar />
           <MobileSidebar />
-          <main className="app-ambient relative z-10 min-w-0 flex-1 overflow-y-auto">
+          <main className="app-ambient relative z-10 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
             <ErrorBoundary>
               <div key={location.pathname} className="animate-page-in">
                 <Outlet />

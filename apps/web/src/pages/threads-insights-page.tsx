@@ -131,7 +131,7 @@ export function ThreadsInsightsPage() {
       ) : (
         <div className="mt-6 space-y-6">
           {/* KPI */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 [&>*]:min-w-0">
             <Kpi icon={Users} label="팔로워" value={ins?.followers != null ? nf(ins.followers) : "—"} />
             <Kpi icon={Eye} label="총 조회수" value={nf(totalViews)} sub={`게시물 ${posts.length}개`} />
             <Kpi icon={Heart} label="총 좋아요" value={nf(totalLikes)} sub={`댓글 ${nf(totalReplies)}`} />
@@ -163,7 +163,7 @@ export function ThreadsInsightsPage() {
           })()}
 
           {/* 베스트 게시물 + PostFlow 비교 */}
-          <div className="grid gap-3 lg:grid-cols-3">
+          <div className="grid gap-3 lg:grid-cols-3 [&>*]:min-w-0">
             <div className="rounded-xl border bg-card/40 p-4 lg:col-span-2">
               <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
                 <Sparkles className="size-4 text-brand" /> 베스트 게시물 (참여율순)
@@ -268,7 +268,7 @@ export function ThreadsInsightsPage() {
               </p>
             ) : (
               <>
-                <div className="flex items-end gap-1.5">
+                <div className="flex items-end gap-1.5 overflow-x-auto pb-1">
                   {bars.map((b) => {
                     const h = maxBar > 0 ? (b.value / maxBar) * 100 : 0;
                     return (
