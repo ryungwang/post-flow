@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { setSentryUser } from "@/lib/sentry";
 
 export type User = {
   id: number;
@@ -46,6 +47,7 @@ export const useAuth = create<AuthState>((set) => ({
   },
   setAuth: (token, user) => {
     localStorage.setItem(TOKEN_KEY, token);
+    setSentryUser(user); // 이후 에러에 사용자 ID 태깅(디버깅용, DSN 없으면 no-op)
     set({ token, user });
   },
   setContext: (context) => {
@@ -56,6 +58,7 @@ export const useAuth = create<AuthState>((set) => ({
   clear: () => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
+    setSentryUser(null); // 로그아웃 시 사용자 태깅 해제
     set({ token: null, user: null, contexts: [] });
   },
 }));
