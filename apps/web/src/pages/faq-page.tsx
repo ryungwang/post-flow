@@ -4,6 +4,7 @@ import { ChevronDown, HelpCircle, Mail, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PageLoading } from "@/components/page-loading";
 import { faqApi, type Faq } from "@/lib/faq-api";
+import { BILLING_CONTACT_URL } from "@/lib/billing-web";
 import { cn } from "@/lib/utils";
 
 export function FaqPage() {
@@ -86,7 +87,7 @@ export function FaqPage() {
           ) : filtered.length === 0 ? (
             <div className="rounded-2xl border border-dashed py-16 text-center">
               <p className="text-sm text-muted-foreground">검색 결과가 없어요.</p>
-              <a href="mailto:deerkrg@gmail.com" className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">
+              <a href={BILLING_CONTACT_URL} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">
                 <Mail className="size-4" /> 직접 문의하기
               </a>
             </div>
@@ -134,8 +135,8 @@ export function FaqPage() {
 
               <div className="rounded-2xl border border-border/60 bg-muted/30 p-5 text-center">
                 <p className="text-sm font-medium">원하는 답을 못 찾으셨나요?</p>
-                <a href="mailto:deerkrg@gmail.com" className="mt-1 inline-flex items-center gap-1 text-sm text-brand hover:underline">
-                  <Mail className="size-4" /> deerkrg@gmail.com 으로 문의하기
+                <a href={BILLING_CONTACT_URL} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                  <Mail className="size-4" /> 문의하기
                 </a>
               </div>
             </div>

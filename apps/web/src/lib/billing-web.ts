@@ -4,3 +4,6 @@ export const BILLING_WEB_URL =
 
 /** 내 구독 관리 페이지. */
 export const BILLING_SUBSCRIPTIONS_URL = `${BILLING_WEB_URL}/subscriptions`;
+
+/** 고객 문의 페이지(빌링 통합). 개인 이메일 대신 여기로 안내. */
+export const BILLING_CONTACT_URL = `${BILLING_WEB_URL}/contact`;

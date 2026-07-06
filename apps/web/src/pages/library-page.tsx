@@ -193,7 +193,8 @@ export function LibraryPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            {/* 5열이라 모바일에선 최소폭 유지 + 가로 스크롤(칸 뭉개짐 방지) */}
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="w-10 px-4 py-3">
@@ -247,7 +248,7 @@ export function LibraryPage() {
                           <ScoreBadge score={p.score} />
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-muted-foreground">{fmt(when)}</td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-muted-foreground">{fmt(when)}</td>
                       <td className="px-6 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           {p.status !== "PUBLISHED" && (
