@@ -266,6 +266,14 @@ button:active {
 .animate-slide-up { animation: slide-up-fade 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @media (prefers-reduced-motion: reduce) { .animate-slide-up { animation: none; } }
 
+/* 모바일 사이드바 드로어 — 왼쪽에서 슬라이드 인 */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+.animate-slide-in-left { animation: slide-in-left 0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .animate-slide-in-left { animation: none; } }
+
 @keyframes loadingbar {
   0% { transform: translateX(-120%); }
   60% { transform: translateX(320%); }

@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useSidebar } from "@/components/sidebar-context";
 import { useQuery } from "@tanstack/react-query";
 import {
   AtSign,
@@ -12,6 +13,7 @@ import {
   Link2,
   Lock,
   Megaphone,
+  Menu,
   MessageSquareReply,
   Search,
   Settings,
@@ -131,14 +133,15 @@ function NavGroup({ group, isPro, threadsConnected }: { group: Group; isPro: boo
   );
 }
 
-export function AppSidebar() {
+/** 사이드바 본문(메뉴) — 데스크톱 aside·모바일 드로어가 공유. */
+function SidebarNav() {
   // 플랜/연결 확인 — 메뉴 잠금용. 로딩 중엔 잠그지 않음(깜빡임 방지).
   const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
   const { data: threadsStatus } = useQuery({ queryKey: ["threads-status"], queryFn: threadsApi.status });
   const isPro = usage ? usage.plan === "PRO" : true;
   const threadsConnected = threadsStatus ? threadsStatus.connected : true;
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-card/40">
+    <>
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3 pt-4">
         {NAV.map((item) =>
           isGroup(item) ? (
@@ -151,6 +154,54 @@ export function AppSidebar() {
       <div className="border-t p-3">
         <p className="px-2 text-xs text-muted-foreground">Create Once. Grow Automatically.</p>
       </div>
+    </>
+  );
+}
+
+/** 데스크톱 사이드바 — md 이상에서만 표시(모바일은 드로어). */
+export function AppSidebar() {
+  return (
+    <aside className="hidden h-full w-64 shrink-0 flex-col border-r bg-card/40 md:flex">
+      <SidebarNav />
     </aside>
+  );
+}
+
+/** 헤더의 모바일 메뉴 버튼(햄버거) — md 미만에서만. */
+export function MobileMenuButton() {
+  const { setMobileOpen } = useSidebar();
+  return (
+    <button
+      onClick={() => setMobileOpen(true)}
+      aria-label="메뉴 열기"
+      className="-ml-1 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
+    >
+      <Menu className="size-5" />
+    </button>
+  );
+}
+
+/** 모바일 사이드바 드로어 — 햄버거로 열고, 오버레이·ESC·라우트 변경 시 닫힘. */
+export function MobileSidebar() {
+  const { mobileOpen, setMobileOpen } = useSidebar();
+  const location = useLocation();
+  // 라우트가 바뀌면(=메뉴 클릭·잠금 이동 등) 드로어 닫기.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname, setMobileOpen]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMobileOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen, setMobileOpen]);
+  if (!mobileOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+      <aside className="animate-slide-in-left absolute inset-y-0 left-0 flex w-64 max-w-[82%] flex-col border-r bg-card shadow-xl">
+        <SidebarNav />
+      </aside>
+    </div>
   );
 }
