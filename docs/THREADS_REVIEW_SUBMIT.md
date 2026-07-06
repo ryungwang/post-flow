@@ -146,11 +146,11 @@ PostFlow는 웹 애플리케이션으로 앱스토어 다운로드나 인앱 결
 | # | 권한 | 방식 | 경로 |
 |---|---|---|---|
 | ① | content_publish | POST | `me/threads?media_type=TEXT&text=API test` → 응답 `id` 복사 |
-| ①b | (이어서 발행) | POST | `me/threads_publish?creation_id=<①의 id>` → 응답 `id` = **media_id** ⭐ |
-| ② | read_replies | GET | `<media_id>/replies` |
-| ③ | manage_replies | POST | `<타인답글_id>/manage_reply?hide=true` → 이어서 `?hide=false`(원복) |
+| ①b | (이어서 발행) | POST | `me/threads_publish?creation_id=17862300402642354` → 응답 `id` = **media_id** ⭐ |
+| ② | read_replies | GET | `18148114432511371/replies` |
+| ③ | manage_replies | POST | `18148114432511371/manage_reply?hide=true` → 이어서 `?hide=false`(원복) |
 | ④ | manage_mentions | GET | `me/mentions` |
-| ⑤ | delete | DELETE | `<media_id>` (①에서 만든 테스트글 정리) |
+| ⑤ | delete | DELETE | `18148114432511371` (①에서 만든 테스트글 정리) |
 
 - ③은 **본인 답글은 hide 불가** → 남이 내 글에 단 답글 id를 써야 함(`GET <media_id>/replies` 로 찾음).
 - 각 요청이 **에러(빨간 글씨) 없이 JSON 응답**이면 성공 = 등록됨.
