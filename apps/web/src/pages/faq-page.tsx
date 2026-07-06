@@ -60,7 +60,7 @@ export function FaqPage() {
       <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
         {/* category nav (sticky on desktop) */}
         <aside className="min-w-0 lg:sticky lg:top-20 lg:self-start">
-          <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+          <div className="flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap">
             {cats.map((c) => (
               <button
                 key={c.name}

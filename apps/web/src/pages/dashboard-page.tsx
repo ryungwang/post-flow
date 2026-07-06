@@ -112,9 +112,9 @@ export function DashboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-6 py-3 font-medium">콘텐츠</th>
-                  <th className="px-4 py-3 font-medium">상태</th>
-                  <th className="px-6 py-3 font-medium">예약/발행</th>
+                  <th className="px-3 py-3 font-medium sm:px-6">콘텐츠</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-medium sm:px-4">상태</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-medium sm:px-6">예약/발행</th>
                 </tr>
               </thead>
               <tbody>
@@ -126,16 +126,16 @@ export function DashboardPage() {
                       className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-accent/40"
                       onClick={() => setSelected(p)}
                     >
-                      <td className="px-6 py-3.5">
+                      <td className="px-3 py-3.5 sm:px-6">
                         <div className="flex items-center gap-2">
                           <ScoreBadge score={p.score} compact />
-                          <span className="max-w-md truncate font-medium">{p.content}</span>
+                          <span className="max-w-[46vw] truncate font-medium sm:max-w-md">{p.content}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5">
-                        <Badge variant={meta.variant}>{meta.label}</Badge>
+                      <td className="px-3 py-3.5 sm:px-4">
+                        <Badge variant={meta.variant} className="whitespace-nowrap">{meta.label}</Badge>
                       </td>
-                      <td className="px-6 py-3.5 text-muted-foreground tabular-nums">
+                      <td className="whitespace-nowrap px-3 py-3.5 text-muted-foreground tabular-nums sm:px-6">
                         {fmt(p.publishedAt ?? p.scheduledAt)}
                       </td>
                     </tr>
