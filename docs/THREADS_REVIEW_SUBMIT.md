@@ -131,6 +131,46 @@ PostFlow는 웹 애플리케이션으로 앱스토어 다운로드나 인앱 결
 
 ---
 
+## 3.7 필수 API 테스트 호출 — 그래프 API 탐색기 수동 (검수 → 테스트)
+
+> "필수 API 테스트 호출 0/1" 초록불을 켜는 법. **각 권한의 API를 1번씩 실제 호출**하면 됨.
+> ⚠️ **Facebook 탐색기 아님** — 반드시 호스트를 **`graph.threads.net`**, 버전 **`v1.0`** 으로.
+> ⏱️ 호출은 즉시 등록되지만 **초록불 표시는 최대 24시간** 지연(Meta 사양). 24h 뒤 확인.
+
+### 세팅
+1. 검수 → 테스트 → **"그래프 API 탐색기 열기"**
+2. 호스트 드롭다운 `.facebook.com/` → **`.threads.net/`**, 버전 **`v1.0`**, Meta 앱 = **PostFlow**
+3. **"Generate Threads Access Token"** → **@haru_.developer**(테스터) 동의 → 토큰 채워짐
+
+### 요청 (방식 바꾸고 → 경로 입력 → "제출")
+| # | 권한 | 방식 | 경로 |
+|---|---|---|---|
+| ① | content_publish | POST | `me/threads?media_type=TEXT&text=API test` → 응답 `id` 복사 |
+| ①b | (이어서 발행) | POST | `me/threads_publish?creation_id=<①의 id>` → 응답 `id` = **media_id** ⭐ |
+| ② | read_replies | GET | `<media_id>/replies` |
+| ③ | manage_replies | POST | `<타인답글_id>/manage_reply?hide=true` → 이어서 `?hide=false`(원복) |
+| ④ | manage_mentions | GET | `me/mentions` |
+| ⑤ | delete | DELETE | `<media_id>` (①에서 만든 테스트글 정리) |
+
+- ③은 **본인 답글은 hide 불가** → 남이 내 글에 단 답글 id를 써야 함(`GET <media_id>/replies` 로 찾음).
+- 각 요청이 **에러(빨간 글씨) 없이 JSON 응답**이면 성공 = 등록됨.
+- **manage_insights·basic은 앱 실사용만으로 이미 완료**됨(별도 호출 불필요).
+- share_to_instagram·keyword_search·profile_discovery는 **1차 제출 대상 아님** → 0/1이어도 무시.
+
+### CLI로 대체 (토큰만 있으면)
+```bash
+G=https://graph.threads.net/v1.0; T=<threads_token>
+curl -X POST "$G/me/threads" --data-urlencode media_type=TEXT --data-urlencode "text=API test" --data-urlencode access_token=$T   # ① → id
+curl -X POST "$G/me/threads_publish" --data-urlencode creation_id=<id> --data-urlencode access_token=$T                          # ①b → media_id
+curl "$G/<media_id>/replies?access_token=$T"                                                                                     # ②
+curl -X POST "$G/<타인답글_id>/manage_reply" --data-urlencode hide=true  --data-urlencode access_token=$T                        # ③
+curl -X POST "$G/<타인답글_id>/manage_reply" --data-urlencode hide=false --data-urlencode access_token=$T                        # ③ 원복
+curl "$G/me/mentions?access_token=$T"                                                                                            # ④
+curl -X DELETE "$G/<media_id>?access_token=$T"                                                                                   # ⑤ 정리
+```
+
+---
+
 ## 4. 스크린캐스트 체크리스트
 
 - [ ] **테스터 실계정**(`@haru_.developer`)으로 촬영 (데모 아님 — 데모는 read-only)
