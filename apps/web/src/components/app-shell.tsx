@@ -10,6 +10,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { BILLING_WEB_URL } from "@/lib/billing-web";
+import { authApi } from "@/lib/auth-api";
 import { useAuth } from "@/store/auth";
 
 function initialOf(name?: string | null) {
@@ -22,7 +23,10 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const logout = () => {
+  // 전역 로그아웃: SSO 공유쿠키까지 폐기(await) 후 이동 — 안 그러면 로그아웃 완료 전
+  // 재접속이 쿠키로 재로그인되는 레이스. (계약: SSO_UNIFIED_SESSION.md ④)
+  const logout = async () => {
+    await authApi.logout();
     clear();
     navigate("/login", { replace: true });
   };

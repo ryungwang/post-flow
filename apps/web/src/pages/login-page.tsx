@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { authApi, DEMO_LOGIN } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
-import { getContext, setRefreshToken, useAuth } from "@/store/auth";
+import { getContext, useAuth } from "@/store/auth";
 import { LEGAL } from "@/lib/legal";
 
 export function LoginPage() {
@@ -43,8 +43,8 @@ export function LoginPage() {
     setError(null);
     try {
       const tokens = await authApi.login(mail, pw);
+      // 리프레시는 SSO 공유쿠키(synub_rt)가 관리 → localStorage 저장 안 함(access만). 통합세션.
       setToken(tokens.accessToken); // 먼저 저장해야 /auth/me 가 Authorization 헤더에 실림
-      setRefreshToken(tokens.refreshToken);
       const user = await authApi.me(getContext()); // 선택 컨텍스트(기본 개인)로 플랜 판정
       setAuth(tokens.accessToken, user);
       authApi.contexts().then((cs) => useAuth.getState().setContexts(cs)).catch(() => {});
