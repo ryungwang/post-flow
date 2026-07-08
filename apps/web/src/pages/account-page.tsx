@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { authApi } from "@/lib/auth-api";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/components/theme-provider";
 import { accountApi } from "@/lib/account-api";
@@ -39,7 +40,9 @@ export function AccountPage() {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
-  const logout = () => {
+  // 전역 로그아웃: SSO 공유쿠키까지 폐기(await) 후 이동. (계약: SSO_UNIFIED_SESSION.md ④)
+  const logout = async () => {
+    await authApi.logout();
     clear();
     navigate("/login", { replace: true });
   };

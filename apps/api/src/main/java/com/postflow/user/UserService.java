@@ -1,6 +1,10 @@
 package com.postflow.user;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
@@ -11,9 +15,15 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final SecureRandom random = new SecureRandom();
+    private UserService self; // 프록시 경유 REQUIRES_NEW 호출용(self-invocation은 트랜잭션 무시되므로)
 
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
+    }
+
+    @Autowired
+    public void setSelf(@Lazy UserService self) {
+        this.self = self;
     }
 
     /** Return the user's webhook secret, generating one on first access. */
@@ -50,9 +60,31 @@ public class UserService {
                     existing.linkExternalId(externalId); // 기존 이메일 유저를 SSO 신원에 1회 연결
                     return existing;
                 }))
-                .orElseGet(() -> userRepository.save(User.createFromSso(externalId, email, name)));
+                .orElse(null);
+        if (user == null) {
+            // 첫 로그인 생성. JwtAuthenticationFilter가 매 요청마다 호출하므로 로그인 직후
+            // 대시보드의 동시 요청들이 각자 insert → users_email/external_id 유니크 충돌(500).
+            // 별도 트랜잭션으로 생성 시도하고, 충돌 시 승자가 만든 행을 재조회한다(get-or-create 레이스 방어).
+            try {
+                return self.createFromSsoIsolated(externalId, email, name);
+            } catch (DataIntegrityViolationException race) {
+                return userRepository.findByExternalId(externalId)
+                        .map(User::getId)
+                        .orElseThrow(() -> race); // 충돌인데 행도 없으면 진짜 이상 → 원예외 전파
+            }
+        }
         user.updateProfile(name, user.getProfileImage());
         return user.getId();
+    }
+
+    /**
+     * 신규 SSO 유저 생성을 별도(REQUIRES_NEW) 트랜잭션으로 격리한다. 유니크 충돌 시 이 내부
+     * 트랜잭션만 롤백되고 호출측(외부 트랜잭션)은 오염되지 않아, 호출측이 승자 행을 재조회할 수 있다.
+     * saveAndFlush로 insert를 즉시 실행해 충돌을 여기서(외부 커밋이 아니라) 발생시킨다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Long createFromSsoIsolated(String externalId, String email, String name) {
+        return userRepository.saveAndFlush(User.createFromSso(externalId, email, name)).getId();
     }
 
     @Transactional

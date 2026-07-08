@@ -15,11 +15,14 @@ export type TokenResponse = {
 /** 데모 체험 계정(전역 규칙: 모든 서비스에 데모 필수). synub-sso 시드 계정. */
 export const DEMO_LOGIN = { email: "demo@synub.io", password: "demo1234" };
 
-async function sso<T>(path: string, body: unknown): Promise<T> {
+// 통합세션(SSO 공유쿠키 synub_rt): SSO 호출은 전부 credentials:"include"로 쿠키 송수신.
+// (계약: contracts/SSO_UNIFIED_SESSION.md — 한 번 로그인=전 *.synub.io 무폼 진입, 로그아웃 전역)
+async function sso<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${SSO_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    credentials: "include",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
     const b = await res.json().catch(() => ({}));
@@ -31,8 +34,22 @@ async function sso<T>(path: string, body: unknown): Promise<T> {
 export const authApi = {
   login: (email: string, password: string) =>
     sso<TokenResponse>("/auth/login", { email, password }),
-  refresh: (refreshToken: string) =>
-    sso<TokenResponse>("/auth/refresh", { refreshToken }),
+  // 무폼 리프레시: 공유쿠키 우선(body 없음). refreshToken 주면 하위호환 body 방식.
+  refresh: (refreshToken?: string) =>
+    sso<TokenResponse>("/auth/refresh", refreshToken ? { refreshToken } : undefined),
+  // 세션 생존확인(회전 없음 — 포커스마다 호출해도 안전). 204=유효 / 401=만료·전역 로그아웃됨. 상태코드만 반환.
+  session: async (): Promise<number> => {
+    const res = await fetch(`${SSO_BASE}/auth/session`, { credentials: "include" });
+    return res.status;
+  },
+  // 전역 로그아웃: 공유쿠키까지 폐기. SSO 미도달이어도 로컬 정리는 호출측이 진행.
+  logout: async (): Promise<void> => {
+    try {
+      await fetch(`${SSO_BASE}/auth/logout`, { method: "POST", credentials: "include" });
+    } catch {
+      /* 네트워크 오류여도 무시 — 로컬 로그아웃은 계속 */
+    }
+  },
   // 제품 백엔드가 SSO 토큰 검증 + 선택 컨텍스트의 빌링 entitlement로 플랜 동기화해 반환.
   me: (context?: string) => api.get<User>(`/auth/me${context ? `?context=${encodeURIComponent(context)}` : ""}`),
   // 사용자 컨텍스트 목록(개인 + 소속 조직) — 스위처 소스.

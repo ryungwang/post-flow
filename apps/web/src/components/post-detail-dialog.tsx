@@ -14,6 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { uploadMedia, isVideoUrl } from "@/lib/media-api";
 import { ScoreBadge } from "@/components/score-badge";
@@ -281,16 +288,18 @@ export function PostDetailDialog({
                   {(accountsList?.length ?? 0) > 1 && (
                     <div className="mt-4 flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">발행 계정</span>
-                      <select
-                        className="rounded-md border bg-background px-2 py-1 text-sm"
-                        value={p.socialAccountId ?? ""}
-                        onChange={(e) => setAccount.mutate({ id: p.id, accId: e.target.value ? Number(e.target.value) : null })}
+                      <Select
+                        value={p.socialAccountId != null ? String(p.socialAccountId) : "__default__"}
+                        onValueChange={(v) => setAccount.mutate({ id: p.id, accId: v === "__default__" ? null : Number(v) })}
                       >
-                        <option value="">기본 계정</option>
-                        {accountsList!.map((acc) => (
-                          <option key={acc.id} value={acc.id}>@{acc.username}{acc.isDefault ? " (기본)" : ""}</option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="h-8 w-auto min-w-40 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__default__">기본 계정</SelectItem>
+                          {accountsList!.map((acc) => (
+                            <SelectItem key={acc.id} value={String(acc.id)}>@{acc.username}{acc.isDefault ? " (기본)" : ""}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
 
