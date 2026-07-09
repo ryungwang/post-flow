@@ -23,10 +23,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { accountApi } from "@/lib/account-api";
-import { threadsApi } from "@/lib/threads-api";
+import { socialApi, PROVIDER_LABEL } from "@/lib/social-api";
 
-// threads=true → Threads 계정 미연결이면 잠금(자물쇠 + 연결 화면으로 유도).
-type Leaf = { label: string; to: string; icon?: React.ComponentType<{ className?: string }>; pro?: boolean; threads?: boolean };
+// platform 지정("THREADS"·"BLUESKY"…) → 그 SNS 미연결이면 잠금(자물쇠 + 채널 연결 화면으로 유도).
+type Leaf = { label: string; to: string; icon?: React.ComponentType<{ className?: string }>; pro?: boolean; platform?: string };
 type Group = { label: string; icon: React.ComponentType<{ className?: string }>; children: Leaf[] };
 type Item = Leaf | Group;
 
@@ -47,12 +47,11 @@ const NAV: Item[] = [
     label: "Threads",
     icon: AtSign,
     children: [
-      { label: "내 게시물", to: "/content/threads-posts", icon: Library, threads: true },
-      { label: "멘션", to: "/mentions", icon: AtSign, threads: true },
-      { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true, threads: true },
-      { label: "인사이트", to: "/insights", icon: TrendingUp, pro: true, threads: true },
-      { label: "경쟁사 분석", to: "/competitors", icon: Search, pro: true, threads: true },
-      { label: "계정 연결", to: "/settings/threads", icon: Link2 },
+      { label: "내 게시물", to: "/content/threads-posts", icon: Library, platform: "THREADS" },
+      { label: "멘션", to: "/mentions", icon: AtSign, platform: "THREADS" },
+      { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true, platform: "THREADS" },
+      { label: "인사이트", to: "/insights", icon: TrendingUp, pro: true, platform: "THREADS" },
+      { label: "경쟁사 분석", to: "/competitors", icon: Search, pro: true, platform: "THREADS" },
     ],
   },
   { label: "분석", to: "/analytics", icon: BarChart3, pro: true },
@@ -60,7 +59,10 @@ const NAV: Item[] = [
   {
     label: "설정",
     icon: Settings,
-    children: [{ label: "계정", to: "/settings/account", icon: Settings }],
+    children: [
+      { label: "채널 연결", to: "/settings/threads", icon: Link2 },
+      { label: "계정", to: "/settings/account", icon: Settings },
+    ],
   },
 ];
 
@@ -77,16 +79,18 @@ const leafClass = ({ isActive }: { isActive: boolean }) =>
   );
 
 /**
- * 잠금 규칙: Pro 미구독(pro) → 구독 화면으로, Threads 미연결(threads) → 연결 화면으로.
- * 둘 다면 Pro가 우선(먼저 구독해야 하므로). 아니면 일반 NavLink.
+ * 잠금 규칙: Pro 미구독(pro) → 구독 화면으로, 해당 SNS 미연결(platform) → 채널 연결 화면으로.
+ * 둘 다면 Pro가 우선(먼저 구독해야 하므로). connectedProviders=null이면 로딩 중이라 잠그지 않음.
  */
-function NavLeaf({ leaf, isPro, threadsConnected }: { leaf: Leaf; isPro: boolean; threadsConnected: boolean }) {
+function NavLeaf({ leaf, isPro, connectedProviders }: { leaf: Leaf; isPro: boolean; connectedProviders: Set<string> | null }) {
   const navigate = useNavigate();
   const proLocked = !!leaf.pro && !isPro;
-  const threadsLocked = !!leaf.threads && !threadsConnected;
-  if (proLocked || threadsLocked) {
+  const platformLocked = !!leaf.platform && connectedProviders != null && !connectedProviders.has(leaf.platform);
+  if (proLocked || platformLocked) {
     const to = proLocked ? "/settings/account" : "/settings/threads";
-    const title = proLocked ? "Pro 플랜 전용" : "Threads 계정 연결이 필요해요";
+    const title = proLocked
+      ? "Pro 플랜 전용"
+      : `${PROVIDER_LABEL[leaf.platform!] ?? leaf.platform} 계정 연결이 필요해요`;
     return (
       <button
         onClick={() => navigate(to)}
@@ -109,7 +113,7 @@ function NavLeaf({ leaf, isPro, threadsConnected }: { leaf: Leaf; isPro: boolean
   );
 }
 
-function NavGroup({ group, isPro, threadsConnected }: { group: Group; isPro: boolean; threadsConnected: boolean }) {
+function NavGroup({ group, isPro, connectedProviders }: { group: Group; isPro: boolean; connectedProviders: Set<string> | null }) {
   const [open, setOpen] = useState(true);
   const Icon = group.icon;
   return (
@@ -125,7 +129,7 @@ function NavGroup({ group, isPro, threadsConnected }: { group: Group; isPro: boo
       {open && (
         <div className="ml-3.5 mt-0.5 flex flex-col gap-0.5 border-l pl-3">
           {group.children.map((leaf) => (
-            <NavLeaf key={leaf.to} leaf={leaf} isPro={isPro} threadsConnected={threadsConnected} />
+            <NavLeaf key={leaf.to} leaf={leaf} isPro={isPro} connectedProviders={connectedProviders} />
           ))}
         </div>
       )}
@@ -137,17 +141,20 @@ function NavGroup({ group, isPro, threadsConnected }: { group: Group; isPro: boo
 function SidebarNav() {
   // 플랜/연결 확인 — 메뉴 잠금용. 로딩 중엔 잠그지 않음(깜빡임 방지).
   const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
-  const { data: threadsStatus } = useQuery({ queryKey: ["threads-status"], queryFn: threadsApi.status });
+  const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
   const isPro = usage ? usage.plan === "PRO" : true;
-  const threadsConnected = threadsStatus ? threadsStatus.connected : true;
+  // 연결된 플랫폼 집합(CONNECTED 채널 보유). null = 로딩 중 → 잠그지 않음(깜빡임 방지).
+  const connectedProviders = channels
+    ? new Set(channels.filter((c) => c.status === "CONNECTED").map((c) => c.provider))
+    : null;
   return (
     <>
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3 pt-4">
         {NAV.map((item) =>
           isGroup(item) ? (
-            <NavGroup key={item.label} group={item} isPro={isPro} threadsConnected={threadsConnected} />
+            <NavGroup key={item.label} group={item} isPro={isPro} connectedProviders={connectedProviders} />
           ) : (
-            <NavLeaf key={item.to} leaf={item} isPro={isPro} threadsConnected={threadsConnected} />
+            <NavLeaf key={item.to} leaf={item} isPro={isPro} connectedProviders={connectedProviders} />
           ),
         )}
       </nav>
