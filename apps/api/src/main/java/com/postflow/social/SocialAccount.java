@@ -37,12 +37,24 @@ public class SocialAccount extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private SocialProvider provider = SocialProvider.THREADS;
 
-    /** Threads-side user id (returned at token exchange); used in publish endpoints. */
+    /** Threads-side user id (returned at token exchange); used in Threads publish endpoints. */
     @Column(name = "threads_user_id")
     private String threadsUserId;
 
+    /** Generic platform account id (Threads=threadsUserId, Bluesky=DID). Cross-provider key. */
+    @Column(name = "external_id")
+    private String externalId;
+
+    /** Bluesky handle (e.g. name.bsky.social). Null for Threads. */
+    @Column(name = "handle")
+    private String handle;
+
     @Column(name = "access_token", nullable = false, length = 1024)
     private String accessToken;
+
+    /** Refresh token (Bluesky refreshJwt — rotates on refresh). Threads renews in place → null. */
+    @Column(name = "refresh_token", length = 1024)
+    private String refreshToken;
 
     @Column(name = "expires_at")
     private Instant expiresAt;
@@ -73,11 +85,53 @@ public class SocialAccount extends BaseTimeEntity {
         a.userId = userId;
         a.provider = SocialProvider.THREADS;
         a.threadsUserId = threadsUserId;
+        a.externalId = threadsUserId;
         a.accessToken = accessToken;
         a.expiresAt = expiresAt;
         a.lastRefreshedAt = Instant.now();
         a.status = ConnectionStatus.CONNECTED;
         return a;
+    }
+
+    /**
+     * Connect a Bluesky account. Auth = app-password → session (we store the session
+     * JWTs, never the app password). {@code did} = AT Protocol account id; {@code handle}
+     * = user handle. accessJwt is short-lived → refreshed via refreshJwt on publish.
+     */
+    public static SocialAccount connectBluesky(Long userId, String did, String handle,
+                                               String accessJwt, String refreshJwt) {
+        SocialAccount a = new SocialAccount();
+        a.userId = userId;
+        a.provider = SocialProvider.BLUESKY;
+        a.externalId = did;
+        a.handle = handle;
+        a.username = handle;
+        a.name = handle;
+        a.accessToken = accessJwt;
+        a.refreshToken = refreshJwt;
+        a.expiresAt = null; // accessJwt exp is handled by refresh-on-401, not this field
+        a.lastRefreshedAt = Instant.now();
+        a.status = ConnectionStatus.CONNECTED;
+        return a;
+    }
+
+    /** Re-link a Bluesky account on reconnect (fresh session from a new app password). */
+    public void reconnectBluesky(String did, String handle, String accessJwt, String refreshJwt) {
+        this.externalId = did;
+        this.handle = handle;
+        this.username = handle;
+        this.accessToken = accessJwt;
+        this.refreshToken = refreshJwt;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
+    }
+
+    /** Persist a refreshed Bluesky session (rotated access + refresh JWTs). */
+    public void applyBlueskySession(String accessJwt, String refreshJwt) {
+        this.accessToken = accessJwt;
+        this.refreshToken = refreshJwt;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
     }
 
     public void setUsername(String username) {
@@ -100,6 +154,7 @@ public class SocialAccount extends BaseTimeEntity {
     /** Re-link on reconnect (new token + threads user id). */
     public void reconnect(String threadsUserId, String accessToken, Instant expiresAt) {
         this.threadsUserId = threadsUserId;
+        this.externalId = threadsUserId;
         this.accessToken = accessToken;
         this.expiresAt = expiresAt;
         this.lastRefreshedAt = Instant.now();

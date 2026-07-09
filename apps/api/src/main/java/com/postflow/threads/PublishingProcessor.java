@@ -62,7 +62,7 @@ public class PublishingProcessor {
         }
         post.startPublishing();
         return Optional.of(new PublishTask(
-                postId, account.getThreadsUserId(), account.getAccessToken(),
+                postId, account.getId(), account.getProvider(),
                 post.toPublishText(), post.getMediaUrl())); // 본문+해시태그+CTA 전체
     }
 
@@ -82,7 +82,10 @@ public class PublishingProcessor {
         });
     }
 
-    /** The post's chosen account (if owned), else the user's default/first account. */
+    /**
+     * The post's chosen channel (if owned) across any platform, else the user's default/first
+     * channel. Multiplatform: a post targets one connected account; its provider decides the Publisher.
+     */
     private SocialAccount resolveAccount(Post post) {
         if (post.getSocialAccountId() != null) {
             SocialAccount chosen = socialAccountRepository.findById(post.getSocialAccountId()).orElse(null);
@@ -91,9 +94,9 @@ public class PublishingProcessor {
             }
         }
         return socialAccountRepository
-                .findFirstByUserIdAndProviderAndIsDefaultTrue(post.getUserId(), SocialProvider.THREADS)
+                .findFirstByUserIdAndIsDefaultTrue(post.getUserId())
                 .or(() -> socialAccountRepository
-                        .findByUserIdAndProviderOrderByIdAsc(post.getUserId(), SocialProvider.THREADS)
+                        .findByUserIdOrderByIdAsc(post.getUserId())
                         .stream().findFirst())
                 .orElse(null);
     }
@@ -102,7 +105,7 @@ public class PublishingProcessor {
         return account.getExpiresAt() != null && account.getExpiresAt().isBefore(Instant.now());
     }
 
-    public record PublishTask(Long postId, String threadsUserId, String accessToken,
+    public record PublishTask(Long postId, Long accountId, SocialProvider provider,
                               String content, String mediaUrl) {
     }
 }

@@ -1,5 +1,6 @@
 package com.postflow.social;
 
 public enum SocialProvider {
-    THREADS
+    THREADS,
+    BLUESKY
 }

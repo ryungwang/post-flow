@@ -27,7 +27,7 @@ import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ThreadsPreview } from "@/components/threads-preview";
 import { contentApi } from "@/lib/content-api";
-import { threadsApi } from "@/lib/threads-api";
+import { socialApi, PROVIDER_LABEL } from "@/lib/social-api";
 import { CTA_TEMPLATES } from "@/lib/cta-templates";
 import { useAuth } from "@/store/auth";
 import { POST_STATUS_META } from "@/lib/post-status";
@@ -90,7 +90,8 @@ export function PostDetailDialog({
     mutationFn: ({ id, url }: { id: number; url: string | null }) => postsApi.setMedia(id, url),
     onSuccess: onSaved,
   });
-  const { data: accountsList } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
+  // 발행 채널 후보 = 전 플랫폼(Threads·Bluesky) 연결 채널.
+  const { data: accountsList } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
   const setAccount = useMutation({
     mutationFn: ({ id, accId }: { id: number; accId: number | null }) => postsApi.setAccount(id, accId),
     onSuccess: onSaved,
@@ -287,16 +288,18 @@ export function PostDetailDialog({
                   {/* publish target account (multi-account) */}
                   {(accountsList?.length ?? 0) > 1 && (
                     <div className="mt-4 flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">발행 계정</span>
+                      <span className="text-muted-foreground">발행 채널</span>
                       <Select
                         value={p.socialAccountId != null ? String(p.socialAccountId) : "__default__"}
                         onValueChange={(v) => setAccount.mutate({ id: p.id, accId: v === "__default__" ? null : Number(v) })}
                       >
-                        <SelectTrigger className="h-8 w-auto min-w-40 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 w-auto min-w-48 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__default__">기본 계정</SelectItem>
+                          <SelectItem value="__default__">기본 채널</SelectItem>
                           {accountsList!.map((acc) => (
-                            <SelectItem key={acc.id} value={String(acc.id)}>@{acc.username}{acc.isDefault ? " (기본)" : ""}</SelectItem>
+                            <SelectItem key={acc.id} value={String(acc.id)}>
+                              {PROVIDER_LABEL[acc.provider] ?? acc.provider} · @{acc.username}{acc.isDefault ? " (기본)" : ""}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

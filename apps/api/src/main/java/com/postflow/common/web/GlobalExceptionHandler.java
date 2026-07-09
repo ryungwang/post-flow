@@ -2,6 +2,7 @@ package com.postflow.common.web;
 
 import com.anthropic.errors.AnthropicException;
 import com.postflow.ai.content.ContentGenerationException;
+import com.postflow.social.PublishException;
 import com.postflow.user.PlanLimitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> planLimit(PlanLimitException e) {
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
                 .body(Map.of("error", "plan_limit", "message", e.getMessage()));
+    }
+
+    /** Channel connect/publish errors (Bluesky/Threads) surfaced to the user → 400 with message. */
+    @ExceptionHandler(PublishException.class)
+    public ResponseEntity<Map<String, String>> publish(PublishException e) {
+        String message = e.getMessage() != null ? e.getMessage() : "채널 요청을 처리할 수 없어요.";
+        log.warn("Publish/connect error: {}", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", "channel_error", "message", message));
     }
 
     @ExceptionHandler(ContentGenerationException.class)

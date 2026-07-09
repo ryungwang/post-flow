@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Info, Loader2 } from "lucide-react";
+import { AtSign, Cloud, Info, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { threadsApi } from "@/lib/threads-api";
 import { accountApi } from "@/lib/account-api";
+import { socialApi } from "@/lib/social-api";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast";
 import { CountUp } from "@/components/count-up";
@@ -81,9 +83,9 @@ export function ThreadsSettingsPage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-7">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Threads 연결</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">채널 연결</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Threads 계정을 연결하면 예약·자동 발행을 사용할 수 있어요.
+          SNS 채널을 연결하면 한 번 만든 콘텐츠를 예약·자동 발행할 수 있어요. (Threads · Bluesky)
         </p>
       </div>
 
@@ -125,8 +127,121 @@ export function ThreadsSettingsPage() {
         </CardContent>
       </Card>
 
+      <BlueskyCard />
+
       <AccountsCard onAdd={connect} adding={connecting} />
     </div>
+  );
+}
+
+/** Bluesky 연결 — OAuth 아님, 핸들 + 앱 비밀번호. 세션 토큰만 저장(앱 비번 미저장). */
+function BlueskyCard() {
+  const qc = useQueryClient();
+  const { show } = useToast();
+  const confirm = useConfirm();
+  const [handle, setHandle] = useState("");
+  const [appPassword, setAppPassword] = useState("");
+
+  const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
+  const bluesky = (channels ?? []).filter((c) => c.provider === "BLUESKY");
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["social-channels"] });
+    qc.invalidateQueries({ queryKey: ["threads-accounts"] }); // 발행 채널 선택 갱신
+  };
+
+  const connect = useMutation({
+    mutationFn: () => socialApi.connectBluesky(handle, appPassword),
+    meta: { loading: "블루스카이 연결 중…", success: "블루스카이 연결됨", error: "블루스카이 연결 실패" },
+    onSuccess: () => {
+      setHandle("");
+      setAppPassword("");
+      invalidate();
+    },
+  });
+
+  const disconnect = useMutation({
+    mutationFn: (id: number) => socialApi.disconnect(id),
+    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
+    onSuccess: invalidate,
+  });
+
+  const askDisconnect = async (username: string | null, id: number) => {
+    const ok = await confirm({
+      title: "채널 연결 해제",
+      description: `${username ?? "이 계정"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
+      confirmText: "연결 해제",
+      destructive: true,
+    });
+    if (ok) disconnect.mutate(id);
+  };
+
+  const submit = () => {
+    if (!handle.trim() || !appPassword.trim()) {
+      show("핸들과 앱 비밀번호를 입력해 주세요.", "error");
+      return;
+    }
+    connect.mutate();
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-lg bg-sky-500 text-white">
+            <Cloud className="size-5" />
+          </div>
+          <div className="flex-1">
+            <CardTitle>Bluesky</CardTitle>
+            <CardDescription>핸들과 앱 비밀번호로 연결해요. (무료 · 심사 없음)</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {bluesky.length > 0 && (
+          <div className="space-y-2">
+            {bluesky.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <Cloud className="size-4 text-sky-500" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">@{c.username}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
+                    {c.isDefault && " · 기본 채널"}
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.username, c.id)}>
+                  연결 해제
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <Input
+            placeholder="핸들 (예: name.bsky.social)"
+            value={handle}
+            autoCapitalize="none"
+            onChange={(e) => setHandle(e.target.value)}
+          />
+          <Input
+            type="password"
+            placeholder="앱 비밀번호"
+            value={appPassword}
+            onChange={(e) => setAppPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+          />
+          <Button onClick={submit} disabled={connect.isPending} className="gap-2">
+            {connect.isPending && <Loader2 className="size-4 animate-spin" />}
+            연결
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Bluesky 설정 → <span className="font-medium">앱 비밀번호(App Passwords)</span>에서 발급한 비밀번호를 넣으세요.
+          일반 로그인 비밀번호가 아니에요. 앱 비밀번호는 저장하지 않고, 연결용 토큰만 보관합니다.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

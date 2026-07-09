@@ -5,10 +5,10 @@ import com.postflow.post.dto.CreatePostRequest;
 import com.postflow.post.dto.ImprovementDto;
 import com.postflow.post.dto.PostDto;
 import com.postflow.post.dto.UpdatePostRequest;
+import com.postflow.social.PublishException;
+import com.postflow.social.PublisherRegistry;
 import com.postflow.threads.PublishingProcessor;
 import com.postflow.threads.PublishingProcessor.PublishTask;
-import com.postflow.threads.ThreadsApiException;
-import com.postflow.threads.ThreadsPublishService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,18 +20,18 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final PublishingProcessor publishingProcessor;
-    private final ThreadsPublishService publishService;
+    private final PublisherRegistry publisherRegistry;
     private final com.postflow.user.UsageService usageService;
     private final com.postflow.social.SocialAccountRepository socialAccountRepository;
 
     public PostService(PostRepository postRepository,
                        PublishingProcessor publishingProcessor,
-                       ThreadsPublishService publishService,
+                       PublisherRegistry publisherRegistry,
                        com.postflow.user.UsageService usageService,
                        com.postflow.social.SocialAccountRepository socialAccountRepository) {
         this.postRepository = postRepository;
         this.publishingProcessor = publishingProcessor;
-        this.publishService = publishService;
+        this.publisherRegistry = publisherRegistry;
         this.usageService = usageService;
         this.socialAccountRepository = socialAccountRepository;
     }
@@ -122,10 +122,10 @@ public class PostService {
         }
         PublishTask task = claimed.get();
         try {
-            String mediaId = publishService.publish(
-                    task.threadsUserId(), task.accessToken(), task.content(), task.mediaUrl());
-            publishingProcessor.complete(id, mediaId);
-        } catch (ThreadsApiException e) {
+            String platformPostId = publisherRegistry.get(task.provider())
+                    .publish(task.accountId(), task.content(), task.mediaUrl());
+            publishingProcessor.complete(id, platformPostId);
+        } catch (PublishException e) {
             publishingProcessor.fail(id, e.getMessage());
         }
         return PostDto.from(reload(id));

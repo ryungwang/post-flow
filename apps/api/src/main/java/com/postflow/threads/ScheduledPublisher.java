@@ -3,6 +3,8 @@ package com.postflow.threads;
 import com.postflow.post.Post;
 import com.postflow.post.PostRepository;
 import com.postflow.post.PostStatus;
+import com.postflow.social.PublishException;
+import com.postflow.social.PublisherRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,14 +25,14 @@ public class ScheduledPublisher {
 
     private final PostRepository postRepository;
     private final PublishingProcessor processor;
-    private final ThreadsPublishService publishService;
+    private final PublisherRegistry publisherRegistry;
 
     public ScheduledPublisher(PostRepository postRepository,
                               PublishingProcessor processor,
-                              ThreadsPublishService publishService) {
+                              PublisherRegistry publisherRegistry) {
         this.postRepository = postRepository;
         this.processor = processor;
-        this.publishService = publishService;
+        this.publisherRegistry = publisherRegistry;
     }
 
     @Scheduled(fixedDelayString = "${threads.publisher.interval-ms:60000}")
@@ -45,10 +47,10 @@ public class ScheduledPublisher {
             Long postId = post.getId();
             processor.claim(postId).ifPresent(task -> {
                 try {
-                    String mediaId = publishService.publish(
-                            task.threadsUserId(), task.accessToken(), task.content(), task.mediaUrl());
-                    processor.complete(postId, mediaId);
-                } catch (ThreadsApiException e) {
+                    String platformPostId = publisherRegistry.get(task.provider())
+                            .publish(task.accountId(), task.content(), task.mediaUrl());
+                    processor.complete(postId, platformPostId);
+                } catch (PublishException e) {
                     log.warn("Publish failed for post {}: {}", postId, e.getMessage());
                     processor.fail(postId, e.getMessage());
                 }

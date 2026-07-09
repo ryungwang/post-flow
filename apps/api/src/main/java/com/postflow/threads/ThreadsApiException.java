@@ -1,6 +1,8 @@
 package com.postflow.threads;
 
-public class ThreadsApiException extends RuntimeException {
+import com.postflow.social.PublishException;
+
+public class ThreadsApiException extends PublishException {
     public ThreadsApiException(String message) {
         super(message);
     }
