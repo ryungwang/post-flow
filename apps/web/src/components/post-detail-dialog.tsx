@@ -14,13 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { postsApi, type Post } from "@/lib/posts-api";
 import { uploadMedia, isVideoUrl } from "@/lib/media-api";
 import { ScoreBadge } from "@/components/score-badge";
@@ -32,6 +25,14 @@ import { CTA_TEMPLATES } from "@/lib/cta-templates";
 import { useAuth } from "@/store/auth";
 import { POST_STATUS_META } from "@/lib/post-status";
 import { cn } from "@/lib/utils";
+
+const TARGET_STATUS_LABEL: Record<string, string> = {
+  PENDING: "대기",
+  PUBLISHING: "발행 중",
+  PUBLISHED: "발행됨",
+  FAILED: "실패",
+  RECONNECT_REQUIRED: "재연결 필요",
+};
 
 function fmt(iso: string | null) {
   if (!iso) return "—";
@@ -92,8 +93,8 @@ export function PostDetailDialog({
   });
   // 발행 채널 후보 = 전 플랫폼(Threads·Bluesky) 연결 채널.
   const { data: accountsList } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
-  const setAccount = useMutation({
-    mutationFn: ({ id, accId }: { id: number; accId: number | null }) => postsApi.setAccount(id, accId),
+  const setChannels = useMutation({
+    mutationFn: ({ id, channelIds }: { id: number; channelIds: number[] }) => postsApi.setChannels(id, channelIds),
     onSuccess: onSaved,
   });
   const save = useMutation({
@@ -285,24 +286,57 @@ export function PostDetailDialog({
                     />
                   </div>
 
-                  {/* publish target account (multi-account) */}
-                  {(accountsList?.length ?? 0) > 1 && (
-                    <div className="mt-4 flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">발행 채널</span>
-                      <Select
-                        value={p.socialAccountId != null ? String(p.socialAccountId) : "__default__"}
-                        onValueChange={(v) => setAccount.mutate({ id: p.id, accId: v === "__default__" ? null : Number(v) })}
-                      >
-                        <SelectTrigger className="h-8 w-auto min-w-48 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__default__">기본 채널</SelectItem>
-                          {accountsList!.map((acc) => (
-                            <SelectItem key={acc.id} value={String(acc.id)}>
-                              {PROVIDER_LABEL[acc.provider] ?? acc.provider} · @{acc.username}{acc.isDefault ? " (기본)" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  {/* 발행 채널 — 여러 채널 동시 발행(팬아웃). 발행 전엔 토글 선택, 발행 후엔 채널별 상태. */}
+                  {(accountsList?.length ?? 0) > 0 && (
+                    <div className="mt-4">
+                      <div className="mb-1.5 text-sm text-muted-foreground">
+                        발행 채널
+                        {(p.status === "DRAFT" || p.status === "SCHEDULED") && (
+                          <span className="ml-1 text-xs">· 여러 채널 동시 발행</span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {p.status === "DRAFT" || p.status === "SCHEDULED"
+                          ? accountsList!.map((acc) => {
+                              const selected = (p.targets ?? []).some((t) => t.socialAccountId === acc.id);
+                              return (
+                                <button
+                                  key={acc.id}
+                                  type="button"
+                                  disabled={setChannels.isPending}
+                                  onClick={() => {
+                                    const cur = (p.targets ?? []).map((t) => t.socialAccountId);
+                                    const next = selected ? cur.filter((x) => x !== acc.id) : [...cur, acc.id];
+                                    setChannels.mutate({ id: p.id, channelIds: next });
+                                  }}
+                                  className={cn(
+                                    "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors disabled:opacity-50",
+                                    selected
+                                      ? "border-brand/50 bg-brand/10 text-foreground"
+                                      : "border-border text-muted-foreground hover:bg-accent/60",
+                                  )}
+                                >
+                                  <span className={cn("size-3 rounded-sm border", selected ? "border-brand bg-brand" : "border-muted-foreground/40")} />
+                                  {PROVIDER_LABEL[acc.provider] ?? acc.provider} · @{acc.username}
+                                </button>
+                              );
+                            })
+                          : (p.targets ?? []).map((t) => (
+                              <span
+                                key={t.socialAccountId}
+                                className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs"
+                              >
+                                {PROVIDER_LABEL[t.provider] ?? t.provider} · @{t.channel}
+                                <span className={cn("text-[10px] font-medium",
+                                  t.status === "PUBLISHED" ? "text-emerald-500"
+                                    : t.status === "FAILED" ? "text-red-500"
+                                    : t.status === "RECONNECT_REQUIRED" ? "text-amber-500"
+                                    : "text-muted-foreground")}>
+                                  {TARGET_STATUS_LABEL[t.status] ?? t.status}
+                                </span>
+                              </span>
+                            ))}
+                      </div>
                     </div>
                   )}
 

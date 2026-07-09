@@ -5,8 +5,19 @@ export type PostStatus =
   | "SCHEDULED"
   | "PUBLISHING"
   | "PUBLISHED"
+  | "PARTIAL"
   | "FAILED"
   | "RECONNECT_REQUIRED";
+
+/** 채널별 발행 타겟(멀티플랫폼 팬아웃). */
+export type PostTarget = {
+  socialAccountId: number;
+  provider: string; // THREADS / BLUESKY
+  channel: string | null;
+  status: "PENDING" | "PUBLISHING" | "PUBLISHED" | "FAILED" | "RECONNECT_REQUIRED";
+  platformPostId: string | null;
+  error: string | null;
+};
 
 export type Post = {
   id: number;
@@ -21,6 +32,7 @@ export type Post = {
   publishedAt: string | null;
   threadsMediaId: string | null;
   createdAt: string;
+  targets: PostTarget[];
 };
 
 export type CreatePost = {
@@ -29,6 +41,7 @@ export type CreatePost = {
   cta?: string | null;
   mediaUrl?: string | null;
   scheduledAt?: string | null;
+  channelIds?: number[];
 };
 
 export type UpdatePost = {
@@ -53,6 +66,7 @@ export const postsApi = {
   update: (id: number, body: UpdatePost) => api.put<Post>(`/posts/${id}`, body),
   publishNow: (id: number) => api.post<Post>(`/posts/${id}/publish`),
   setMedia: (id: number, mediaUrl: string | null) => api.put<Post>(`/posts/${id}/media`, { mediaUrl }),
-  setAccount: (id: number, socialAccountId: number | null) => api.put<Post>(`/posts/${id}/account`, { socialAccountId }),
+  /** 발행 대상 채널 다중선택(팬아웃). channelIds = SocialAccount id 목록. */
+  setChannels: (id: number, channelIds: number[]) => api.put<Post>(`/posts/${id}/channels`, { channelIds }),
   remove: (id: number) => api.del<void>(`/posts/${id}`),
 };

@@ -69,14 +69,15 @@ public class PostController {
         return postService.setMedia(userId, id, request.mediaUrl());
     }
 
-    public record AccountRequest(Long socialAccountId) {
+    public record ChannelsRequest(java.util.List<Long> channelIds) {
     }
 
-    @PutMapping("/{id}/account")
-    public PostDto setAccount(@AuthenticationPrincipal Long userId,
-                              @PathVariable Long id,
-                              @RequestBody AccountRequest request) {
-        return postService.setAccount(userId, id, request.socialAccountId());
+    /** 발행 대상 채널 다중선택(팬아웃). channelIds = SocialAccount id 목록. */
+    @PutMapping("/{id}/channels")
+    public PostDto setChannels(@AuthenticationPrincipal Long userId,
+                               @PathVariable Long id,
+                               @RequestBody ChannelsRequest request) {
+        return postService.setChannels(userId, id, request.channelIds());
     }
 
     @DeleteMapping("/{id}")

@@ -17,6 +17,7 @@ public record CreatePostRequest(
         List<String> hashtags,
         String cta,
         String mediaUrl,
-        Instant scheduledAt
+        Instant scheduledAt,
+        List<Long> channelIds  // 발행 대상 채널(SocialAccount id) 다중선택. 비면 기본 채널.
 ) {
 }

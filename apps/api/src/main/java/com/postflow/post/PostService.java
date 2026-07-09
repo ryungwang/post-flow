@@ -4,33 +4,39 @@ import com.postflow.ai.content.ContentScorer;
 import com.postflow.post.dto.CreatePostRequest;
 import com.postflow.post.dto.ImprovementDto;
 import com.postflow.post.dto.PostDto;
+import com.postflow.post.dto.PostTargetDto;
 import com.postflow.post.dto.UpdatePostRequest;
 import com.postflow.social.PublishException;
 import com.postflow.social.PublisherRegistry;
-import com.postflow.threads.PublishingProcessor;
-import com.postflow.threads.PublishingProcessor.PublishTask;
+import com.postflow.social.SocialAccount;
+import com.postflow.social.SocialAccountRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class PostService {
 
     private final PostRepository postRepository;
-    private final PublishingProcessor publishingProcessor;
+    private final PostTargetRepository targetRepository;
+    private final TargetPublishingProcessor targetProcessor;
     private final PublisherRegistry publisherRegistry;
     private final com.postflow.user.UsageService usageService;
-    private final com.postflow.social.SocialAccountRepository socialAccountRepository;
+    private final SocialAccountRepository socialAccountRepository;
 
     public PostService(PostRepository postRepository,
-                       PublishingProcessor publishingProcessor,
+                       PostTargetRepository targetRepository,
+                       TargetPublishingProcessor targetProcessor,
                        PublisherRegistry publisherRegistry,
                        com.postflow.user.UsageService usageService,
-                       com.postflow.social.SocialAccountRepository socialAccountRepository) {
+                       SocialAccountRepository socialAccountRepository) {
         this.postRepository = postRepository;
-        this.publishingProcessor = publishingProcessor;
+        this.targetRepository = targetRepository;
+        this.targetProcessor = targetProcessor;
         this.publisherRegistry = publisherRegistry;
         this.usageService = usageService;
         this.socialAccountRepository = socialAccountRepository;
@@ -38,13 +44,12 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public List<PostDto> list(Long userId) {
-        return postRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream().map(PostDto::from).toList();
+        return toDtos(postRepository.findByUserIdOrderByCreatedAtDesc(userId));
     }
 
     @Transactional(readOnly = true)
     public PostDto get(Long userId, Long id) {
-        return PostDto.from(loadOwned(userId, id));
+        return toDto(loadOwned(userId, id));
     }
 
     /** Posts scoring below {@code threshold}, lowest first, each with top improvement tips. */
@@ -69,26 +74,24 @@ public class PostService {
             usageService.assertCanSchedule(userId);
             post.schedule(request.scheduledAt());
         }
-        return PostDto.from(postRepository.save(post));
+        postRepository.save(post); // need id before creating targets
+        applyChannels(userId, post, request.channelIds());
+        return toDto(post);
     }
 
     @Transactional
     public PostDto setMedia(Long userId, Long id, String mediaUrl) {
         Post post = loadOwned(userId, id);
         post.updateMedia(mediaUrl);
-        return PostDto.from(post);
+        return toDto(post);
     }
 
+    /** Replace the post's publish channels (fan-out targets). Empty = no channels. */
     @Transactional
-    public PostDto setAccount(Long userId, Long id, Long socialAccountId) {
+    public PostDto setChannels(Long userId, Long id, List<Long> channelIds) {
         Post post = loadOwned(userId, id);
-        if (socialAccountId != null) {
-            socialAccountRepository.findById(socialAccountId)
-                    .filter(a -> a.getUserId().equals(userId))
-                    .orElseThrow(() -> new IllegalArgumentException("account not found"));
-        }
-        post.updateSocialAccount(socialAccountId);
-        return PostDto.from(post);
+        applyChannels(userId, post, channelIds);
+        return toDto(post);
     }
 
     @Transactional
@@ -100,42 +103,105 @@ public class PostService {
             usageService.assertCanSchedule(userId);
             post.schedule(request.scheduledAt());
         }
-        return PostDto.from(post);
+        return toDto(post);
     }
 
     @Transactional
     public void delete(Long userId, Long id) {
         Post post = loadOwned(userId, id);
-        postRepository.delete(post);
+        postRepository.delete(post); // post_targets cascade-deleted (FK ON DELETE CASCADE)
     }
 
     /**
-     * Publish immediately. Ownership is checked first; the actual publish runs outside a
-     * transaction (external HTTP + polling) via the shared {@link PublishingProcessor}.
+     * Publish immediately by fanning out to every pending channel target. Each target is
+     * published independently (partial failure allowed). External HTTP runs outside a txn;
+     * per-target state transitions go through {@link TargetPublishingProcessor}.
      */
     public PostDto publishNow(Long userId, Long id) {
         loadOwned(userId, id); // ownership / existence guard
-        Optional<PublishTask> claimed = publishingProcessor.claimImmediate(id);
-        if (claimed.isEmpty()) {
-            // not publishable (e.g. token expired → marked RECONNECT_REQUIRED, or wrong state)
-            return PostDto.from(reload(id));
+        for (Long targetId : targetProcessor.pendingTargetIds(id)) {
+            targetProcessor.claim(targetId).ifPresent(task -> {
+                try {
+                    String platformPostId = publisherRegistry.get(task.provider())
+                            .publish(task.accountId(), task.content(), task.mediaUrl());
+                    targetProcessor.complete(targetId, platformPostId);
+                } catch (PublishException e) {
+                    targetProcessor.fail(targetId, e.getMessage());
+                }
+            });
         }
-        PublishTask task = claimed.get();
-        try {
-            String platformPostId = publisherRegistry.get(task.provider())
-                    .publish(task.accountId(), task.content(), task.mediaUrl());
-            publishingProcessor.complete(id, platformPostId);
-        } catch (PublishException e) {
-            publishingProcessor.fail(id, e.getMessage());
+        return toDto(reload(id));
+    }
+
+    /** Replace a post's targets with the given channels (validated as owned). */
+    private void applyChannels(Long userId, Post post, List<Long> channelIds) {
+        targetRepository.deleteByPostId(post.getId());
+        targetRepository.flush();
+        List<Long> ids = (channelIds != null && !channelIds.isEmpty())
+                ? channelIds
+                : defaultChannelIds(userId);
+        for (Long accountId : ids) {
+            SocialAccount account = socialAccountRepository.findById(accountId)
+                    .filter(a -> a.getUserId().equals(userId))
+                    .orElseThrow(() -> new IllegalArgumentException("channel not found: " + accountId));
+            targetRepository.save(PostTarget.create(post.getId(), account.getId()));
         }
-        return PostDto.from(reload(id));
+    }
+
+    /** Fallback when no channels are given: the user's default channel (else first, else none). */
+    private List<Long> defaultChannelIds(Long userId) {
+        return socialAccountRepository.findFirstByUserIdAndIsDefaultTrue(userId)
+                .map(a -> List.of(a.getId()))
+                .orElseGet(() -> socialAccountRepository.findByUserIdOrderByIdAsc(userId).stream()
+                        .findFirst().map(a -> List.of(a.getId())).orElse(List.of()));
+    }
+
+    // ── DTO enrichment (targets need provider/handle from SocialAccount) ──
+
+    private PostDto toDto(Post post) {
+        List<PostTarget> targets = targetRepository.findByPostIdOrderByIdAsc(post.getId());
+        return PostDto.from(post, targetDtos(targets, accountsFor(targets)));
+    }
+
+    private List<PostDto> toDtos(List<Post> posts) {
+        if (posts.isEmpty()) {
+            return List.of();
+        }
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+        Map<Long, List<PostTarget>> byPost = targetRepository.findByPostIdInOrderByIdAsc(postIds).stream()
+                .collect(Collectors.groupingBy(PostTarget::getPostId));
+        List<PostTarget> all = byPost.values().stream().flatMap(List::stream).toList();
+        Map<Long, SocialAccount> accById = accountsFor(all);
+        return posts.stream()
+                .map(p -> PostDto.from(p, targetDtos(byPost.getOrDefault(p.getId(), List.of()), accById)))
+                .toList();
+    }
+
+    private Map<Long, SocialAccount> accountsFor(List<PostTarget> targets) {
+        List<Long> accIds = targets.stream().map(PostTarget::getSocialAccountId).distinct().toList();
+        Map<Long, SocialAccount> map = new LinkedHashMap<>();
+        socialAccountRepository.findAllById(accIds).forEach(a -> map.put(a.getId(), a));
+        return map;
+    }
+
+    private List<PostTargetDto> targetDtos(List<PostTarget> targets, Map<Long, SocialAccount> accById) {
+        return targets.stream().map(t -> {
+            SocialAccount a = accById.get(t.getSocialAccountId());
+            String channel = a == null ? null : (a.getUsername() != null ? a.getUsername() : a.getExternalId());
+            return new PostTargetDto(
+                    t.getSocialAccountId(),
+                    a == null ? null : a.getProvider().name(),
+                    channel,
+                    t.getStatus().name(),
+                    t.getPlatformPostId(),
+                    t.getErrorMessage());
+        }).toList();
     }
 
     private Post loadOwned(Long userId, Long id) {
         Post post = postRepository.findById(id).orElseThrow(() -> new PostNotFoundException(id));
         if (!post.getUserId().equals(userId)) {
-            // treat as not-found to avoid leaking existence
-            throw new PostNotFoundException(id);
+            throw new PostNotFoundException(id); // treat as not-found (don't leak existence)
         }
         return post;
     }

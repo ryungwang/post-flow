@@ -18,9 +18,11 @@ public record PostDto(
         Instant scheduledAt,
         Instant publishedAt,
         String threadsMediaId,
-        Instant createdAt
+        Instant createdAt,
+        List<PostTargetDto> targets
 ) {
-    public static PostDto from(Post post) {
+    /** Enriched with per-channel targets (PostService supplies them — needs SocialAccount join). */
+    public static PostDto from(Post post, List<PostTargetDto> targets) {
         return new PostDto(
                 post.getId(),
                 post.getContent(),
@@ -33,6 +35,12 @@ public record PostDto(
                 post.getScheduledAt(),
                 post.getPublishedAt(),
                 post.getThreadsMediaId(),
-                post.getCreatedAt());
+                post.getCreatedAt(),
+                targets != null ? targets : List.of());
+    }
+
+    /** Without targets (fallback for callers that don't enrich). */
+    public static PostDto from(Post post) {
+        return from(post, List.of());
     }
 }

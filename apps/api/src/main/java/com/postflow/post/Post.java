@@ -177,6 +177,57 @@ public class Post extends BaseTimeEntity {
         this.status = PostStatus.RECONNECT_REQUIRED;
     }
 
+    /**
+     * 멀티채널 집계: 타겟들의 상태로 글 전체 상태를 산출한다(부분 실패 허용).
+     * 타겟이 없으면(레거시) 기존 상태 유지. 발행 파이프라인이 각 타겟 갱신 후 호출한다.
+     */
+    public void applyTargetAggregate(List<PostTarget> targets) {
+        if (targets == null || targets.isEmpty()) {
+            return; // legacy(단일 경로) — 기존 status 유지
+        }
+        int n = targets.size();
+        boolean anyPublishing = false, anyPending = false;
+        long published = 0, failed = 0, reconnect = 0;
+        String firstPublishedId = null;
+        Instant lastPublishedAt = null;
+        String anyError = null;
+        for (PostTarget t : targets) {
+            switch (t.getStatus()) {
+                case PUBLISHING -> anyPublishing = true;
+                case PENDING -> anyPending = true;
+                case PUBLISHED -> {
+                    published++;
+                    if (firstPublishedId == null) firstPublishedId = t.getPlatformPostId();
+                    if (t.getPublishedAt() != null
+                            && (lastPublishedAt == null || t.getPublishedAt().isAfter(lastPublishedAt))) {
+                        lastPublishedAt = t.getPublishedAt();
+                    }
+                }
+                case FAILED -> { failed++; if (t.getErrorMessage() != null) anyError = t.getErrorMessage(); }
+                case RECONNECT_REQUIRED -> reconnect++;
+            }
+        }
+        if (anyPublishing) { this.status = PostStatus.PUBLISHING; return; }
+        if (anyPending) { this.status = (scheduledAt != null ? PostStatus.SCHEDULED : PostStatus.DRAFT); return; }
+        // 모든 타겟이 종료 상태(PUBLISHED/FAILED/RECONNECT_REQUIRED)
+        if (published == n) {
+            this.status = PostStatus.PUBLISHED;
+        } else if (published > 0) {
+            this.status = PostStatus.PARTIAL; // 일부 성공·일부 실패
+        } else if (reconnect > 0 && failed == 0) {
+            this.status = PostStatus.RECONNECT_REQUIRED;
+        } else {
+            this.status = PostStatus.FAILED;
+        }
+        if (published > 0) {
+            this.threadsMediaId = firstPublishedId; // 하위호환(단일 표기)
+            this.publishedAt = lastPublishedAt != null ? lastPublishedAt : Instant.now();
+            this.errorMessage = (this.status == PostStatus.PARTIAL) ? anyError : null;
+        } else {
+            this.errorMessage = anyError;
+        }
+    }
+
     private static String truncate(String s) {
         if (s == null) {
             return null;
