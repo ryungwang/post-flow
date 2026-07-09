@@ -79,18 +79,19 @@ const leafClass = ({ isActive }: { isActive: boolean }) =>
   );
 
 /**
- * 잠금 규칙: Pro 미구독(pro) → 구독 화면으로, 해당 SNS 미연결(platform) → 채널 연결 화면으로.
- * 둘 다면 Pro가 우선(먼저 구독해야 하므로). connectedProviders=null이면 로딩 중이라 잠그지 않음.
+ * 잠금 규칙: 해당 SNS 미연결(platform) → 채널 연결 화면으로, Pro 미구독(pro) → 구독 화면으로.
+ * 둘 다면 연결이 우선(채널부터 연결해야 그 기능을 쓰므로 — 그룹 내 동선 통일).
+ * connectedProviders=null이면 로딩 중이라 잠그지 않음.
  */
 function NavLeaf({ leaf, isPro, connectedProviders }: { leaf: Leaf; isPro: boolean; connectedProviders: Set<string> | null }) {
   const navigate = useNavigate();
   const proLocked = !!leaf.pro && !isPro;
   const platformLocked = !!leaf.platform && connectedProviders != null && !connectedProviders.has(leaf.platform);
   if (proLocked || platformLocked) {
-    const to = proLocked ? "/settings/account" : "/settings/threads";
-    const title = proLocked
-      ? "Pro 플랜 전용"
-      : `${PROVIDER_LABEL[leaf.platform!] ?? leaf.platform} 계정 연결이 필요해요`;
+    const to = platformLocked ? "/settings/threads" : "/settings/account";
+    const title = platformLocked
+      ? `${PROVIDER_LABEL[leaf.platform!] ?? leaf.platform} 계정 연결이 필요해요`
+      : "Pro 플랜 전용";
     return (
       <button
         onClick={() => navigate(to)}
