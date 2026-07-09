@@ -4,7 +4,7 @@
 > 이미지/영상 전용 플랫폼(Instagram·TikTok)은 **미디어 생성 기능이 선행**돼야 한다.
 > 진행 원칙: **무료 API부터 차근차근** → 유료·무거운 심사는 뒤로.
 
-_최종 업데이트: 2026-07-05 · 현재 지원: **Threads (완료)**_
+_최종 업데이트: 2026-07-09 · 현재 지원: **Threads (완료) · Bluesky (텍스트 발행 완료)**_
 
 ---
 
@@ -13,7 +13,7 @@ _최종 업데이트: 2026-07-05 · 현재 지원: **Threads (완료)**_
 | 순위 | 플랫폼 | 콘텐츠 궁합 | API 난이도 | 비용 | App Review | 상태 |
 |---|---|---|---|---|---|---|
 | — | **Threads** | 텍스트 ✅ | — | 무료 | 진행중(Advanced) | ✅ 완료 |
-| 1 | **Bluesky** | 텍스트 ✅ | 매우 쉬움 | 무료 | 없음 | ⬜ 예정 |
+| 1 | **Bluesky** | 텍스트 ✅ | 매우 쉬움 | 무료 | 없음 | ✅ **완료(연결·텍스트발행)** — 이미지·인사이트는 증분2 |
 | 2 | **LinkedIn** | 텍스트 ✅ | 중 | 무료 | 있음(가벼움) | ⬜ 예정 |
 | 3 | **X (Twitter)** | 텍스트 ✅ | 중 | **유료($100+/월)** | 있음 | ⬜ 보류(비용 결정) |
 | 4 | **Instagram + Facebook** | 이미지 ❌(선행필요) | 높음 | 무료 | 무거움 | ⬜ 미디어 생성 후 |
@@ -22,9 +22,13 @@ _최종 업데이트: 2026-07-05 · 현재 지원: **Threads (완료)**_
 
 ---
 
-## Phase 0 — 멀티플랫폼 추상화 (선행 필수)
+## Phase 0 — 멀티플랫폼 추상화 (선행 필수) — ✅ 완료 (2026-07-09)
 
 지금은 전부 Threads 전용이라 일반화가 먼저다.
+
+> **구현됨**: `Publisher` 인터페이스 + `PublisherRegistry`(provider별 발행 라우팅), `ThreadsPublisher`/`BlueskyPublisher`,
+> `SocialAccount` 범용화(`external_id`·`handle`·`refresh_token`, V26), `/social/*` 엔드포인트(채널목록·연결·기본·해제),
+> 채널 게이팅·사이드바 잠금 크로스-프로바이더. **남음(증분2)**: 발행 다중선택 팬아웃(한 글=현재 1채널).
 
 **백엔드**
 - `Platform` enum: `THREADS, BLUESKY, LINKEDIN, X, INSTAGRAM, FACEBOOK`
@@ -45,12 +49,12 @@ _최종 업데이트: 2026-07-05 · 현재 지원: **Threads (완료)**_
 
 ---
 
-## Phase 1 — Bluesky (최속 검증) ⭐ 다음 작업
+## Phase 1 — Bluesky (최속 검증) — ✅ 완료 (2026-07-09, 실계정 발행 E2E 검증)
 
-- **AT Protocol** (`@atproto/api`) · 인증 = **앱 패스워드**(핸들+앱비번, OAuth 불필요)
-- **무료 · App Review 없음** · 텍스트 우선(300자, 링크/이미지 지원)
-- 발행: `com.atproto.repo.createRecord` (`app.bsky.feed.post`)
-- 목적: **멀티플랫폼 아키텍처(Phase 0) 검증 + 최단 출시**. "멀티플랫폼 됨"을 가장 싸게 증명
+- **AT Protocol** · 인증 = **앱 패스워드**(핸들+앱비번, OAuth 불필요). 백엔드는 XRPC HTTP 직접 호출(자바)
+- **세션 토큰만 저장**(앱비번 미저장) — `createSession`→access/refresh JWT, 만료 시 `refreshSession` 후 재시도
+- 발행: `com.atproto.repo.createRecord`(`app.bsky.feed.post`) → 실제 게시 확인(`synub.bsky.social`에 발행됨)
+- **남음(증분2)**: 이미지 발행(blob 업로드), 삭제(`deleteRecord`), 인사이트/게시물 목록(현재 Threads만)
 
 ## Phase 2 — LinkedIn (B2B 고가치)
 
