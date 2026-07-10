@@ -16,7 +16,8 @@ _최종 업데이트: 2026-07-10 · 현재 지원: **Threads (완료) · Bluesky
 | 1 | **Bluesky** | 텍스트 ✅ | 매우 쉬움 | 무료 | 없음 | ✅ **완료** (연결·발행·이미지·삭제·내게시물/인사이트) |
 | 2 | **LinkedIn** | 텍스트 ✅ | 중 | 무료 | 있음(가벼움) | 🟡 **연결·발행(텍스트+이미지)·삭제 구현** (라이브 OAuth는 크레덴셜 대기) |
 | 3 | **X (Twitter)** | 텍스트 ✅ | 중 | **유료($100+/월)** | 있음 | ⬜ 보류(비용 결정) |
-| 4 | **Instagram + Facebook** | 이미지 ❌(선행필요) | 높음 | 무료 | 무거움 | ⬜ 미디어 생성 후 |
+| 4 | **Facebook 페이지** | 텍스트 ✅ | 중 | 무료 | 있음 | 🟡 **연결·발행(텍스트+이미지)·삭제 구현** (라이브는 검수·크레덴셜 대기) |
+| 5 | **Instagram** | 이미지 ❌(선행필요) | 높음 | 무료 | 무거움 | ⬜ 미디어 생성 후 |
 | — | **Mastodon** | 텍스트 ✅ | 쉬움 | 무료 | 없음 | ✅ **완료** (연결·발행 텍스트+이미지·삭제) — 인스턴스+액세스토큰 |
 | — | TikTok / YouTube | 영상 ❌ | 높음 | 무료 | 무거움 | 보류(큰 미스매치) |
 
@@ -74,12 +75,20 @@ _최종 업데이트: 2026-07-10 · 현재 지원: **Threads (완료) · Bluesky
 - **유료**: Basic $100+/월(쓰기 한도 제한). 무료 티어는 쓰기 극소량 → 사업성 판단 후
 - 텍스트 완벽 적합. 비용 승인이 게이트
 
-## Phase 4 — Instagram + Facebook (이미지, 미디어 생성 선행)
+## Phase 4 — Facebook 페이지 — 🟡 연결·발행·삭제 구현 (2026-07-11)
+
+- OAuth2(Facebook 로그인) · scope `pages_show_list,pages_manage_posts,pages_read_engagement` · **무료**
+- 연결: 코드 교환→user token→`GET /me/accounts`로 관리 페이지 목록(각 페이지별 page access token) → 각 페이지를 채널로 upsert(플랜 채널 한도 준수)
+- 발행: 텍스트=`POST /{pageId}/feed`(message), 이미지=`POST /{pageId}/photos`(url — 페북이 URL로 가져감, 다운로드 불필요). 게시물 id는 photos의 `post_id` 우선. 삭제=`DELETE /{objectId}`
+- 토큰 무효(OAuthException/190)→재연결 필요 표시. `FacebookPublisher`=`PublisherRegistry` 자동 편입
+- **구현됨**: `/facebook/connect`·`/facebook/callback`, ConnectService(페이지 목록 upsert·게이팅), 프론트 FacebookCard(OAuth 팝업)
+- **남음**: 라이브 OAuth E2E(`FACEBOOK_APP_ID/SECRET` + App Review 승인 후), 여러 페이지 선택 UI
+
+## Phase 5 — Instagram (이미지, 미디어 생성 선행)
 
 - **선행: AI 이미지/영상 생성 기능** (인스타 피드는 텍스트 전용 발행 불가)
 - IG: Facebook 로그인 + IG 비즈니스 계정 + `instagram_content_publish` + FB 페이지
 - 컨테이너 생성(이미지/영상 URL 필수) → publish. App Review 무거움
-- FB 페이지: `pages_manage_posts` (텍스트+링크 가능)
 - ⚠️ Threads API엔 `share_to_instagram` 같은 교차게시 파라미터가 **없음**(별도 IG Graph API 통합 필요) — 확인 완료
 
 ---

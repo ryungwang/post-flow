@@ -110,3 +110,15 @@ linkedin:
   api-base-url: https://api.linkedin.com
   restli-version: "202401"
   frontend-redirect-url: ${LINKEDIN_FRONTEND_REDIRECT_URL:http://localhost:5173/settings/threads?linkedin=connected}
+
+facebook:
+  # Meta 앱: Facebook 로그인 + pages_manage_posts·pages_show_list·pages_read_engagement 검수 필요.
+  # Threads 앱과 별개 크레덴셜. 크레덴셜 미설정 시 authorizeUrl에 client_id 없어 실제 연결은 안 됨(UI는 렌더).
+  app-id: ${FACEBOOK_APP_ID:}
+  app-secret: ${FACEBOOK_APP_SECRET:}
+  redirect-uri: ${FACEBOOK_REDIRECT_URI:http://localhost:8080/facebook/callback}
+  scopes: pages_show_list,pages_manage_posts,pages_read_engagement
+  graph-base-url: https://graph.facebook.com
+  dialog-base-url: https://www.facebook.com
+  api-version: v21.0
+  frontend-redirect-url: ${FACEBOOK_FRONTEND_REDIRECT_URL:http://localhost:5173/settings/threads?facebook=connected}

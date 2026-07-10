@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Cloud, Globe, Info, Linkedin, Loader2 } from "lucide-react";
+import { AtSign, Cloud, Facebook, Globe, Info, Linkedin, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { threadsApi } from "@/lib/threads-api";
 import { linkedinApi } from "@/lib/linkedin-api";
+import { facebookApi } from "@/lib/facebook-api";
 import { accountApi } from "@/lib/account-api";
 import { socialApi } from "@/lib/social-api";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -34,7 +35,7 @@ export function ThreadsSettingsPage() {
   // Threads(?threads=) and LinkedIn(?linkedin=) share this settings page as their frontend redirect.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    for (const provider of ["threads", "linkedin"] as const) {
+    for (const provider of ["threads", "linkedin", "facebook"] as const) {
       const result = params.get(provider);
       if (result && window.opener) {
         window.opener.postMessage({ type: `${provider}-oauth`, result }, window.location.origin);
@@ -90,7 +91,7 @@ export function ThreadsSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">채널 연결</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          SNS 채널을 연결하면 한 번 만든 콘텐츠를 예약·자동 발행할 수 있어요. (Threads · Bluesky · LinkedIn · Mastodon)
+          SNS 채널을 연결하면 한 번 만든 콘텐츠를 예약·자동 발행할 수 있어요. (Threads · Bluesky · LinkedIn · Mastodon · Facebook)
         </p>
       </div>
 
@@ -137,6 +138,8 @@ export function ThreadsSettingsPage() {
       <LinkedInCard />
 
       <MastodonCard />
+
+      <FacebookCard />
 
       <AccountsCard onAdd={connect} adding={connecting} />
     </div>
@@ -472,6 +475,118 @@ function MastodonCard() {
           내 인스턴스 → <span className="font-medium">설정 → 개발 → 새 애플리케이션</span>에서 만든 앱의{" "}
           <span className="font-medium">액세스 토큰</span>을 넣으세요. (권한: <code>write</code> 포함)
           토큰만 보관하며, 텍스트·이미지를 발행합니다.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Facebook 페이지 연결 — OAuth2(팝업). 관리하는 페이지를 채널로 등록. 발행 텍스트+이미지. */
+function FacebookCard() {
+  const qc = useQueryClient();
+  const confirm = useConfirm();
+  const [connecting, setConnecting] = useState(false);
+
+  const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
+  const facebook = (channels ?? []).filter((c) => c.provider === "FACEBOOK");
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["social-channels"] });
+    qc.invalidateQueries({ queryKey: ["threads-accounts"] });
+  };
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      const { authorizeUrl } = await facebookApi.connectUrl();
+      const w = 600;
+      const h = 720;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      const popup = window.open(authorizeUrl, "facebook-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+      if (!popup) {
+        window.location.href = authorizeUrl;
+        return;
+      }
+      const onMessage = (e: MessageEvent) => {
+        if (e.origin !== window.location.origin) return;
+        if (e.data?.type === "facebook-oauth") {
+          window.removeEventListener("message", onMessage);
+          clearInterval(timer);
+          setConnecting(false);
+          invalidate();
+        }
+      };
+      window.addEventListener("message", onMessage);
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          window.removeEventListener("message", onMessage);
+          setConnecting(false);
+          invalidate();
+        }
+      }, 600);
+    } catch {
+      setConnecting(false);
+    }
+  };
+
+  const disconnect = useMutation({
+    mutationFn: (id: number) => socialApi.disconnect(id),
+    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
+    onSuccess: invalidate,
+  });
+
+  const askDisconnect = async (name: string | null, id: number) => {
+    const ok = await confirm({
+      title: "채널 연결 해제",
+      description: `${name ?? "이 페이지"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
+      confirmText: "연결 해제",
+      destructive: true,
+    });
+    if (ok) disconnect.mutate(id);
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-lg bg-[#1877f2] text-white">
+            <Facebook className="size-5" />
+          </div>
+          <div className="flex-1">
+            <CardTitle>Facebook 페이지</CardTitle>
+            <CardDescription>OAuth로 연결해요. 내가 관리하는 페이지에 텍스트·이미지를 발행합니다.</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {facebook.length > 0 && (
+          <div className="space-y-2">
+            {facebook.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <Facebook className="size-4 text-[#1877f2]" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{c.name ?? c.username}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
+                    {c.isDefault && " · 기본 채널"}
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.name ?? c.username, c.id)}>
+                  연결 해제
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <Button onClick={connect} disabled={connecting} className="gap-2">
+          {connecting && <Loader2 className="size-4 animate-spin" />}
+          {facebook.length > 0 ? "다시 연결" : "Facebook 페이지 연결하기"}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          연결에는 Facebook 앱 설정(서버 키)이 필요해요. 키 미설정 시 연결이 진행되지 않을 수 있어요.
+          내가 <span className="font-medium">관리자인 페이지</span>가 채널로 등록됩니다. (개인 타임라인이 아닌 페이지)
         </p>
       </CardContent>
     </Card>

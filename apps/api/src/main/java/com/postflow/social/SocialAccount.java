@@ -225,6 +225,37 @@ public class SocialAccount extends BaseTimeEntity {
         this.status = ConnectionStatus.CONNECTED;
     }
 
+    /**
+     * Connect a Facebook Page. Auth = the Page access token (obtained via the user's OAuth then
+     * {@code /me/accounts}). {@code pageId} = the Page id; {@code pageName} = its display name.
+     * Page tokens from a long-lived user token are effectively non-expiring → no refresh token.
+     */
+    public static SocialAccount connectFacebookPage(Long userId, String pageId, String pageName,
+                                                    String pictureUrl, String pageAccessToken) {
+        SocialAccount a = new SocialAccount();
+        a.userId = userId;
+        a.provider = SocialProvider.FACEBOOK;
+        a.externalId = pageId;
+        a.username = pageName;
+        a.name = pageName;
+        a.profilePictureUrl = pictureUrl;
+        a.accessToken = pageAccessToken;
+        a.expiresAt = null;
+        a.lastRefreshedAt = Instant.now();
+        a.status = ConnectionStatus.CONNECTED;
+        return a;
+    }
+
+    /** Re-link a Facebook Page on reconnect (fresh page token / name). */
+    public void reconnectFacebookPage(String pageName, String pictureUrl, String pageAccessToken) {
+        this.username = pageName;
+        this.name = pageName;
+        this.profilePictureUrl = pictureUrl;
+        this.accessToken = pageAccessToken;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
+    }
+
     public void setUsername(String username) {
         this.username = username;
     }

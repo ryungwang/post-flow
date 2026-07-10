@@ -46,6 +46,7 @@ public class SecurityConfig {
                                 "/threads/callback", "/threads/deauthorize",
                                 "/threads/data-deletion", "/threads/data-deletion/status",
                                 "/linkedin/callback",
+                                "/facebook/callback",
                                 "/r/**", "/public/**",
                                 "/webhooks/**", "/files/**").permitAll()
                         .anyRequest().authenticated()
