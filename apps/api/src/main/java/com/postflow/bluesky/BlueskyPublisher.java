@@ -7,10 +7,10 @@ import com.postflow.social.SocialProvider;
 import org.springframework.stereotype.Component;
 
 /**
- * Publishes to Bluesky (AT Protocol). MVP = text only (media is a follow-up — it needs
- * blob upload). Uses the stored session accessJwt; on expiry, refreshes via refreshJwt,
- * persists the rotated tokens, and retries once. If refresh fails, the account is marked
- * reconnect-required (mirrors Threads reconnect handling).
+ * Publishes to Bluesky (AT Protocol) — text + image (image is uploaded as a blob and
+ * embedded; non-image media like video is posted as text-only for now). Uses the stored
+ * session accessJwt; on expiry, refreshes via refreshJwt, persists the rotated tokens, and
+ * retries once. If refresh fails, the account is marked reconnect-required.
  */
 @Component
 public class BlueskyPublisher implements Publisher {
@@ -33,13 +33,13 @@ public class BlueskyPublisher implements Publisher {
         SocialAccount account = repository.findById(accountId)
                 .orElseThrow(() -> new BlueskyApiException("연결된 블루스카이 계정을 찾을 수 없어요."));
         try {
-            return client.createTextPost(account.getExternalId(), account.getAccessToken(), text);
+            return client.createPost(account.getExternalId(), account.getAccessToken(), text, mediaUrl);
         } catch (BlueskyAuthException expired) {
             try {
                 BlueskySession refreshed = client.refreshSession(account.getRefreshToken());
                 account.applyBlueskySession(refreshed.accessJwt(), refreshed.refreshJwt());
                 repository.save(account); // merge: persist rotated tokens
-                return client.createTextPost(account.getExternalId(), refreshed.accessJwt(), text);
+                return client.createPost(account.getExternalId(), refreshed.accessJwt(), text, mediaUrl);
             } catch (BlueskyAuthException refreshFailed) {
                 account.markReconnectRequired();
                 repository.save(account);
