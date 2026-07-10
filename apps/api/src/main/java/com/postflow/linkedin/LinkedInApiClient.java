@@ -11,6 +11,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -23,8 +24,8 @@ import java.util.Map;
  * post create/delete on the versioned {@code /rest/posts} API. Expired tokens surface as
  * {@link LinkedInAuthException} so the publisher can refresh and retry.
  *
- * <p>Image publishing (register-upload → PUT bytes → attach) is deferred to a later
- * increment — {@link #createPost} posts text only for now.
+ * <p>Images are published via the versioned Images API: {@code initializeUpload} → PUT the
+ * bytes to the returned upload URL → attach the image URN to the post's {@code content.media}.
  */
 @Component
 public class LinkedInApiClient {
@@ -32,6 +33,7 @@ public class LinkedInApiClient {
     private final LinkedInProperties properties;
     private final RestClient oauth;   // www.linkedin.com (token exchange)
     private final RestClient api;     // api.linkedin.com (userinfo + rest)
+    private final RestClient media = RestClient.create(); // arbitrary media URLs (download + upload PUT)
 
     public LinkedInApiClient(LinkedInProperties properties) {
         this.properties = properties;
@@ -92,7 +94,8 @@ public class LinkedInApiClient {
     }
 
     /**
-     * Publish a text post to the member's feed via {@code /rest/posts}.
+     * Publish a post to the member's feed via {@code /rest/posts} — text, plus an optional image
+     * when {@code mediaUrl} points to an image (uploaded via the Images API and attached).
      * {@code memberId} is the bare person id (from {@code userinfo.sub}). Returns the post URN
      * (from the {@code x-restli-id} response header).
      */
@@ -107,6 +110,12 @@ public class LinkedInApiClient {
         body.put("commentary", escapeCommentary(text == null ? "" : text));
         body.put("visibility", "PUBLIC");
         body.put("distribution", distribution);
+        if (isImage(mediaUrl)) {
+            String imageUrn = uploadImage(memberId, accessToken, mediaUrl);
+            if (imageUrn != null) {
+                body.put("content", Map.of("media", Map.of("id", imageUrn, "altText", "")));
+            }
+        }
         body.put("lifecycleState", "PUBLISHED");
         body.put("isReshareDisabledByAuthor", false);
 
@@ -159,9 +168,94 @@ public class LinkedInApiClient {
         }
     }
 
+    /**
+     * Upload an image via the versioned Images API and return its URN
+     * ({@code urn:li:image:…}) for attaching to a post. Three steps: initialize the upload
+     * (get an upload URL + image urn), download the source bytes, PUT them to the upload URL.
+     * Returns null if the image can't be fetched.
+     */
+    private String uploadImage(String memberId, String accessToken, String mediaUrl) {
+        // 1) initialize upload
+        InitUploadResponse init;
+        try {
+            init = api.post().uri("/rest/images?action=initializeUpload")
+                    .headers(this::restHeaders)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("initializeUploadRequest", Map.of("owner", "urn:li:person:" + memberId)))
+                    .retrieve()
+                    .body(InitUploadResponse.class);
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 401) {
+                throw new LinkedInAuthException("링크드인 토큰이 만료됐어요.");
+            }
+            throw new LinkedInApiException("링크드인 이미지 업로드 준비에 실패했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new LinkedInApiException("링크드인 이미지 업로드 준비에 실패했어요.", e);
+        }
+        if (init == null || init.value() == null
+                || init.value().uploadUrl() == null || init.value().image() == null) {
+            throw new LinkedInApiException("링크드인 이미지 업로드 URL을 받지 못했어요.");
+        }
+
+        // 2) download source bytes
+        byte[] bytes;
+        try {
+            bytes = media.get().uri(URI.create(mediaUrl))
+                    .header(HttpHeaders.USER_AGENT, "PostFlow/1.0 (+https://postflow.synub.io)")
+                    .retrieve().body(byte[].class);
+        } catch (RestClientException e) {
+            throw new LinkedInApiException("이미지를 불러오지 못했어요(URL 접근 불가).", e);
+        }
+        if (bytes == null || bytes.length == 0) {
+            return null;
+        }
+
+        // 3) PUT bytes to the upload URL (absolute; separate media host)
+        try {
+            media.put().uri(URI.create(init.value().uploadUrl()))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .contentType(MediaType.parseMediaType(contentTypeFor(mediaUrl)))
+                    .body(bytes)
+                    .retrieve().toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            throw new LinkedInApiException("링크드인 이미지 업로드에 실패했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new LinkedInApiException("링크드인 이미지 업로드에 실패했어요.", e);
+        }
+        return init.value().image();
+    }
+
     private void restHeaders(HttpHeaders headers) {
         headers.add("LinkedIn-Version", properties.restliVersionOrDefault());
         headers.add("X-Restli-Protocol-Version", "2.0.0");
+    }
+
+    private static boolean isImage(String url) {
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+        String u = stripQuery(url).toLowerCase();
+        return u.endsWith(".jpg") || u.endsWith(".jpeg") || u.endsWith(".png")
+                || u.endsWith(".webp") || u.endsWith(".gif");
+    }
+
+    private static String contentTypeFor(String url) {
+        String u = stripQuery(url).toLowerCase();
+        if (u.endsWith(".png")) return "image/png";
+        if (u.endsWith(".webp")) return "image/webp";
+        if (u.endsWith(".gif")) return "image/gif";
+        return "image/jpeg";
+    }
+
+    private static String stripQuery(String url) {
+        int q = url.indexOf('?');
+        return q >= 0 ? url.substring(0, q) : url;
+    }
+
+    record InitUploadResponse(Value value) {
+        record Value(String uploadUrl, String image) {
+        }
     }
 
     /**

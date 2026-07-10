@@ -14,7 +14,7 @@ _최종 업데이트: 2026-07-10 · 현재 지원: **Threads (완료) · Bluesky
 |---|---|---|---|---|---|---|
 | — | **Threads** | 텍스트 ✅ | — | 무료 | 진행중(Advanced) | ✅ 완료 |
 | 1 | **Bluesky** | 텍스트 ✅ | 매우 쉬움 | 무료 | 없음 | ✅ **완료** (연결·발행·이미지·삭제·내게시물/인사이트) |
-| 2 | **LinkedIn** | 텍스트 ✅ | 중 | 무료 | 있음(가벼움) | 🟡 **연결·텍스트발행·삭제 구현** (라이브 OAuth는 크레덴셜 대기 · 이미지 추후) |
+| 2 | **LinkedIn** | 텍스트 ✅ | 중 | 무료 | 있음(가벼움) | 🟡 **연결·발행(텍스트+이미지)·삭제 구현** (라이브 OAuth는 크레덴셜 대기) |
 | 3 | **X (Twitter)** | 텍스트 ✅ | 중 | **유료($100+/월)** | 있음 | ⬜ 보류(비용 결정) |
 | 4 | **Instagram + Facebook** | 이미지 ❌(선행필요) | 높음 | 무료 | 무거움 | ⬜ 미디어 생성 후 |
 | — | Mastodon | 텍스트 ✅ | 쉬움 | 무료 | 없음 | 선택(니치) |
@@ -61,10 +61,11 @@ _최종 업데이트: 2026-07-10 · 현재 지원: **Threads (완료) · Bluesky
 - OAuth2(authorization code) · scope `openid profile w_member_social` · **무료 API**
 - 발행: 버전드 REST `POST /rest/posts`(`LinkedIn-Version`+`X-Restli-Protocol-Version:2.0.0`),
   `commentary`는 Little Text 예약문자(`\|{}@[]()<>#*_~`) 이스케이프, 게시물 URN은 `x-restli-id` 응답 헤더에서 획득
+- 이미지: 버전드 Images API — `POST /rest/images?action=initializeUpload`(owner=person urn) → 반환 uploadUrl에 바이트 PUT → 게시물 `content.media.id`에 image URN 첨부(Bluesky와 동일한 다운로드 헬퍼 재사용)
 - 토큰 만료(401) → refresh_token 재발급 후 1회 재시도(승인 앱만 refresh 발급) → 실패 시 재연결 필요 표시
 - 발행은 기존 팬아웃 파이프라인에 자동 편입(`LinkedInPublisher` = `PublisherRegistry` 자동 등록). 삭제도 연동(`DELETE /rest/posts/{urn}`)
 - **구현됨**: `/linkedin/connect`·`/linkedin/callback`(OAuth), `LinkedInConnectService`(userinfo→member id 저장), 프론트 채널연결 LinkedInCard(OAuth 팝업)
-- **남음**: 라이브 OAuth E2E(앱 크레덴셜 `LINKEDIN_CLIENT_ID/SECRET` 투입 후), 이미지 발행(register-upload→PUT→attach), 조직 페이지
+- **남음**: 라이브 OAuth E2E(앱 크레덴셜 `LINKEDIN_CLIENT_ID/SECRET` 투입 후 — 텍스트·이미지 발행 함께 검증), 조직 페이지
 - ⚠️ **개인 프로필 게시물/분석 '읽기' API는 파트너 승인 필요** → Bluesky 같은 "내 게시물/인사이트" 메뉴는 미제공(발행 전용)
 
 ## Phase 3 — X (Twitter) (최대 도달, 비용 결정 필요)

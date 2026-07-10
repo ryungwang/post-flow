@@ -327,7 +327,7 @@ function LinkedInCard() {
           </div>
           <div className="flex-1">
             <CardTitle>LinkedIn</CardTitle>
-            <CardDescription>OAuth로 안전하게 연결해요. 텍스트 게시물을 내 피드에 발행합니다.</CardDescription>
+            <CardDescription>OAuth로 안전하게 연결해요. 텍스트·이미지 게시물을 내 피드에 발행합니다.</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -357,7 +357,7 @@ function LinkedInCard() {
         </Button>
         <p className="text-xs text-muted-foreground">
           연결에는 LinkedIn 앱 설정(서버 키)이 필요해요. 키 미설정 시 연결이 진행되지 않을 수 있어요.
-          개인 프로필 피드에 텍스트를 발행합니다. (이미지 발행은 추후 지원)
+          개인 프로필 피드에 텍스트·이미지를 발행합니다.
         </p>
       </CardContent>
     </Card>
