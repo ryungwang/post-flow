@@ -26,9 +26,55 @@ public class BlueskyApiClient {
 
     private final RestClient http;
     private final RestClient downloader = RestClient.create(); // arbitrary media URLs
+    // 공개 데이터(프로필·게시물) 조회는 인증 불필요한 공개 AppView 사용.
+    private final RestClient appView = RestClient.builder().baseUrl("https://public.api.bsky.app").build();
 
     public BlueskyApiClient(BlueskyProperties properties) {
         this.http = RestClient.builder().baseUrl(properties.baseUrlOrDefault()).build();
+    }
+
+    /** 공개 프로필(팔로워·게시물 수 등). actor = handle 또는 DID. */
+    public BskyProfile getProfile(String actor) {
+        try {
+            return appView.get().uri("/xrpc/app.bsky.actor.getProfile?actor={a}", actor)
+                    .retrieve().body(BskyProfile.class);
+        } catch (RestClientException e) {
+            throw new BlueskyApiException("블루스카이 프로필 조회에 실패했어요.", e);
+        }
+    }
+
+    /** 작성자 피드(내 게시물). 리포스트/답글 제외한 본인 게시물 위주. */
+    public BskyFeed getAuthorFeed(String actor, int limit) {
+        try {
+            return appView.get()
+                    .uri("/xrpc/app.bsky.feed.getAuthorFeed?actor={a}&limit={l}&filter=posts_no_replies", actor, limit)
+                    .retrieve().body(BskyFeed.class);
+        } catch (RestClientException e) {
+            throw new BlueskyApiException("블루스카이 게시물 조회에 실패했어요.", e);
+        }
+    }
+
+    public record BskyProfile(String handle, String displayName, String avatar,
+                              Integer followersCount, Integer postsCount, String description) {
+    }
+
+    public record BskyFeed(List<BskyFeedItem> feed, String cursor) {
+    }
+
+    public record BskyFeedItem(BskyPost post) {
+    }
+
+    public record BskyPost(String uri, BskyRecord record, Integer likeCount,
+                           Integer repostCount, Integer replyCount, BskyEmbed embed) {
+    }
+
+    public record BskyRecord(String text, String createdAt) {
+    }
+
+    public record BskyEmbed(List<BskyImage> images) {
+    }
+
+    public record BskyImage(String thumb, String fullsize) {
     }
 
     /** Exchange handle + app password for a session. Bad credentials → BlueskyApiException. */

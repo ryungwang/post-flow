@@ -7,6 +7,7 @@ import {
   BarChart3,
   CalendarClock,
   ChevronRight,
+  Cloud,
   HelpCircle,
   LayoutDashboard,
   Library,
@@ -52,6 +53,14 @@ const NAV: Item[] = [
       { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true, platform: "THREADS" },
       { label: "인사이트", to: "/insights", icon: TrendingUp, pro: true, platform: "THREADS" },
       { label: "경쟁사 분석", to: "/competitors", icon: Search, pro: true, platform: "THREADS" },
+    ],
+  },
+  {
+    label: "Bluesky",
+    icon: Cloud,
+    children: [
+      { label: "내 게시물", to: "/content/bluesky-posts", icon: Library, platform: "BLUESKY" },
+      { label: "인사이트", to: "/bluesky-insights", icon: TrendingUp, platform: "BLUESKY" },
     ],
   },
   { label: "분석", to: "/analytics", icon: BarChart3, pro: true },
