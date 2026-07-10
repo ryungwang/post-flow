@@ -94,24 +94,24 @@ public class LinkedInApiClient {
     }
 
     /**
-     * Publish a post to the member's feed via {@code /rest/posts} — text, plus an optional image
-     * when {@code mediaUrl} points to an image (uploaded via the Images API and attached).
-     * {@code memberId} is the bare person id (from {@code userinfo.sub}). Returns the post URN
-     * (from the {@code x-restli-id} response header).
+     * Publish a post via {@code /rest/posts} — text, plus an optional image when {@code mediaUrl}
+     * points to an image (uploaded via the Images API and attached). {@code authorUrn} is the
+     * full author URN: {@code urn:li:person:{id}} for a member feed or {@code urn:li:organization:{id}}
+     * for a company page. Returns the post URN (from the {@code x-restli-id} response header).
      */
-    public String createPost(String memberId, String accessToken, String text, String mediaUrl) {
+    public String createPost(String authorUrn, String accessToken, String text, String mediaUrl) {
         Map<String, Object> distribution = new LinkedHashMap<>();
         distribution.put("feedDistribution", "MAIN_FEED");
         distribution.put("targetEntities", List.of());
         distribution.put("thirdPartyDistributionChannels", List.of());
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("author", "urn:li:person:" + memberId);
+        body.put("author", authorUrn);
         body.put("commentary", escapeCommentary(text == null ? "" : text));
         body.put("visibility", "PUBLIC");
         body.put("distribution", distribution);
         if (isImage(mediaUrl)) {
-            String imageUrn = uploadImage(memberId, accessToken, mediaUrl);
+            String imageUrn = uploadImage(authorUrn, accessToken, mediaUrl);
             if (imageUrn != null) {
                 body.put("content", Map.of("media", Map.of("id", imageUrn, "altText", "")));
             }
@@ -145,6 +145,54 @@ public class LinkedInApiClient {
         }
     }
 
+    /**
+     * List organization URNs the member administers (ADMINISTRATOR role). Requires the
+     * {@code r_organization_admin} scope + Community Management API approval — if the token
+     * lacks it, LinkedIn returns 403 and this throws (callers treat org support as best-effort).
+     */
+    public List<String> adminOrganizationUrns(String accessToken) {
+        try {
+            OrgAclResponse res = api.get()
+                    .uri("/rest/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED")
+                    .headers(this::restHeaders)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .retrieve()
+                    .body(OrgAclResponse.class);
+            if (res == null || res.elements() == null) {
+                return List.of();
+            }
+            return res.elements().stream()
+                    .map(OrgAcl::organization)
+                    .filter(o -> o != null && !o.isBlank())
+                    .toList();
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 401) {
+                throw new LinkedInAuthException("링크드인 토큰이 만료됐어요.");
+            }
+            throw new LinkedInApiException("링크드인 조직 목록 조회에 실패했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new LinkedInApiException("링크드인 조직 목록 조회에 실패했어요.", e);
+        }
+    }
+
+    /** Organization display name for a {@code urn:li:organization:{id}} (best-effort, null on failure). */
+    public String organizationName(String organizationUrn, String accessToken) {
+        String id = organizationUrn.substring(organizationUrn.lastIndexOf(':') + 1);
+        try {
+            Organization org = api.get().uri("/rest/organizations/{id}", id)
+                    .headers(this::restHeaders)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .retrieve()
+                    .body(Organization.class);
+            if (org == null) {
+                return null;
+            }
+            return org.localizedName() != null ? org.localizedName() : org.vanityName();
+        } catch (RestClientException e) {
+            return null; // name is cosmetic — fall back to the URN
+        }
+    }
+
     /** Delete a previously published post. {@code postUrn} is what {@link #createPost} returned. */
     public void deletePost(String postUrn, String accessToken) {
         String encoded = URLEncoder.encode(postUrn, StandardCharsets.UTF_8);
@@ -172,9 +220,9 @@ public class LinkedInApiClient {
      * Upload an image via the versioned Images API and return its URN
      * ({@code urn:li:image:…}) for attaching to a post. Three steps: initialize the upload
      * (get an upload URL + image urn), download the source bytes, PUT them to the upload URL.
-     * Returns null if the image can't be fetched.
+     * {@code ownerUrn} is the post author (person or organization). Returns null if unfetchable.
      */
-    private String uploadImage(String memberId, String accessToken, String mediaUrl) {
+    private String uploadImage(String ownerUrn, String accessToken, String mediaUrl) {
         // 1) initialize upload
         InitUploadResponse init;
         try {
@@ -182,7 +230,7 @@ public class LinkedInApiClient {
                     .headers(this::restHeaders)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("initializeUploadRequest", Map.of("owner", "urn:li:person:" + memberId)))
+                    .body(Map.of("initializeUploadRequest", Map.of("owner", ownerUrn)))
                     .retrieve()
                     .body(InitUploadResponse.class);
         } catch (RestClientResponseException e) {
@@ -289,5 +337,17 @@ public class LinkedInApiClient {
             @JsonProperty("family_name") String familyName,
             String picture,
             String email) {
+    }
+
+    public record OrgAclResponse(List<OrgAcl> elements) {
+    }
+
+    public record OrgAcl(String organization, String role) {
+    }
+
+    public record Organization(
+            Long id,
+            String localizedName,
+            String vanityName) {
     }
 }

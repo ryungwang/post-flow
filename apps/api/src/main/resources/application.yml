@@ -105,7 +105,9 @@ linkedin:
   client-secret: ${LINKEDIN_CLIENT_SECRET:}
   redirect-uri: ${LINKEDIN_REDIRECT_URI:http://localhost:8080/linkedin/callback}
   # w_member_social = 회원 피드 발행/삭제. 개인 프로필 게시물/분석 '읽기'는 파트너 승인 필요 → 미포함(발행 전용).
-  scopes: openid profile w_member_social
+  # 조직(회사 페이지) 발행: Community Management API 승인 후 LINKEDIN_SCOPES에 r_organization_admin·w_organization_social 추가.
+  #   승인 안 된 scope를 넣으면 OAuth가 깨지므로 기본은 personal만. 조직 채널 조회는 코드상 best-effort(스코프 없으면 403→스킵).
+  scopes: ${LINKEDIN_SCOPES:openid profile w_member_social}
   authorize-base-url: https://www.linkedin.com
   api-base-url: https://api.linkedin.com
   restli-version: "202401"

@@ -34,12 +34,19 @@ public class LinkedInPublisher implements Publisher {
     public String publish(Long accountId, String text, String mediaUrl) {
         SocialAccount account = repository.findById(accountId)
                 .orElseThrow(() -> new LinkedInApiException("연결된 링크드인 계정을 찾을 수 없어요."));
+        String author = authorUrn(account);
         try {
-            return client.createPost(account.getExternalId(), account.getAccessToken(), text, mediaUrl);
+            return client.createPost(author, account.getAccessToken(), text, mediaUrl);
         } catch (LinkedInAuthException expired) {
             String token = refreshOrFail(account);
-            return client.createPost(account.getExternalId(), token, text, mediaUrl);
+            return client.createPost(author, token, text, mediaUrl);
         }
+    }
+
+    /** Org channels store the full {@code urn:li:organization:…}; person channels store the bare sub. */
+    private static String authorUrn(SocialAccount account) {
+        String ext = account.getExternalId();
+        return ext != null && ext.startsWith("urn:") ? ext : "urn:li:person:" + ext;
     }
 
     @Override

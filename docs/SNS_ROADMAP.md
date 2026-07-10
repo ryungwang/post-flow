@@ -66,7 +66,8 @@ _최종 업데이트: 2026-07-10 · 현재 지원: **Threads (완료) · Bluesky
 - 토큰 만료(401) → refresh_token 재발급 후 1회 재시도(승인 앱만 refresh 발급) → 실패 시 재연결 필요 표시
 - 발행은 기존 팬아웃 파이프라인에 자동 편입(`LinkedInPublisher` = `PublisherRegistry` 자동 등록). 삭제도 연동(`DELETE /rest/posts/{urn}`)
 - **구현됨**: `/linkedin/connect`·`/linkedin/callback`(OAuth), `LinkedInConnectService`(userinfo→member id 저장), 프론트 채널연결 LinkedInCard(OAuth 팝업)
-- **남음**: 라이브 OAuth E2E(앱 크레덴셜 `LINKEDIN_CLIENT_ID/SECRET` 투입 후 — 텍스트·이미지 발행 함께 검증), 조직 페이지
+- **조직(회사 페이지) 발행 = 구현됨(2026-07-11)**: author URN을 person/organization 모두 지원, 연결 시 관리 조직(`organizationAcls`)을 best-effort로 채널 등록(externalId=조직 URN). 활성화는 Community Management API 승인 + `LINKEDIN_SCOPES`에 `r_organization_admin w_organization_social` 추가(미승인 scope는 OAuth 깨지므로 기본 personal만, org 조회는 403→스킵)
+- **남음**: 라이브 OAuth E2E(앱 크레덴셜 `LINKEDIN_CLIENT_ID/SECRET` 투입 후 — 텍스트·이미지·조직 함께 검증)
 - ⚠️ **개인 프로필 게시물/분석 '읽기' API는 파트너 승인 필요** → Bluesky 같은 "내 게시물/인사이트" 메뉴는 미제공(발행 전용)
 
 ## Phase 3 — X (Twitter) (최대 도달, 비용 결정 필요)

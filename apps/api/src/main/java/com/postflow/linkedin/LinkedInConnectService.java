@@ -8,10 +8,13 @@ import com.postflow.social.SocialProvider;
 import com.postflow.user.PlanLimitException;
 import com.postflow.user.PlanPolicy;
 import com.postflow.user.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Connects a LinkedIn account: exchange the OAuth code for tokens, read the member profile
@@ -23,6 +26,7 @@ import java.time.Instant;
 public class LinkedInConnectService {
 
     private static final SocialProvider LINKEDIN = SocialProvider.LINKEDIN;
+    private static final Logger log = LoggerFactory.getLogger(LinkedInConnectService.class);
 
     private final SocialAccountRepository repository;
     private final LinkedInApiClient client;
@@ -58,7 +62,40 @@ public class LinkedInConnectService {
                     userId, profile.sub(), profile.name(), profile.picture(),
                     token.accessToken(), token.refreshToken(), expiresAt));
         }
-        makeDefault(userId, target); // newly connected becomes the active channel
+        makeDefault(userId, target); // the member channel becomes the active channel
+
+        // Best-effort: also register the organizations (company pages) the user administers as
+        // channels. Needs r_organization_admin + Community Management API approval — if the token
+        // lacks the scope the ACL call 403s and we simply skip org channels.
+        connectAdminOrganizations(userId, token.accessToken(), token.refreshToken(), expiresAt);
+    }
+
+    /** Upsert each admin organization as a LINKEDIN channel (externalId = full org URN). */
+    private void connectAdminOrganizations(Long userId, String accessToken, String refreshToken,
+                                           Instant expiresAt) {
+        List<String> orgUrns;
+        try {
+            orgUrns = client.adminOrganizationUrns(accessToken);
+        } catch (LinkedInApiException e) {
+            log.debug("LinkedIn org channels skipped (scope/approval): {}", e.getMessage());
+            return;
+        }
+        boolean multi = PlanPolicy.canMultiAccount(userService.getById(userId).getPlan());
+        for (String orgUrn : orgUrns) {
+            SocialAccount existing = repository
+                    .findByUserIdAndProviderAndExternalId(userId, LINKEDIN, orgUrn)
+                    .orElse(null);
+            String name = client.organizationName(orgUrn, accessToken);
+            if (existing != null) {
+                existing.reconnectLinkedin(orgUrn, name, null, accessToken, refreshToken, expiresAt);
+                continue;
+            }
+            if (!multi && repository.countByUserId(userId) >= 1) {
+                continue; // Free plan channel limit
+            }
+            repository.save(SocialAccount.connectLinkedin(
+                    userId, orgUrn, name, null, accessToken, refreshToken, expiresAt));
+        }
     }
 
     /** Adding a new channel (any provider) beyond the first requires the Pro plan. */
