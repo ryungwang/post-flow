@@ -256,6 +256,37 @@ public class SocialAccount extends BaseTimeEntity {
         this.status = ConnectionStatus.CONNECTED;
     }
 
+    /**
+     * Connect an Instagram Business account. Discovered from a linked Facebook Page, so auth =
+     * the Page access token. {@code igUserId} = the IG Business account id (used in the content
+     * publishing endpoints). Instagram requires an image on every feed post.
+     */
+    public static SocialAccount connectInstagram(Long userId, String igUserId, String username,
+                                                 String pictureUrl, String pageAccessToken) {
+        SocialAccount a = new SocialAccount();
+        a.userId = userId;
+        a.provider = SocialProvider.INSTAGRAM;
+        a.externalId = igUserId;
+        a.username = username;
+        a.name = username;
+        a.profilePictureUrl = pictureUrl;
+        a.accessToken = pageAccessToken;
+        a.expiresAt = null;
+        a.lastRefreshedAt = Instant.now();
+        a.status = ConnectionStatus.CONNECTED;
+        return a;
+    }
+
+    /** Re-link an Instagram account on reconnect (fresh page token / profile). */
+    public void reconnectInstagram(String username, String pictureUrl, String pageAccessToken) {
+        this.username = username;
+        this.name = username;
+        this.profilePictureUrl = pictureUrl;
+        this.accessToken = pageAccessToken;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
+    }
+
     public void setUsername(String username) {
         this.username = username;
     }

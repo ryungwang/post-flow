@@ -17,6 +17,7 @@ export const PROVIDER_LABEL: Record<string, string> = {
   LINKEDIN: "LinkedIn",
   MASTODON: "Mastodon",
   FACEBOOK: "Facebook",
+  INSTAGRAM: "Instagram",
 };
 
 export const socialApi = {

@@ -5,5 +5,6 @@ public enum SocialProvider {
     BLUESKY,
     LINKEDIN,
     MASTODON,
-    FACEBOOK
+    FACEBOOK,
+    INSTAGRAM
 }

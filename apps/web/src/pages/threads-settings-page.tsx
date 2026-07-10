@@ -587,6 +587,7 @@ function FacebookCard() {
         <p className="text-xs text-muted-foreground">
           연결에는 Facebook 앱 설정(서버 키)이 필요해요. 키 미설정 시 연결이 진행되지 않을 수 있어요.
           내가 <span className="font-medium">관리자인 페이지</span>가 채널로 등록됩니다. (개인 타임라인이 아닌 페이지)
+          페이지에 연결된 <span className="font-medium">인스타그램 비즈니스 계정</span>도 함께 등록돼요(이미지 발행).
         </p>
       </CardContent>
     </Card>

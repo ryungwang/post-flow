@@ -2,6 +2,8 @@ package com.postflow.facebook;
 
 import com.postflow.facebook.FacebookApiClient.FbPage;
 import com.postflow.facebook.FacebookApiClient.FbToken;
+import com.postflow.instagram.InstagramApiClient;
+import com.postflow.instagram.InstagramApiClient.IgAccount;
 import com.postflow.social.SocialAccount;
 import com.postflow.social.SocialAccountRepository;
 import com.postflow.social.SocialProvider;
@@ -22,15 +24,18 @@ import java.util.List;
 public class FacebookConnectService {
 
     private static final SocialProvider FACEBOOK = SocialProvider.FACEBOOK;
+    private static final SocialProvider INSTAGRAM = SocialProvider.INSTAGRAM;
 
     private final SocialAccountRepository repository;
     private final FacebookApiClient client;
+    private final InstagramApiClient instagramClient;
     private final UserService userService;
 
     public FacebookConnectService(SocialAccountRepository repository, FacebookApiClient client,
-                                  UserService userService) {
+                                  InstagramApiClient instagramClient, UserService userService) {
         this.repository = repository;
         this.client = client;
+        this.instagramClient = instagramClient;
         this.userService = userService;
     }
 
@@ -54,23 +59,47 @@ public class FacebookConnectService {
                 if (firstConnected == null) {
                     firstConnected = existing;
                 }
-                continue;
+            } else if (multi || channelCount < 1) {
+                // new page — respect the plan channel limit (Free = 1 total across providers)
+                SocialAccount saved = repository.save(SocialAccount.connectFacebookPage(
+                        userId, page.id(), page.name(), page.pictureUrl(), page.accessToken()));
+                channelCount++;
+                if (firstConnected == null) {
+                    firstConnected = saved;
+                }
             }
-            // new page — respect the plan channel limit (Free = 1 total across providers)
-            if (!multi && channelCount >= 1) {
-                continue;
-            }
-            SocialAccount saved = repository.save(SocialAccount.connectFacebookPage(
-                    userId, page.id(), page.name(), page.pictureUrl(), page.accessToken()));
-            channelCount++;
-            if (firstConnected == null) {
-                firstConnected = saved;
-            }
+            // Best-effort: register the linked Instagram Business account as a channel too.
+            channelCount = connectInstagramFor(userId, page, multi, channelCount);
         }
         if (firstConnected == null) {
             throw new FacebookApiException("페이지를 연결하지 못했어요. Pro 플랜에서 여러 채널을 연결할 수 있어요.");
         }
         makeDefault(userId, firstConnected);
+    }
+
+    /**
+     * Discover the Instagram Business account linked to a Page and upsert it as an INSTAGRAM
+     * channel (best-effort — needs instagram_basic + instagram_content_publish scope). Returns
+     * the possibly-incremented channel count.
+     */
+    private long connectInstagramFor(Long userId, FbPage page, boolean multi, long channelCount) {
+        IgAccount ig = instagramClient.discoverIgAccount(page.id(), page.accessToken());
+        if (ig == null || ig.id() == null) {
+            return channelCount;
+        }
+        SocialAccount existing = repository
+                .findByUserIdAndProviderAndExternalId(userId, INSTAGRAM, ig.id())
+                .orElse(null);
+        if (existing != null) {
+            existing.reconnectInstagram(ig.username(), ig.profilePictureUrl(), page.accessToken());
+            return channelCount;
+        }
+        if (!multi && channelCount >= 1) {
+            return channelCount; // Free plan channel limit
+        }
+        repository.save(SocialAccount.connectInstagram(
+                userId, ig.id(), ig.username(), ig.profilePictureUrl(), page.accessToken()));
+        return channelCount + 1;
     }
 
     private void makeDefault(Long userId, SocialAccount target) {

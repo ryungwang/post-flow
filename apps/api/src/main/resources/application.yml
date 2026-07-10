@@ -119,7 +119,9 @@ facebook:
   app-id: ${FACEBOOK_APP_ID:}
   app-secret: ${FACEBOOK_APP_SECRET:}
   redirect-uri: ${FACEBOOK_REDIRECT_URI:http://localhost:8080/facebook/callback}
-  scopes: pages_show_list,pages_manage_posts,pages_read_engagement
+  # Instagram 발행까지 켜려면 검수 승인 후 FACEBOOK_SCOPES에 instagram_basic,instagram_content_publish 추가.
+  #   기본은 페이지만(미승인 scope 넣으면 OAuth 깨짐). IG 계정 감지는 코드상 best-effort(스코프 없으면 감지 안 됨→스킵).
+  scopes: ${FACEBOOK_SCOPES:pages_show_list,pages_manage_posts,pages_read_engagement}
   graph-base-url: https://graph.facebook.com
   dialog-base-url: https://www.facebook.com
   api-version: v21.0

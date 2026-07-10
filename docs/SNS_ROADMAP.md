@@ -4,7 +4,7 @@
 > 이미지/영상 전용 플랫폼(Instagram·TikTok)은 **미디어 생성 기능이 선행**돼야 한다.
 > 진행 원칙: **무료 API부터 차근차근** → 유료·무거운 심사는 뒤로.
 
-_최종 업데이트: 2026-07-10 · 현재 지원: **Threads (완료) · Bluesky (완료) · LinkedIn (연결·텍스트발행)**_
+_최종 업데이트: 2026-07-11 · 현재: **Threads·Bluesky·Mastodon 완료** · **LinkedIn·Facebook·Instagram 구현(라이브는 크레덴셜/검수 대기)** · X = 유료 보류 · AI 이미지 생성 = 유료 결정 필요_
 
 ---
 
@@ -17,7 +17,7 @@ _최종 업데이트: 2026-07-10 · 현재 지원: **Threads (완료) · Bluesky
 | 2 | **LinkedIn** | 텍스트 ✅ | 중 | 무료 | 있음(가벼움) | 🟡 **연결·발행(텍스트+이미지)·삭제 구현** (라이브 OAuth는 크레덴셜 대기) |
 | 3 | **X (Twitter)** | 텍스트 ✅ | 중 | **유료($100+/월)** | 있음 | ⬜ 보류(비용 결정) |
 | 4 | **Facebook 페이지** | 텍스트 ✅ | 중 | 무료 | 있음 | 🟡 **연결·발행(텍스트+이미지)·삭제 구현** (라이브는 검수·크레덴셜 대기) |
-| 5 | **Instagram** | 이미지 ❌(선행필요) | 높음 | 무료 | 무거움 | ⬜ 미디어 생성 후 |
+| 5 | **Instagram** | 이미지 ❌(선행필요) | 높음 | 무료 | 무거움 | 🟡 **발행 통합 구현**(컨테이너→publish, 이미지 필수) — 라이브는 검수+**AI 이미지 생성(유료·결정 필요)** 대기 |
 | — | **Mastodon** | 텍스트 ✅ | 쉬움 | 무료 | 없음 | ✅ **완료** (연결·발행 텍스트+이미지·삭제) — 인스턴스+액세스토큰 |
 | — | TikTok / YouTube | 영상 ❌ | 높음 | 무료 | 무거움 | 보류(큰 미스매치) |
 
@@ -85,11 +85,15 @@ _최종 업데이트: 2026-07-10 · 현재 지원: **Threads (완료) · Bluesky
 - **구현됨**: `/facebook/connect`·`/facebook/callback`, ConnectService(페이지 목록 upsert·게이팅), 프론트 FacebookCard(OAuth 팝업)
 - **남음**: 라이브 OAuth E2E(`FACEBOOK_APP_ID/SECRET` + App Review 승인 후), 여러 페이지 선택 UI
 
-## Phase 5 — Instagram (이미지, 미디어 생성 선행)
+## Phase 5 — Instagram — 🟡 발행 통합 구현 (2026-07-11)
 
-- **선행: AI 이미지/영상 생성 기능** (인스타 피드는 텍스트 전용 발행 불가)
-- IG: Facebook 로그인 + IG 비즈니스 계정 + `instagram_content_publish` + FB 페이지
-- 컨테이너 생성(이미지/영상 URL 필수) → publish. App Review 무거움
+- IG Graph API(페북 Graph 호스트) · IG 비즈니스 계정은 **연결된 FB 페이지에서 감지**(페이지 토큰 공유) · **무료 API**
+- 발행: `POST /{igUserId}/media`(image_url+caption로 컨테이너) → `POST /{igUserId}/media_publish`(creation_id). **이미지 필수**(없으면 명확한 에러). 삭제 = IG API 미지원 → no-op
+- 연결: Facebook 연결 시 각 페이지의 `instagram_business_account`를 best-effort 감지해 INSTAGRAM 채널 등록. `InstagramPublisher`=`PublisherRegistry` 자동 편입
+- **구현됨**: `InstagramApiClient`(discover·container·publish), `InstagramPublisher`, FacebookConnectService IG 등록, PROVIDER_LABEL
+- **남음(2가지 게이트)**:
+  1. **AI 이미지 생성 기능 = 유료·결정 필요** — 우리 콘텐츠는 텍스트라 IG용 이미지 소스가 없음. 사용자가 이미지 첨부하면 지금도 발행 가능하나, 자동화엔 이미지 생성이 선행. (프로바이더/비용은 미결정 — 유료라 이번 스윕서 제외)
+  2. 라이브 OAuth E2E: `FACEBOOK_SCOPES`에 `instagram_basic,instagram_content_publish` 추가 + App Review 승인 후
 - ⚠️ Threads API엔 `share_to_instagram` 같은 교차게시 파라미터가 **없음**(별도 IG Graph API 통합 필요) — 확인 완료
 
 ---
@@ -102,6 +106,16 @@ _최종 업데이트: 2026-07-10 · 현재 지원: **Threads (완료) · Bluesky
 
 ## 열린 결정
 
+- [ ] **AI 이미지 생성 프로바이더·비용** (Instagram 자동발행 선행 + 제품 가치) — 전부 유료라 결정 필요. 후보: OpenAI gpt-image, Google Imagen, Stability 등
 - [ ] X API 유료 비용($100+/월) 감수 여부
-- [ ] Instagram용 AI 이미지 생성 기능 도입 시점
-- [ ] Mastodon 포함 여부(쉬우나 니치)
+- [x] ~~Mastodon 포함 여부~~ → 포함·완료(2026-07-11)
+
+## 라이브 활성화 체크리스트 (크레덴셜/검수)
+
+무료 플랫폼 코드는 다 들어갔고, 아래만 채우면 실연결·실발행이 켜진다:
+- **LinkedIn**: `LINKEDIN_CLIENT_ID/SECRET`(+ 조직은 Community Management 승인 후 `LINKEDIN_SCOPES`)
+- **Facebook**: `FACEBOOK_APP_ID/SECRET` + App Review(pages_manage_posts 등)
+- **Instagram**: 위 Facebook + `FACEBOOK_SCOPES`에 instagram 스코프 + IG 비즈니스 계정 + 검수
+- **Mastodon**: 인스턴스 액세스 토큰만 있으면 **지금 즉시** (검수·키 불필요)
+- **Bluesky**: 이미 실계정 연결·발행 검증됨
+- **Threads**: Meta 앱검수 승인 대기(제출 완료)
