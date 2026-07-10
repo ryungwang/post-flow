@@ -14,6 +14,7 @@ export type Channel = {
 export const PROVIDER_LABEL: Record<string, string> = {
   THREADS: "Threads",
   BLUESKY: "Bluesky",
+  LINKEDIN: "LinkedIn",
 };
 
 export const socialApi = {

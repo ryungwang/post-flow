@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Cloud, Info, Loader2 } from "lucide-react";
+import { AtSign, Cloud, Info, Linkedin, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { threadsApi } from "@/lib/threads-api";
+import { linkedinApi } from "@/lib/linkedin-api";
 import { accountApi } from "@/lib/account-api";
 import { socialApi } from "@/lib/social-api";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -30,12 +31,16 @@ export function ThreadsSettingsPage() {
   const [connecting, setConnecting] = useState(false);
 
   // If this page is loaded inside the OAuth popup (callback redirect), notify the opener & close.
+  // Threads(?threads=) and LinkedIn(?linkedin=) share this settings page as their frontend redirect.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const result = params.get("threads");
-    if (result && window.opener) {
-      window.opener.postMessage({ type: "threads-oauth", result }, window.location.origin);
-      window.close();
+    for (const provider of ["threads", "linkedin"] as const) {
+      const result = params.get(provider);
+      if (result && window.opener) {
+        window.opener.postMessage({ type: `${provider}-oauth`, result }, window.location.origin);
+        window.close();
+        return;
+      }
     }
   }, []);
 
@@ -85,7 +90,7 @@ export function ThreadsSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">채널 연결</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          SNS 채널을 연결하면 한 번 만든 콘텐츠를 예약·자동 발행할 수 있어요. (Threads · Bluesky)
+          SNS 채널을 연결하면 한 번 만든 콘텐츠를 예약·자동 발행할 수 있어요. (Threads · Bluesky · LinkedIn)
         </p>
       </div>
 
@@ -128,6 +133,8 @@ export function ThreadsSettingsPage() {
       </Card>
 
       <BlueskyCard />
+
+      <LinkedInCard />
 
       <AccountsCard onAdd={connect} adding={connecting} />
     </div>
@@ -239,6 +246,118 @@ function BlueskyCard() {
         <p className="text-xs text-muted-foreground">
           Bluesky 설정 → <span className="font-medium">앱 비밀번호(App Passwords)</span>에서 발급한 비밀번호를 넣으세요.
           일반 로그인 비밀번호가 아니에요. 앱 비밀번호는 저장하지 않고, 연결용 토큰만 보관합니다.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** LinkedIn 연결 — OAuth2(팝업). 발행 전용(개인 프로필 읽기/분석은 파트너 승인 필요). */
+function LinkedInCard() {
+  const qc = useQueryClient();
+  const confirm = useConfirm();
+  const [connecting, setConnecting] = useState(false);
+
+  const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
+  const linkedin = (channels ?? []).filter((c) => c.provider === "LINKEDIN");
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["social-channels"] });
+    qc.invalidateQueries({ queryKey: ["threads-accounts"] }); // 발행 채널 선택 갱신
+  };
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      const { authorizeUrl } = await linkedinApi.connectUrl();
+      const w = 600;
+      const h = 720;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      const popup = window.open(authorizeUrl, "linkedin-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+      if (!popup) {
+        window.location.href = authorizeUrl; // popup blocked → full-page redirect
+        return;
+      }
+      const onMessage = (e: MessageEvent) => {
+        if (e.origin !== window.location.origin) return;
+        if (e.data?.type === "linkedin-oauth") {
+          window.removeEventListener("message", onMessage);
+          clearInterval(timer);
+          setConnecting(false);
+          invalidate();
+        }
+      };
+      window.addEventListener("message", onMessage);
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          window.removeEventListener("message", onMessage);
+          setConnecting(false);
+          invalidate();
+        }
+      }, 600);
+    } catch {
+      setConnecting(false);
+    }
+  };
+
+  const disconnect = useMutation({
+    mutationFn: (id: number) => socialApi.disconnect(id),
+    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
+    onSuccess: invalidate,
+  });
+
+  const askDisconnect = async (username: string | null, id: number) => {
+    const ok = await confirm({
+      title: "채널 연결 해제",
+      description: `${username ?? "이 계정"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
+      confirmText: "연결 해제",
+      destructive: true,
+    });
+    if (ok) disconnect.mutate(id);
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-lg bg-[#0a66c2] text-white">
+            <Linkedin className="size-5" />
+          </div>
+          <div className="flex-1">
+            <CardTitle>LinkedIn</CardTitle>
+            <CardDescription>OAuth로 안전하게 연결해요. 텍스트 게시물을 내 피드에 발행합니다.</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {linkedin.length > 0 && (
+          <div className="space-y-2">
+            {linkedin.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <Linkedin className="size-4 text-[#0a66c2]" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{c.name ?? c.username}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
+                    {c.isDefault && " · 기본 채널"}
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.name ?? c.username, c.id)}>
+                  연결 해제
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <Button onClick={connect} disabled={connecting} className="gap-2">
+          {connecting && <Loader2 className="size-4 animate-spin" />}
+          {linkedin.length > 0 ? "다시 연결" : "LinkedIn 연결하기"}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          연결에는 LinkedIn 앱 설정(서버 키)이 필요해요. 키 미설정 시 연결이 진행되지 않을 수 있어요.
+          개인 프로필 피드에 텍스트를 발행합니다. (이미지 발행은 추후 지원)
         </p>
       </CardContent>
     </Card>

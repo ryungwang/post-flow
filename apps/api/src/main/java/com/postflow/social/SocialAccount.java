@@ -134,6 +134,54 @@ public class SocialAccount extends BaseTimeEntity {
         this.status = ConnectionStatus.CONNECTED;
     }
 
+    /**
+     * Connect a LinkedIn account (OAuth2). {@code memberId} = OpenID {@code sub} (person id,
+     * stored bare — the publisher builds {@code urn:li:person:{id}}). {@code refreshToken} is
+     * only issued to approved apps; null otherwise (then reconnect is required on expiry).
+     */
+    public static SocialAccount connectLinkedin(Long userId, String memberId, String name,
+                                                String profilePictureUrl, String accessToken,
+                                                String refreshToken, Instant expiresAt) {
+        SocialAccount a = new SocialAccount();
+        a.userId = userId;
+        a.provider = SocialProvider.LINKEDIN;
+        a.externalId = memberId;
+        a.username = name;
+        a.name = name;
+        a.profilePictureUrl = profilePictureUrl;
+        a.accessToken = accessToken;
+        a.refreshToken = refreshToken;
+        a.expiresAt = expiresAt;
+        a.lastRefreshedAt = Instant.now();
+        a.status = ConnectionStatus.CONNECTED;
+        return a;
+    }
+
+    /** Re-link a LinkedIn account on reconnect (fresh OAuth token). */
+    public void reconnectLinkedin(String memberId, String name, String profilePictureUrl,
+                                  String accessToken, String refreshToken, Instant expiresAt) {
+        this.externalId = memberId;
+        this.username = name;
+        this.name = name;
+        this.profilePictureUrl = profilePictureUrl;
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.expiresAt = expiresAt;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
+    }
+
+    /** Persist a refreshed LinkedIn token (refresh-token grant); refresh token may rotate. */
+    public void applyLinkedinToken(String accessToken, String refreshToken, Instant expiresAt) {
+        this.accessToken = accessToken;
+        if (refreshToken != null) {
+            this.refreshToken = refreshToken;
+        }
+        this.expiresAt = expiresAt;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
+    }
+
     public void setUsername(String username) {
         this.username = username;
     }

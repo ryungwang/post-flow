@@ -97,3 +97,16 @@ threads:
     interval-ms: 60000
   token-refresh:
     cron: "0 0 3 * * *"
+
+linkedin:
+  # LinkedIn Developer 앱: "Sign In with LinkedIn using OpenID Connect" + "Share on LinkedIn" 제품 승인 필요.
+  # 크레덴셜은 키 일괄 투입 전까지 빈 값(연결 시도 시 authorizeUrl에 client_id 없어 실패 → 정상, UI는 렌더).
+  client-id: ${LINKEDIN_CLIENT_ID:}
+  client-secret: ${LINKEDIN_CLIENT_SECRET:}
+  redirect-uri: ${LINKEDIN_REDIRECT_URI:http://localhost:8080/linkedin/callback}
+  # w_member_social = 회원 피드 발행/삭제. 개인 프로필 게시물/분석 '읽기'는 파트너 승인 필요 → 미포함(발행 전용).
+  scopes: openid profile w_member_social
+  authorize-base-url: https://www.linkedin.com
+  api-base-url: https://api.linkedin.com
+  restli-version: "202401"
+  frontend-redirect-url: ${LINKEDIN_FRONTEND_REDIRECT_URL:http://localhost:5173/settings/threads?linkedin=connected}

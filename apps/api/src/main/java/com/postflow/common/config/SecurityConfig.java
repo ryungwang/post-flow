@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers("/ping",
                                 "/threads/callback", "/threads/deauthorize",
                                 "/threads/data-deletion", "/threads/data-deletion/status",
+                                "/linkedin/callback",
                                 "/r/**", "/public/**",
                                 "/webhooks/**", "/files/**").permitAll()
                         .anyRequest().authenticated()
