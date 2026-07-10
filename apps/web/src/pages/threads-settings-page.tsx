@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Cloud, Info, Linkedin, Loader2 } from "lucide-react";
+import { AtSign, Cloud, Globe, Info, Linkedin, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,7 @@ export function ThreadsSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">채널 연결</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          SNS 채널을 연결하면 한 번 만든 콘텐츠를 예약·자동 발행할 수 있어요. (Threads · Bluesky · LinkedIn)
+          SNS 채널을 연결하면 한 번 만든 콘텐츠를 예약·자동 발행할 수 있어요. (Threads · Bluesky · LinkedIn · Mastodon)
         </p>
       </div>
 
@@ -135,6 +135,8 @@ export function ThreadsSettingsPage() {
       <BlueskyCard />
 
       <LinkedInCard />
+
+      <MastodonCard />
 
       <AccountsCard onAdd={connect} adding={connecting} />
     </div>
@@ -358,6 +360,118 @@ function LinkedInCard() {
         <p className="text-xs text-muted-foreground">
           연결에는 LinkedIn 앱 설정(서버 키)이 필요해요. 키 미설정 시 연결이 진행되지 않을 수 있어요.
           개인 프로필 피드에 텍스트·이미지를 발행합니다.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Mastodon 연결 — OAuth 아님, 인스턴스 주소 + 액세스 토큰. 토큰만 저장(무료·심사 없음). */
+function MastodonCard() {
+  const qc = useQueryClient();
+  const { show } = useToast();
+  const confirm = useConfirm();
+  const [instanceUrl, setInstanceUrl] = useState("");
+  const [accessToken, setAccessToken] = useState("");
+
+  const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
+  const mastodon = (channels ?? []).filter((c) => c.provider === "MASTODON");
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["social-channels"] });
+    qc.invalidateQueries({ queryKey: ["threads-accounts"] });
+  };
+
+  const connect = useMutation({
+    mutationFn: () => socialApi.connectMastodon(instanceUrl, accessToken),
+    meta: { loading: "마스토돈 연결 중…", success: "마스토돈 연결됨", error: "마스토돈 연결 실패" },
+    onSuccess: () => {
+      setInstanceUrl("");
+      setAccessToken("");
+      invalidate();
+    },
+  });
+
+  const disconnect = useMutation({
+    mutationFn: (id: number) => socialApi.disconnect(id),
+    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
+    onSuccess: invalidate,
+  });
+
+  const askDisconnect = async (username: string | null, id: number) => {
+    const ok = await confirm({
+      title: "채널 연결 해제",
+      description: `${username ?? "이 계정"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
+      confirmText: "연결 해제",
+      destructive: true,
+    });
+    if (ok) disconnect.mutate(id);
+  };
+
+  const submit = () => {
+    if (!instanceUrl.trim() || !accessToken.trim()) {
+      show("인스턴스 주소와 액세스 토큰을 입력해 주세요.", "error");
+      return;
+    }
+    connect.mutate();
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-lg bg-[#6364ff] text-white">
+            <Globe className="size-5" />
+          </div>
+          <div className="flex-1">
+            <CardTitle>Mastodon</CardTitle>
+            <CardDescription>인스턴스 주소와 액세스 토큰으로 연결해요. (무료 · 심사 없음)</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {mastodon.length > 0 && (
+          <div className="space-y-2">
+            {mastodon.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <Globe className="size-4 text-[#6364ff]" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">@{c.username}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
+                    {c.isDefault && " · 기본 채널"}
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.username, c.id)}>
+                  연결 해제
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <Input
+            placeholder="인스턴스 (예: mastodon.social)"
+            value={instanceUrl}
+            autoCapitalize="none"
+            onChange={(e) => setInstanceUrl(e.target.value)}
+          />
+          <Input
+            type="password"
+            placeholder="액세스 토큰"
+            value={accessToken}
+            onChange={(e) => setAccessToken(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+          />
+          <Button onClick={submit} disabled={connect.isPending} className="gap-2">
+            {connect.isPending && <Loader2 className="size-4 animate-spin" />}
+            연결
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          내 인스턴스 → <span className="font-medium">설정 → 개발 → 새 애플리케이션</span>에서 만든 앱의{" "}
+          <span className="font-medium">액세스 토큰</span>을 넣으세요. (권한: <code>write</code> 포함)
+          토큰만 보관하며, 텍스트·이미지를 발행합니다.
         </p>
       </CardContent>
     </Card>

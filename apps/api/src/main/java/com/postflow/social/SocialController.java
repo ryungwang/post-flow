@@ -1,6 +1,7 @@
 package com.postflow.social;
 
 import com.postflow.bluesky.BlueskyConnectService;
+import com.postflow.mastodon.MastodonConnectService;
 import com.postflow.social.dto.ChannelDto;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,11 +25,14 @@ public class SocialController {
 
     private final SocialChannelService channelService;
     private final BlueskyConnectService blueskyConnectService;
+    private final MastodonConnectService mastodonConnectService;
 
     public SocialController(SocialChannelService channelService,
-                            BlueskyConnectService blueskyConnectService) {
+                            BlueskyConnectService blueskyConnectService,
+                            MastodonConnectService mastodonConnectService) {
         this.channelService = channelService;
         this.blueskyConnectService = blueskyConnectService;
+        this.mastodonConnectService = mastodonConnectService;
     }
 
     /** All connected channels for the user, across every platform. */
@@ -45,6 +49,14 @@ public class SocialController {
         return channelService.list(userId);
     }
 
+    /** Connect a Mastodon account with an instance URL + personal access token (no OAuth). */
+    @PostMapping("/mastodon/connect")
+    public List<ChannelDto> connectMastodon(@AuthenticationPrincipal Long userId,
+                                            @RequestBody MastodonConnectRequest req) {
+        mastodonConnectService.connect(userId, req.instanceUrl(), req.accessToken());
+        return channelService.list(userId);
+    }
+
     @PostMapping("/accounts/{id}/default")
     public void setDefault(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
         channelService.setDefault(userId, id);
@@ -56,5 +68,8 @@ public class SocialController {
     }
 
     public record BlueskyConnectRequest(String handle, String appPassword) {
+    }
+
+    public record MastodonConnectRequest(String instanceUrl, String accessToken) {
     }
 }

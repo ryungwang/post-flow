@@ -49,6 +49,10 @@ public class SocialAccount extends BaseTimeEntity {
     @Column(name = "handle")
     private String handle;
 
+    /** Mastodon instance base URL (e.g. https://mastodon.social) — federated hosts differ per account. Null otherwise. */
+    @Column(name = "instance_url")
+    private String instanceUrl;
+
     @Column(name = "access_token", nullable = false, length = 1024)
     private String accessToken;
 
@@ -178,6 +182,45 @@ public class SocialAccount extends BaseTimeEntity {
             this.refreshToken = refreshToken;
         }
         this.expiresAt = expiresAt;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
+    }
+
+    /**
+     * Connect a Mastodon account. Auth = a personal access token the user creates in their
+     * instance (Settings → Development). {@code instanceUrl} = the instance API host;
+     * {@code externalId} = the account id on that instance; {@code acct} = the local handle.
+     * Tokens are long-lived (no expiry) → no refresh token.
+     */
+    public static SocialAccount connectMastodon(Long userId, String instanceUrl, String accountId,
+                                                String acct, String displayName, String avatar,
+                                                String accessToken) {
+        SocialAccount a = new SocialAccount();
+        a.userId = userId;
+        a.provider = SocialProvider.MASTODON;
+        a.instanceUrl = instanceUrl;
+        a.externalId = accountId;
+        a.handle = acct;
+        a.username = acct;
+        a.name = displayName;
+        a.profilePictureUrl = avatar;
+        a.accessToken = accessToken;
+        a.expiresAt = null;
+        a.lastRefreshedAt = Instant.now();
+        a.status = ConnectionStatus.CONNECTED;
+        return a;
+    }
+
+    /** Re-link a Mastodon account on reconnect (fresh token, possibly new instance). */
+    public void reconnectMastodon(String instanceUrl, String accountId, String acct,
+                                  String displayName, String avatar, String accessToken) {
+        this.instanceUrl = instanceUrl;
+        this.externalId = accountId;
+        this.handle = acct;
+        this.username = acct;
+        this.name = displayName;
+        this.profilePictureUrl = avatar;
+        this.accessToken = accessToken;
         this.lastRefreshedAt = Instant.now();
         this.status = ConnectionStatus.CONNECTED;
     }

@@ -15,6 +15,7 @@ export const PROVIDER_LABEL: Record<string, string> = {
   THREADS: "Threads",
   BLUESKY: "Bluesky",
   LINKEDIN: "LinkedIn",
+  MASTODON: "Mastodon",
 };
 
 export const socialApi = {
@@ -23,6 +24,9 @@ export const socialApi = {
   /** Bluesky 연결 = 핸들 + 앱 비밀번호. 성공 시 갱신된 채널 목록 반환. */
   connectBluesky: (handle: string, appPassword: string) =>
     api.post<Channel[]>("/social/bluesky/connect", { handle, appPassword }),
+  /** Mastodon 연결 = 인스턴스 주소 + 액세스 토큰. 성공 시 갱신된 채널 목록 반환. */
+  connectMastodon: (instanceUrl: string, accessToken: string) =>
+    api.post<Channel[]>("/social/mastodon/connect", { instanceUrl, accessToken }),
   setDefault: (id: number) => api.post<void>(`/social/accounts/${id}/default`),
   disconnect: (id: number) => api.del<void>(`/social/accounts/${id}`),
 };
