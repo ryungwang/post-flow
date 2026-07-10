@@ -94,6 +94,25 @@ public class BlueskyApiClient {
         }
     }
 
+    /** Delete a post record by rkey (last segment of the at:// uri). 401/ExpiredToken → BlueskyAuthException. */
+    public void deleteRecord(String did, String accessJwt, String rkey) {
+        try {
+            http.post().uri("/xrpc/com.atproto.repo.deleteRecord")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessJwt)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("repo", did, "collection", POST_COLLECTION, "rkey", rkey))
+                    .retrieve().toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            String responseBody = e.getResponseBodyAsString();
+            if (isAuthError(e, responseBody)) {
+                throw new BlueskyAuthException("블루스카이 액세스 토큰 만료");
+            }
+            throw new BlueskyApiException("블루스카이 삭제 실패: " + shortError(responseBody));
+        } catch (RestClientException e) {
+            throw new BlueskyApiException("블루스카이 삭제에 실패했어요(네트워크).", e);
+        }
+    }
+
     /** Download the image and upload it as a blob; returns the blob JSON node for embedding. */
     @SuppressWarnings("unchecked")
     private Object uploadImageBlob(String accessJwt, String mediaUrl) {

@@ -12,10 +12,13 @@ public class ThreadsPublisher implements Publisher {
 
     private final SocialAccountRepository repository;
     private final ThreadsPublishService publishService;
+    private final ThreadsApiClient apiClient;
 
-    public ThreadsPublisher(SocialAccountRepository repository, ThreadsPublishService publishService) {
+    public ThreadsPublisher(SocialAccountRepository repository, ThreadsPublishService publishService,
+                            ThreadsApiClient apiClient) {
         this.repository = repository;
         this.publishService = publishService;
+        this.apiClient = apiClient;
     }
 
     @Override
@@ -28,5 +31,14 @@ public class ThreadsPublisher implements Publisher {
         SocialAccount account = repository.findById(accountId)
                 .orElseThrow(() -> new ThreadsApiException("연결된 Threads 계정을 찾을 수 없어요."));
         return publishService.publish(account.getThreadsUserId(), account.getAccessToken(), text, mediaUrl);
+    }
+
+    @Override
+    public void deletePost(Long accountId, String platformPostId) {
+        if (platformPostId == null || platformPostId.isBlank()) {
+            return;
+        }
+        repository.findById(accountId).ifPresent(account ->
+                apiClient.deleteMedia(platformPostId, account.getAccessToken()));
     }
 }

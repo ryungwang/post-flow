@@ -15,4 +15,12 @@ public interface Publisher {
      * Loads the account by id so it always uses the freshest stored tokens.
      */
     String publish(Long accountId, String text, String mediaUrl);
+
+    /**
+     * Best-effort delete of a previously published post from the platform.
+     * {@code platformPostId} is what {@link #publish} returned. Default = unsupported (no-op).
+     */
+    default void deletePost(Long accountId, String platformPostId) {
+        // platforms without delete support do nothing
+    }
 }

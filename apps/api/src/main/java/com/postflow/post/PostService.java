@@ -21,6 +21,8 @@ import java.util.stream.Collectors;
 @Service
 public class PostService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PostService.class);
+
     private final PostRepository postRepository;
     private final PostTargetRepository targetRepository;
     private final TargetPublishingProcessor targetProcessor;
@@ -109,6 +111,18 @@ public class PostService {
     @Transactional
     public void delete(Long userId, Long id) {
         Post post = loadOwned(userId, id);
+        // best-effort: remove already-published records from each platform (Threads/Bluesky).
+        for (PostTarget t : targetRepository.findByPostIdOrderByIdAsc(id)) {
+            if (t.getStatus() == PostTargetStatus.PUBLISHED && t.getPlatformPostId() != null) {
+                socialAccountRepository.findById(t.getSocialAccountId()).ifPresent(acc -> {
+                    try {
+                        publisherRegistry.get(acc.getProvider()).deletePost(acc.getId(), t.getPlatformPostId());
+                    } catch (RuntimeException e) {
+                        log.warn("Platform delete failed (post {} target {}): {}", id, t.getId(), e.getMessage());
+                    }
+                });
+            }
+        }
         postRepository.delete(post); // post_targets cascade-deleted (FK ON DELETE CASCADE)
     }
 

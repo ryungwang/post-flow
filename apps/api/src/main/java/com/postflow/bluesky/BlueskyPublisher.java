@@ -47,4 +47,24 @@ public class BlueskyPublisher implements Publisher {
             }
         }
     }
+
+    @Override
+    public void deletePost(Long accountId, String platformPostId) {
+        if (platformPostId == null || platformPostId.isBlank()) {
+            return;
+        }
+        String rkey = platformPostId.substring(platformPostId.lastIndexOf('/') + 1); // at://did/coll/rkey
+        SocialAccount account = repository.findById(accountId).orElse(null);
+        if (account == null) {
+            return;
+        }
+        try {
+            client.deleteRecord(account.getExternalId(), account.getAccessToken(), rkey);
+        } catch (BlueskyAuthException expired) {
+            BlueskySession refreshed = client.refreshSession(account.getRefreshToken());
+            account.applyBlueskySession(refreshed.accessJwt(), refreshed.refreshJwt());
+            repository.save(account);
+            client.deleteRecord(account.getExternalId(), refreshed.accessJwt(), rkey);
+        }
+    }
 }
