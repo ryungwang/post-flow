@@ -4,7 +4,10 @@ import { mastodonApi } from "@/lib/mastodon-api";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function MastodonInsightsPage() {
-  const { data, isLoading } = useQuery({ queryKey: ["mastodon-insights"], queryFn: mastodonApi.insights });
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["mastodon-insights"],
+    queryFn: mastodonApi.insights,
+  });
 
   const stats = [
     { label: "팔로워", value: data?.followers, icon: Users },
@@ -16,7 +19,7 @@ export function MastodonInsightsPage() {
   ];
 
   return (
-    <div className="w-full px-6 py-7 lg:px-8">
+    <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Mastodon · 인사이트</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -29,6 +32,11 @@ export function MastodonInsightsPage() {
         <div className="flex justify-center py-16">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
+      ) : isError ? (
+        // 실패를 0으로 보여주면 "수치가 사라졌다"는 오해를 부른다 — 실패는 실패로 표시.
+        <p className="rounded-xl border bg-card/40 p-10 text-center text-sm text-muted-foreground">
+          인사이트를 불러오지 못했어요. 마스토돈 계정 연결 상태를 확인해 주세요.
+        </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {stats.map((s) => (

@@ -9,10 +9,13 @@ function fmt(iso: string | null) {
 }
 
 export function BlueskyPostsPage() {
-  const { data, isLoading } = useQuery({ queryKey: ["bluesky-posts"], queryFn: () => blueskyApi.posts(25) });
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["bluesky-posts"],
+    queryFn: () => blueskyApi.posts(25),
+  });
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-7">
+    <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Bluesky · 내 게시물</h1>
         <p className="mt-1 text-sm text-muted-foreground">연결된 Bluesky 계정에 올라간 게시물과 반응이에요.</p>
@@ -22,6 +25,12 @@ export function BlueskyPostsPage() {
         <div className="flex justify-center py-16">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
+      ) : isError ? (
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            게시물을 불러오지 못했어요. Bluesky 계정 연결 상태를 확인해 주세요.
+          </CardContent>
+        </Card>
       ) : !data?.length ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">

@@ -9,13 +9,13 @@ function fmt(iso: string | null) {
 }
 
 export function MastodonMentionsPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["mastodon-mentions"],
     queryFn: () => mastodonApi.mentions(25),
   });
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-7">
+    <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Mastodon · 멘션</h1>
         <p className="mt-1 text-sm text-muted-foreground">나를 멘션한 게시물이에요. 답글은 마스토돈에서 달 수 있어요.</p>
@@ -25,6 +25,12 @@ export function MastodonMentionsPage() {
         <div className="flex justify-center py-16">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
+      ) : isError ? (
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            멘션을 불러오지 못했어요. 마스토돈 계정 연결 상태를 확인해 주세요.
+          </CardContent>
+        </Card>
       ) : !data?.length ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
