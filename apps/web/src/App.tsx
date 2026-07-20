@@ -30,6 +30,9 @@ const CompetitorPage = lazyPage(() => import("@/pages/competitor-page"), "Compet
 const MentionsPage = lazyPage(() => import("@/pages/mentions-page"), "MentionsPage");
 const BlueskyPostsPage = lazyPage(() => import("@/pages/bluesky-posts-page"), "BlueskyPostsPage");
 const BlueskyInsightsPage = lazyPage(() => import("@/pages/bluesky-insights-page"), "BlueskyInsightsPage");
+const MastodonPostsPage = lazyPage(() => import("@/pages/mastodon-posts-page"), "MastodonPostsPage");
+const MastodonInsightsPage = lazyPage(() => import("@/pages/mastodon-insights-page"), "MastodonInsightsPage");
+const MastodonMentionsPage = lazyPage(() => import("@/pages/mastodon-mentions-page"), "MastodonMentionsPage");
 
 /** /settings(잘못된 콜백 경로) → /settings/threads로 쿼리 보존 리다이렉트. */
 function SettingsRedirect() {
@@ -66,6 +69,9 @@ export default function App() {
             <Route path="/mentions" element={<MentionsPage />} />
             <Route path="/content/bluesky-posts" element={<BlueskyPostsPage />} />
             <Route path="/bluesky-insights" element={<BlueskyInsightsPage />} />
+            <Route path="/content/mastodon-posts" element={<MastodonPostsPage />} />
+            <Route path="/mastodon-insights" element={<MastodonInsightsPage />} />
+            <Route path="/mastodon-mentions" element={<MastodonMentionsPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/automation" element={<AutomationPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />

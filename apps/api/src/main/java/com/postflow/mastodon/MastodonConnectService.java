@@ -35,7 +35,7 @@ public class MastodonConnectService {
     @Transactional
     public void connect(Long userId, String instanceInput, String token) {
         if (!StringUtils.hasText(instanceInput) || !StringUtils.hasText(token)) {
-            throw new MastodonApiException("인스턴스 주소와 액세스 토큰을 모두 입력해 주세요.");
+            throw new MastodonApiException("핸들(또는 인스턴스 주소)과 액세스 토큰을 모두 입력해 주세요.");
         }
         String instanceUrl = normalizeInstance(instanceInput);
         MastodonAccount profile = client.verifyCredentials(instanceUrl, token.trim());
@@ -63,19 +63,30 @@ public class MastodonConnectService {
         makeDefault(userId, target);
     }
 
-    /** Ensure a scheme, strip trailing slash / path. Accepts "mastodon.social" or full URL. */
+    /**
+     * Ensure a scheme, keep host only. Accepts "mastodon.social", a full URL
+     * ("https://mastodon.social/@me"), or a handle pasted into the instance field
+     * ("@me@mastodon.social") — the handle form is an easy mistake, so we take the host from it.
+     */
     static String normalizeInstance(String input) {
         String s = input.trim();
-        if (!s.startsWith("http://") && !s.startsWith("https://")) {
-            s = "https://" + s;
+        if (s.startsWith("http://") || s.startsWith("https://")) {
+            int schemeEnd = s.indexOf("://") + 3;
+            int pathStart = s.indexOf('/', schemeEnd);
+            return pathStart >= 0 ? s.substring(0, pathStart) : s;
         }
-        // keep scheme + host only
-        int schemeEnd = s.indexOf("://") + 3;
-        int pathStart = s.indexOf('/', schemeEnd);
+        int pathStart = s.indexOf('/'); // "mastodon.social/@me"
         if (pathStart >= 0) {
             s = s.substring(0, pathStart);
         }
-        return s;
+        int at = s.lastIndexOf('@'); // "@me@mastodon.social" / "me@mastodon.social"
+        if (at >= 0) {
+            s = s.substring(at + 1);
+        }
+        if (!StringUtils.hasText(s)) {
+            throw new MastodonApiException("인스턴스 주소를 확인해 주세요. (예: mastodon.social)");
+        }
+        return "https://" + s;
     }
 
     private static String instanceHost(String instanceUrl) {

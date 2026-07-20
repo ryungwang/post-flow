@@ -8,6 +8,7 @@ import {
   CalendarClock,
   ChevronRight,
   Cloud,
+  Globe,
   HelpCircle,
   LayoutDashboard,
   Library,
@@ -61,6 +62,15 @@ const NAV: Item[] = [
     children: [
       { label: "내 게시물", to: "/content/bluesky-posts", icon: Library, platform: "BLUESKY" },
       { label: "인사이트", to: "/bluesky-insights", icon: TrendingUp, platform: "BLUESKY" },
+    ],
+  },
+  {
+    label: "Mastodon",
+    icon: Globe,
+    children: [
+      { label: "내 게시물", to: "/content/mastodon-posts", icon: Library, platform: "MASTODON" },
+      { label: "멘션", to: "/mastodon-mentions", icon: AtSign, platform: "MASTODON" },
+      { label: "인사이트", to: "/mastodon-insights", icon: TrendingUp, platform: "MASTODON" },
     ],
   },
   { label: "분석", to: "/analytics", icon: BarChart3, pro: true },

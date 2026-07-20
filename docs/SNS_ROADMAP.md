@@ -4,7 +4,7 @@
 > 이미지/영상 전용 플랫폼(Instagram·TikTok)은 **미디어 생성 기능이 선행**돼야 한다.
 > 진행 원칙: **무료 API부터 차근차근** → 유료·무거운 심사는 뒤로.
 
-_최종 업데이트: 2026-07-11 · 현재: **Threads·Bluesky·Mastodon 완료** · **LinkedIn·Facebook·Instagram 구현(라이브는 크레덴셜/검수 대기)** · X = 유료 보류 · AI 이미지 생성 = 유료 결정 필요_
+_최종 업데이트: 2026-07-20 · 현재: **Threads·Bluesky·Mastodon 완료(Mastodon은 조회까지)** · **LinkedIn·Facebook·Instagram 구현(라이브는 크레덴셜/검수 대기)** · X = 유료 보류 · AI 이미지 생성 = 유료 결정 필요_
 
 ---
 
@@ -18,7 +18,7 @@ _최종 업데이트: 2026-07-11 · 현재: **Threads·Bluesky·Mastodon 완료*
 | 3 | **X (Twitter)** | 텍스트 ✅ | 중 | **유료($100+/월)** | 있음 | ⬜ 보류(비용 결정) |
 | 4 | **Facebook 페이지** | 텍스트 ✅ | 중 | 무료 | 있음 | 🟡 **연결·발행(텍스트+이미지)·삭제 구현** (라이브는 검수·크레덴셜 대기) |
 | 5 | **Instagram** | 이미지 ❌(선행필요) | 높음 | 무료 | 무거움 | 🟡 **발행 통합 구현**(컨테이너→publish, 이미지 필수) — 라이브는 검수+**AI 이미지 생성(유료·결정 필요)** 대기 |
-| — | **Mastodon** | 텍스트 ✅ | 쉬움 | 무료 | 없음 | ✅ **완료** (연결·발행 텍스트+이미지·삭제) — 인스턴스+액세스토큰 |
+| — | **Mastodon** | 텍스트 ✅ | 쉬움 | 무료 | 없음 | ✅ **완료** (연결·발행 텍스트+이미지·삭제·내게시물/인사이트/멘션) — 핸들+액세스토큰 |
 | — | TikTok / YouTube | 영상 ❌ | 높음 | 무료 | 무거움 | 보류(큰 미스매치) |
 
 ---
@@ -70,6 +70,21 @@ _최종 업데이트: 2026-07-11 · 현재: **Threads·Bluesky·Mastodon 완료*
 - **남음**: 라이브 OAuth E2E(앱 크레덴셜 `LINKEDIN_CLIENT_ID/SECRET` 투입 후 — 텍스트·이미지·조직 함께 검증)
 - ⚠️ **개인 프로필 게시물/분석 '읽기' API는 파트너 승인 필요** → Bluesky 같은 "내 게시물/인사이트" 메뉴는 미제공(발행 전용)
 
+## Mastodon — ✅ 발행 + 조회(내 게시물·인사이트·멘션) (2026-07-20)
+
+- 연결 = **핸들(또는 인스턴스 주소) + 개인 액세스 토큰**. OAuth 아님(리다이렉트 불필요, `urn:ietf:wg:oauth:2.0:oob`로 앱 등록).
+  연합 구조라 토큰만으론 어느 인스턴스인지 알 수 없어 **인스턴스는 필수 입력** — 대신 `normalizeInstance()`가
+  `@me@host`·`host`·`https://host/@me`를 모두 host로 정규화한다(핸들을 붙여넣는 실수가 잦아서).
+- 조회 = `MastodonReadService` + `/social/mastodon/{posts,insights,mentions}`(`MastodonController`).
+  게시물 = `GET /api/v1/accounts/{id}/statuses`(부스트·답글 제외), 인사이트 = `verify_credentials` + 최근 40건 집계,
+  멘션 = `GET /api/v1/notifications?types[]=mention`. 본문은 HTML이라 `stripHtml()`로 평문화.
+- `externalId`는 `host:accountId` 조합(인스턴스 간 id 충돌 방지) → 조회 시 `:` 뒤 계정 id만 분리해 사용.
+- 토큰 회수(401) → 재연결 필요 표시. read 권한 없는 토큰(403)은 "read 범위로 재발급" 안내.
+- **앱 토큰 범위**: `profile`·`write:statuses`·`write:media`(발행) + `read:statuses`·`read:accounts`·`read:notifications`(조회).
+  ⚠️ 마스토돈 토큰은 **발급 시점 범위가 고정** — 범위를 늘리면 토큰 재발급이 필요하다.
+- ⚠️ 조회 계층은 Threads·Bluesky와 마찬가지로 **플랫폼별 개별 구현**(공용 `PostReader`/`InsightsProvider` 추상화 없음).
+  네 번째 플랫폼에 조회를 붙일 때는 `PublisherRegistry`와 같은 모양으로 추상화를 먼저 뽑는 게 낫다.
+
 ## Phase 3 — X (Twitter) (최대 도달, 비용 결정 필요)
 
 - OAuth2 PKCE · API v2 `POST /2/tweets`
@@ -116,6 +131,6 @@ _최종 업데이트: 2026-07-11 · 현재: **Threads·Bluesky·Mastodon 완료*
 - **LinkedIn**: `LINKEDIN_CLIENT_ID/SECRET`(+ 조직은 Community Management 승인 후 `LINKEDIN_SCOPES`)
 - **Facebook**: `FACEBOOK_APP_ID/SECRET` + App Review(pages_manage_posts 등)
 - **Instagram**: 위 Facebook + `FACEBOOK_SCOPES`에 instagram 스코프 + IG 비즈니스 계정 + 검수
-- **Mastodon**: 인스턴스 액세스 토큰만 있으면 **지금 즉시** (검수·키 불필요)
+- **Mastodon**: 핸들 + 개인 액세스 토큰만 있으면 **지금 즉시** (검수·키 불필요). 토큰 범위에 read를 포함해야 내 게시물·인사이트·멘션이 보인다
 - **Bluesky**: 이미 실계정 연결·발행 검증됨
 - **Threads**: Meta 앱검수 승인 대기(제출 완료)

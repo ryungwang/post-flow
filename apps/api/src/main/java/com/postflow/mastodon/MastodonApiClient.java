@@ -1,6 +1,7 @@
 package com.postflow.mastodon;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -17,8 +18,9 @@ import java.util.List;
 /**
  * Thin client over the Mastodon REST API. Mastodon is federated — every account lives on a
  * different instance host — so each call takes the account's {@code instanceUrl} base and a
- * personal access token. Surface: verify credentials (connect), status create/delete, and
- * media upload (image). A 401 surfaces as {@link MastodonAuthException}.
+ * personal access token. Surface: verify credentials (connect), status create/delete,
+ * media upload (image), and reads (own statuses, mention notifications).
+ * A 401 surfaces as {@link MastodonAuthException}.
  */
 @Component
 public class MastodonApiClient {
@@ -91,6 +93,43 @@ public class MastodonApiClient {
         }
     }
 
+    /** Recent statuses authored by an account (excludes boosts/replies — we list our own posts). */
+    public List<MastodonStatusItem> getAccountStatuses(String instanceUrl, String token,
+                                                       String accountId, int limit) {
+        String uri = instanceUrl + "/api/v1/accounts/" + accountId
+                + "/statuses?limit=" + limit + "&exclude_reblogs=true&exclude_replies=true";
+        return getList(uri, token, new ParameterizedTypeReference<List<MastodonStatusItem>>() {},
+                "마스토돈 게시물을 불러오지 못했어요.");
+    }
+
+    /** Recent mention notifications (someone mentioned us in a status). */
+    public List<MastodonNotification> getMentions(String instanceUrl, String token, int limit) {
+        String uri = instanceUrl + "/api/v1/notifications?limit=" + limit + "&types[]=mention";
+        return getList(uri, token, new ParameterizedTypeReference<List<MastodonNotification>>() {},
+                "마스토돈 멘션을 불러오지 못했어요.");
+    }
+
+    private <T> List<T> getList(String uri, String token, ParameterizedTypeReference<List<T>> type,
+                                String failureMessage) {
+        try {
+            List<T> body = http.get().uri(URI.create(uri))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .retrieve().body(type);
+            return body == null ? List.of() : body;
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 401) {
+                throw new MastodonAuthException("액세스 토큰이 만료됐어요.");
+            }
+            if (e.getStatusCode().value() == 403) {
+                throw new MastodonApiException(
+                        "이 앱 토큰에 조회 권한이 없어요. 앱 범위에 read 권한을 포함해 토큰을 다시 발급해 주세요.", e);
+            }
+            throw new MastodonApiException(failureMessage + " (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new MastodonApiException(failureMessage, e);
+        }
+    }
+
     /** Download the image and upload it as media (multipart); returns the media id for attaching. */
     private String uploadMedia(String instanceUrl, String token, String mediaUrl) {
         byte[] bytes;
@@ -156,10 +195,43 @@ public class MastodonApiClient {
             String acct,
             @JsonProperty("display_name") String displayName,
             String avatar,
-            String url) {
+            String url,
+            @JsonProperty("followers_count") Integer followersCount,
+            @JsonProperty("following_count") Integer followingCount,
+            @JsonProperty("statuses_count") Integer statusesCount) {
     }
 
     public record MastodonStatus(String id, String url) {
+    }
+
+    /** A status as returned by the timeline/notification endpoints (richer than {@link MastodonStatus}). */
+    public record MastodonStatusItem(
+            String id,
+            String content, // HTML
+            String url,
+            @JsonProperty("created_at") String createdAt,
+            @JsonProperty("favourites_count") Integer favouritesCount,
+            @JsonProperty("reblogs_count") Integer reblogsCount,
+            @JsonProperty("replies_count") Integer repliesCount,
+            @JsonProperty("in_reply_to_id") String inReplyToId,
+            @JsonProperty("media_attachments") List<MastodonAttachment> mediaAttachments,
+            MastodonAccount account) {
+    }
+
+    public record MastodonAttachment(
+            String id,
+            String type,
+            String url,
+            @JsonProperty("preview_url") String previewUrl) {
+    }
+
+    /** A notification (we only request {@code mention} types). */
+    public record MastodonNotification(
+            String id,
+            String type,
+            @JsonProperty("created_at") String createdAt,
+            MastodonAccount account,
+            MastodonStatusItem status) {
     }
 
     public record MastodonMedia(String id, String type, List<Object> ignored) {

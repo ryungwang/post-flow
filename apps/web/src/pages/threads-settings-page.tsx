@@ -413,7 +413,7 @@ function MastodonCard() {
 
   const submit = () => {
     if (!instanceUrl.trim() || !accessToken.trim()) {
-      show("인스턴스 주소와 액세스 토큰을 입력해 주세요.", "error");
+      show("핸들(또는 인스턴스 주소)과 액세스 토큰을 모두 입력해 주세요.", "error");
       return;
     }
     connect.mutate();
@@ -428,7 +428,7 @@ function MastodonCard() {
           </div>
           <div className="flex-1">
             <CardTitle>Mastodon</CardTitle>
-            <CardDescription>인스턴스 주소와 액세스 토큰으로 연결해요. (무료 · 심사 없음)</CardDescription>
+            <CardDescription>내 핸들과 액세스 토큰으로 연결해요. (무료 · 심사 없음)</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -454,7 +454,7 @@ function MastodonCard() {
         )}
         <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
           <Input
-            placeholder="인스턴스 (예: mastodon.social)"
+            placeholder="핸들 또는 인스턴스 (예: @me@mastodon.social)"
             value={instanceUrl}
             autoCapitalize="none"
             onChange={(e) => setInstanceUrl(e.target.value)}
@@ -472,7 +472,9 @@ function MastodonCard() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          내 인스턴스 → <span className="font-medium">설정 → 개발 → 새 애플리케이션</span>에서 만든 앱의{" "}
+          첫 칸엔 내 <span className="font-medium">핸들</span>(<code>@me@mastodon.social</code>)을 그대로
+          붙여넣으면 돼요. 인스턴스 주소(<code>mastodon.social</code>)만 넣어도 됩니다. 둘째 칸엔 내 인스턴스 →{" "}
+          <span className="font-medium">설정 → 개발 → 새 애플리케이션</span>에서 만든 앱의{" "}
           <span className="font-medium">액세스 토큰</span>을 넣으세요. (권한: <code>write</code> 포함)
           토큰만 보관하며, 텍스트·이미지를 발행합니다.
         </p>
