@@ -106,6 +106,61 @@ public class FacebookApiClient {
         }
     }
 
+    /**
+     * Top-level comments on a Page post. {@code filter=toplevel} keeps replies-to-replies out,
+     * so an auto-reply doesn't fire on a nested thread. Requires {@code pages_read_user_content}.
+     * A deleted post (404) has no comments rather than being an error.
+     */
+    public List<FbComment> getComments(String postId, String pageToken) {
+        String uri = UriComponentsBuilder.fromPath(ver() + "/" + postId + "/comments")
+                .queryParam("fields", "id,message,from{name}")
+                .queryParam("filter", "toplevel")
+                .queryParam("limit", 50)
+                .queryParam("access_token", pageToken)
+                .build().toUriString();
+        try {
+            FbCommentsResponse res = graph.get().uri(uri).retrieve().body(FbCommentsResponse.class);
+            return res == null || res.data() == null ? List.of() : res.data();
+        } catch (RestClientResponseException e) {
+            if (isAuthError(e)) {
+                throw new FacebookAuthException("페이스북 토큰이 만료됐어요.");
+            }
+            if (e.getStatusCode().value() == 404) {
+                return List.of();
+            }
+            throw new FacebookApiException(
+                    "페이스북 댓글을 불러오지 못했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new FacebookApiException("페이스북 댓글을 불러오지 못했어요.", e);
+        }
+    }
+
+    /**
+     * Reply to a comment. Posting to {@code /{commentId}/comments} nests the reply under that
+     * comment (so the commenter is notified), unlike posting to the post itself.
+     * Requires {@code pages_manage_engagement}.
+     */
+    public String replyToComment(String commentId, String pageToken, String text) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("access_token", pageToken);
+        form.add("message", text == null ? "" : text);
+        try {
+            FbPostResponse res = graph.post().uri(ver() + "/" + commentId + "/comments")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve().body(FbPostResponse.class);
+            return res == null ? null : res.id();
+        } catch (RestClientResponseException e) {
+            if (isAuthError(e)) {
+                throw new FacebookAuthException("페이스북 토큰이 만료됐어요.");
+            }
+            throw new FacebookApiException(
+                    "페이스북 답글 작성에 실패했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new FacebookApiException("페이스북 답글 작성에 실패했어요.", e);
+        }
+    }
+
     /** Delete a Page post/photo by object id. Missing objects are treated as already gone. */
     public void deletePost(String objectId, String pageToken) {
         String uri = UriComponentsBuilder.fromPath(ver() + "/" + objectId)
@@ -168,6 +223,19 @@ public class FacebookApiClient {
         public record Picture(Data data) {
             public record Data(String url) {
             }
+        }
+    }
+
+    public record FbCommentsResponse(List<FbComment> data) {
+    }
+
+    /** A comment on a Page post. {@code from} is absent unless the app has the right permissions. */
+    public record FbComment(String id, String message, From from) {
+        public String authorName() {
+            return from == null ? null : from.name();
+        }
+
+        public record From(String id, String name) {
         }
     }
 
