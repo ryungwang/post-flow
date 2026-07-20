@@ -6,6 +6,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** 서버가 사람이 읽을 문구를 준 경우만 true — 합성한 "Request failed: N"은 사용자에게 보이면 안 된다. */
+    public fromServer = false,
   ) {
     super(message);
   }
@@ -27,14 +29,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       localStorage.removeItem("postflow-token");
     }
     let message = `Request failed: ${res.status}`;
+    let fromServer = false;
     try {
       const body = await res.json();
-      if (body?.message) message = body.message;
-      else if (body?.error) message = body.error;
+      if (body?.message) {
+        message = body.message;
+        fromServer = true;
+      } else if (body?.error) {
+        message = body.error;
+      }
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, fromServer);
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();

@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import { ToastProvider, getToast } from "@/components/toast";
 import { GlobalLoadingBar } from "@/components/global-loading-bar";
+import { ApiError } from "@/lib/api";
 import { initSentry, Sentry } from "@/lib/sentry";
 import { ErrorFallback } from "@/components/error-fallback";
 import App from "@/App";
@@ -36,9 +37,15 @@ const mutationCache = new MutationCache({
     const m = mutation.options.meta as ToastMeta | undefined;
     if (m?.success) getToast()?.show(m.success, "success");
   },
-  onError: (_err, _vars, _ctx, mutation) => {
+  // 사용자가 고칠 수 있는 실패(4xx — 플랜 한도·토큰 오류 등)는 서버가 보낸 이유를 그대로 보여준다.
+  // 고정 문구만 띄우면 "왜 실패했는지"가 사라지기 때문. 단 5xx·네트워크 오류는 서버 문구가
+  // 기술적이라("Internal Server Error") 사용자에게 의미가 없으므로 meta.error를 쓴다.
+  onError: (err, _vars, _ctx, mutation) => {
     const m = mutation.options.meta as ToastMeta | undefined;
-    if (m?.error) getToast()?.show(m.error, "error");
+    const actionable =
+      err instanceof ApiError && err.fromServer && err.status >= 400 && err.status < 500;
+    const text = (actionable ? err.message : null) ?? m?.error;
+    if (text) getToast()?.show(text, "error");
   },
   // 공통: 모든 mutation 성공 후 관련 쿼리 refetch를 await → 화면 갱신 끝날 때까지 스피너 유지
   // (안 그러면 POST만 끝나고 스피너가 먼저 꺼진 뒤 화면이 뒤늦게 바뀜). meta.noInvalidate로 opt-out.
