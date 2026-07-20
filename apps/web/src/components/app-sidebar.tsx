@@ -70,6 +70,7 @@ const NAV: Item[] = [
     children: [
       { label: "내 게시물", to: "/content/mastodon-posts", icon: Library, platform: "MASTODON" },
       { label: "멘션", to: "/mastodon-mentions", icon: AtSign, platform: "MASTODON" },
+      { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true, platform: "MASTODON" },
       { label: "인사이트", to: "/mastodon-insights", icon: TrendingUp, platform: "MASTODON" },
     ],
   },

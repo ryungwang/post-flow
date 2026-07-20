@@ -101,7 +101,7 @@ export function AutomationPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL}>전체 발행 게시물</SelectItem>
-                  {/* 댓글 자동화는 실제 Threads에 올라간 발행 게시물만 대상(초안엔 답글 달 곳이 없음). */}
+                  {/* 실제 발행된 게시물만 대상(초안엔 답글 달 곳이 없음). 발행된 채널마다 각각 처리된다. */}
                   {(posts ?? []).filter((p) => p.status === "PUBLISHED").map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>{p.content.slice(0, 24)}</SelectItem>
                   ))}

@@ -3,26 +3,32 @@ package com.postflow.automation;
 import com.postflow.post.Post;
 import com.postflow.post.PostRepository;
 import com.postflow.post.PostStatus;
+import com.postflow.post.PostTarget;
+import com.postflow.post.PostTargetRepository;
+import com.postflow.post.PostTargetStatus;
+import com.postflow.social.CommentResponder;
+import com.postflow.social.CommentResponderRegistry;
 import com.postflow.social.ConnectionStatus;
+import com.postflow.social.InboundComment;
 import com.postflow.social.SocialAccount;
 import com.postflow.social.SocialAccountRepository;
-import com.postflow.social.SocialProvider;
-import com.postflow.threads.ThreadsApiException;
-import com.postflow.threads.ThreadsApiClient;
-import com.postflow.threads.ThreadsPublishService;
-import com.postflow.threads.api.ThreadsReply;
+import com.postflow.social.PublishException;
+import com.postflow.user.PlanPolicy;
+import com.postflow.user.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
 
 /**
- * Polls published posts for keyword comments and auto-replies once per comment.
- * No-ops when the user has no connected Threads account (e.g. keys not yet configured).
+ * 발행된 게시물의 댓글을 주기적으로 훑어 키워드가 맞으면 한 번씩 자동 답글을 단다.
+ *
+ * <p>플랫폼별 호출은 {@link CommentResponder}가 담당한다 — 이 잡은 어떤 SNS인지 모른다.
+ * 대상은 {@link PostTarget}(발행된 채널별 결과)이라, 한 글을 여러 채널에 팬아웃했으면
+ * 각 채널의 댓글이 각각 처리된다. 지원 구현이 없는 플랫폼은 조용히 건너뛴다.
  */
 @Component
 public class CommentAutomationJob {
@@ -33,26 +39,26 @@ public class CommentAutomationJob {
     private final CommentReplyRepository replyRepository;
     private final CommentRuleService ruleService;
     private final PostRepository postRepository;
+    private final PostTargetRepository postTargetRepository;
     private final SocialAccountRepository socialAccountRepository;
-    private final ThreadsApiClient apiClient;
-    private final ThreadsPublishService publishService;
-    private final com.postflow.user.UserService userService;
+    private final CommentResponderRegistry responders;
+    private final UserService userService;
 
     public CommentAutomationJob(CommentRuleRepository ruleRepository,
                                 CommentReplyRepository replyRepository,
                                 CommentRuleService ruleService,
                                 PostRepository postRepository,
+                                PostTargetRepository postTargetRepository,
                                 SocialAccountRepository socialAccountRepository,
-                                ThreadsApiClient apiClient,
-                                ThreadsPublishService publishService,
-                                com.postflow.user.UserService userService) {
+                                CommentResponderRegistry responders,
+                                UserService userService) {
         this.ruleRepository = ruleRepository;
         this.replyRepository = replyRepository;
         this.ruleService = ruleService;
         this.postRepository = postRepository;
+        this.postTargetRepository = postTargetRepository;
         this.socialAccountRepository = socialAccountRepository;
-        this.apiClient = apiClient;
-        this.publishService = publishService;
+        this.responders = responders;
         this.userService = userService;
     }
 
@@ -62,7 +68,7 @@ public class CommentAutomationJob {
         for (CommentRule rule : rules) {
             try {
                 // Pro 강등 유저의 규칙은 실행하지 않음(자동화 = Pro 전용). 결제 상태 변화 반영.
-                if (!com.postflow.user.PlanPolicy.canAutomation(userService.getById(rule.getUserId()).getPlan())) {
+                if (!PlanPolicy.canAutomation(userService.getById(rule.getUserId()).getPlan())) {
                     continue;
                 }
                 processRule(rule);
@@ -73,50 +79,69 @@ public class CommentAutomationJob {
     }
 
     // No @Transactional: invoked via self-call (proxy can't apply it) and contains external HTTP;
-    // each repository save is its own transaction, and dedup (existsByRuleIdAndThreadsReplyId) makes it idempotent.
+    // each repository save is its own transaction, and the dedup check makes it idempotent.
     private void processRule(CommentRule rule) {
         String replyText = ruleService.resolveReply(rule);
         for (Post post : targetPosts(rule)) {
-            // each post may have been published from a different account → use that account's token
-            SocialAccount account = resolveAccount(post);
-            if (account == null) {
-                continue; // post's account not connected (or keys absent) → skip
-            }
-            List<ThreadsReply> replies = apiClient.getReplies(post.getThreadsMediaId(), account.getAccessToken());
-            for (ThreadsReply reply : replies) {
-                if (!rule.matches(reply.text())) {
-                    continue;
-                }
-                if (replyRepository.existsByRuleIdAndThreadsReplyId(rule.getId(), reply.id())) {
-                    continue;
-                }
+            for (PostTarget target : publishedTargets(post)) {
                 try {
-                    publishService.publishReply(account.getThreadsUserId(), account.getAccessToken(), replyText, reply.id());
-                    replyRepository.save(CommentReply.of(rule.getId(), post.getId(), reply.id()));
-                    log.info("Auto-replied to comment {} on post {} (rule {})", reply.id(), post.getId(), rule.getId());
-                } catch (ThreadsApiException e) {
-                    log.warn("Auto-reply failed for comment {}: {}", reply.id(), e.getMessage());
+                    processTarget(rule, post, target, replyText);
+                } catch (Exception e) {
+                    // 한 채널이 실패해도 나머지 채널은 계속 처리한다.
+                    log.warn("Comment automation failed for post {} target {}: {}",
+                            post.getId(), target.getId(), e.getMessage());
                 }
             }
         }
     }
 
-    /** The post's chosen account (if owned + usable), else the user's default/first usable account. */
-    private SocialAccount resolveAccount(Post post) {
-        if (post.getSocialAccountId() != null) {
-            SocialAccount chosen = socialAccountRepository.findById(post.getSocialAccountId())
-                    .filter(a -> a.getUserId().equals(post.getUserId()))
-                    .orElse(null);
-            if (chosen != null && chosen.getStatus() == ConnectionStatus.CONNECTED && !isExpired(chosen)) {
-                return chosen;
+    private void processTarget(CommentRule rule, Post post, PostTarget target, String replyText) {
+        SocialAccount account = usableAccount(target, post.getUserId());
+        if (account == null) {
+            return; // 미연결·만료·타인 계정 → 건너뜀
+        }
+        CommentResponder responder = responders.find(account.getProvider()).orElse(null);
+        if (responder == null) {
+            return; // 이 플랫폼은 댓글 자동응답 미지원(정상 상황)
+        }
+
+        for (InboundComment comment : responder.fetchComments(account, target.getPlatformPostId())) {
+            if (!rule.matches(comment.text())) {
+                continue;
+            }
+            if (replyRepository.existsByRuleIdAndProviderAndCommentId(
+                    rule.getId(), account.getProvider(), comment.id())) {
+                continue;
+            }
+            try {
+                responder.reply(account, target.getPlatformPostId(), comment.id(), replyText);
+                replyRepository.save(CommentReply.of(
+                        rule.getId(), post.getId(), account.getProvider(), comment.id()));
+                log.info("Auto-replied to {} comment {} on post {} (rule {})",
+                        account.getProvider(), comment.id(), post.getId(), rule.getId());
+            } catch (PublishException e) {
+                log.warn("Auto-reply failed for comment {}: {}", comment.id(), e.getMessage());
             }
         }
-        return socialAccountRepository
-                .findFirstByUserIdAndProviderAndIsDefaultTrue(post.getUserId(), SocialProvider.THREADS)
-                .or(() -> socialAccountRepository
-                        .findByUserIdAndProviderOrderByIdAsc(post.getUserId(), SocialProvider.THREADS)
-                        .stream().findFirst())
-                .filter(a -> a.getStatus() == ConnectionStatus.CONNECTED && !isExpired(a))
+    }
+
+    /** 이 채널로 실제 발행된 결과만 — 발행 id가 있어야 댓글을 조회할 수 있다. */
+    private List<PostTarget> publishedTargets(Post post) {
+        return postTargetRepository.findByPostIdOrderByIdAsc(post.getId()).stream()
+                .filter(t -> t.getStatus() == PostTargetStatus.PUBLISHED)
+                .filter(t -> t.getPlatformPostId() != null && !t.getPlatformPostId().isBlank())
+                .toList();
+    }
+
+    /** 발행에 쓰인 그 계정이 여전히 이 유저 소유이고 사용 가능할 때만 반환. */
+    private SocialAccount usableAccount(PostTarget target, Long userId) {
+        if (target.getSocialAccountId() == null) {
+            return null;
+        }
+        return socialAccountRepository.findById(target.getSocialAccountId())
+                .filter(a -> a.getUserId().equals(userId))
+                .filter(a -> a.getStatus() == ConnectionStatus.CONNECTED)
+                .filter(a -> !isExpired(a))
                 .orElse(null);
     }
 
@@ -125,7 +150,7 @@ public class CommentAutomationJob {
                 ? postRepository.findById(rule.getPostId()).map(List::of).orElse(List.of())
                 : postRepository.findByUserIdOrderByCreatedAtDesc(rule.getUserId());
         return candidates.stream()
-                .filter(p -> p.getStatus() == PostStatus.PUBLISHED && p.getThreadsMediaId() != null)
+                .filter(p -> p.getStatus() == PostStatus.PUBLISHED)
                 .toList();
     }
 

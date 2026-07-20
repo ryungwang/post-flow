@@ -102,6 +102,60 @@ public class MastodonApiClient {
                 "마스토돈 게시물을 불러오지 못했어요.");
     }
 
+    /**
+     * Direct replies to one of our statuses. Mastodon returns the whole thread
+     * ({@code ancestors} + {@code descendants}); we keep only the statuses replying straight to
+     * this one, so a nested sub-thread doesn't get auto-replied to as if it were a top comment.
+     */
+    public List<MastodonStatusItem> getStatusReplies(String instanceUrl, String token, String statusId) {
+        String uri = instanceUrl + "/api/v1/statuses/" + statusId + "/context";
+        MastodonContext context;
+        try {
+            context = http.get().uri(URI.create(uri))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .retrieve().body(MastodonContext.class);
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 401) {
+                throw new MastodonAuthException("액세스 토큰이 만료됐어요.");
+            }
+            if (e.getStatusCode().value() == 404) {
+                return List.of(); // 원 게시물이 지워짐 → 댓글도 없음
+            }
+            throw new MastodonApiException(
+                    "마스토돈 댓글을 불러오지 못했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new MastodonApiException("마스토돈 댓글을 불러오지 못했어요.", e);
+        }
+        if (context == null || context.descendants() == null) {
+            return List.of();
+        }
+        return context.descendants().stream()
+                .filter(s -> statusId.equals(s.inReplyToId()))
+                .toList();
+    }
+
+    /** Post a reply to an existing status. Text only — auto-replies don't attach media. */
+    public MastodonStatus createReply(String instanceUrl, String token, String text, String inReplyToId) {
+        MultiValueMap<String, Object> form = new LinkedMultiValueMap<>();
+        form.add("status", text == null ? "" : text);
+        form.add("in_reply_to_id", inReplyToId);
+        try {
+            return http.post().uri(URI.create(instanceUrl + "/api/v1/statuses"))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve().body(MastodonStatus.class);
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 401) {
+                throw new MastodonAuthException("액세스 토큰이 만료됐어요.");
+            }
+            throw new MastodonApiException(
+                    "마스토돈 답글 작성에 실패했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new MastodonApiException("마스토돈 답글 작성에 실패했어요.", e);
+        }
+    }
+
     /** Recent mention notifications (someone mentioned us in a status). */
     public List<MastodonNotification> getMentions(String instanceUrl, String token, int limit) {
         String uri = instanceUrl + "/api/v1/notifications?limit=" + limit + "&types[]=mention";
@@ -223,6 +277,12 @@ public class MastodonApiClient {
             String type,
             String url,
             @JsonProperty("preview_url") String previewUrl) {
+    }
+
+    /** A status thread: statuses above ({@code ancestors}) and below ({@code descendants}) one status. */
+    public record MastodonContext(
+            List<MastodonStatusItem> ancestors,
+            List<MastodonStatusItem> descendants) {
     }
 
     /** A notification (we only request {@code mention} types). */

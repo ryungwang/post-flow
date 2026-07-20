@@ -1,7 +1,10 @@
 package com.postflow.automation;
 
+import com.postflow.social.SocialProvider;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -29,17 +32,23 @@ public class CommentReply {
     @Column(name = "post_id")
     private Long postId;
 
-    @Column(name = "threads_reply_id", nullable = false, length = 64)
-    private String threadsReplyId;
+    /** 어느 플랫폼의 댓글인지 — 플랫폼 간 id 충돌 방지를 위해 중복 방지 키에 포함된다. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provider", nullable = false, length = 20)
+    private SocialProvider provider;
+
+    @Column(name = "comment_id", nullable = false, length = 64)
+    private String commentId;
 
     @Column(name = "replied_at", nullable = false)
     private Instant repliedAt;
 
-    public static CommentReply of(Long ruleId, Long postId, String threadsReplyId) {
+    public static CommentReply of(Long ruleId, Long postId, SocialProvider provider, String commentId) {
         CommentReply r = new CommentReply();
         r.ruleId = ruleId;
         r.postId = postId;
-        r.threadsReplyId = threadsReplyId;
+        r.provider = provider;
+        r.commentId = commentId;
         r.repliedAt = Instant.now();
         return r;
     }
