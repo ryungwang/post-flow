@@ -94,6 +94,118 @@ public class InstagramApiClient {
         }
     }
 
+    /**
+     * Comments on an IG media object. Requires {@code instagram_manage_comments}.
+     * A deleted media (404 / code 100) signals {@link com.postflow.social.PostDeletedException}
+     * so comment automation can self-heal the target.
+     */
+    public java.util.List<IgComment> getComments(String mediaId, String pageToken) {
+        String uri = UriComponentsBuilder.fromPath(ver() + "/" + mediaId + "/comments")
+                .queryParam("fields", "id,text,username")
+                .queryParam("limit", 50)
+                .queryParam("access_token", pageToken)
+                .build().toUriString();
+        try {
+            IgComments res = graph.get().uri(uri).retrieve().body(IgComments.class);
+            return res == null || res.data() == null ? java.util.List.of() : res.data();
+        } catch (RestClientResponseException e) {
+            if (isDeleted(e)) {
+                throw new com.postflow.social.PostDeletedException("인스타그램 게시물이 삭제됐어요.");
+            }
+            throw new InstagramApiException(
+                    "인스타그램 댓글을 불러오지 못했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new InstagramApiException("인스타그램 댓글을 불러오지 못했어요.", e);
+        }
+    }
+
+    /** Reply to a comment (nested under it). Requires {@code instagram_manage_comments}. */
+    public String replyToComment(String commentId, String pageToken, String text) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("message", text == null ? "" : text);
+        form.add("access_token", pageToken);
+        try {
+            IgId res = graph.post().uri(ver() + "/" + commentId + "/replies")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve().body(IgId.class);
+            return res == null ? null : res.id();
+        } catch (RestClientResponseException e) {
+            throw new InstagramApiException(
+                    "인스타그램 답글 작성에 실패했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new InstagramApiException("인스타그램 답글 작성에 실패했어요.", e);
+        }
+    }
+
+    /** Account profile + counts for insights. Requires {@code instagram_manage_insights}. */
+    public IgProfile getProfile(String igUserId, String pageToken) {
+        String uri = UriComponentsBuilder.fromPath(ver() + "/" + igUserId)
+                .queryParam("fields", "username,profile_picture_url,followers_count,follows_count,media_count")
+                .queryParam("access_token", pageToken)
+                .build().toUriString();
+        try {
+            return graph.get().uri(uri).retrieve().body(IgProfile.class);
+        } catch (RestClientResponseException e) {
+            throw new InstagramApiException(
+                    "인스타그램 프로필을 불러오지 못했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new InstagramApiException("인스타그램 프로필을 불러오지 못했어요.", e);
+        }
+    }
+
+    /** Recent media with engagement counts (for insights aggregation). */
+    public java.util.List<IgMedia> getRecentMedia(String igUserId, String pageToken, int limit) {
+        String uri = UriComponentsBuilder.fromPath(ver() + "/" + igUserId + "/media")
+                .queryParam("fields", "id,caption,media_url,permalink,timestamp,like_count,comments_count")
+                .queryParam("limit", limit)
+                .queryParam("access_token", pageToken)
+                .build().toUriString();
+        try {
+            IgMediaList res = graph.get().uri(uri).retrieve().body(IgMediaList.class);
+            return res == null || res.data() == null ? java.util.List.of() : res.data();
+        } catch (RestClientResponseException e) {
+            throw new InstagramApiException(
+                    "인스타그램 게시물을 불러오지 못했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new InstagramApiException("인스타그램 게시물을 불러오지 못했어요.", e);
+        }
+    }
+
+    /** IG "media not found" — deleted post. Graph returns 404, or 400 with error code 100. */
+    private static boolean isDeleted(RestClientResponseException e) {
+        int code = e.getStatusCode().value();
+        String body = e.getResponseBodyAsString();
+        return code == 404 || (code == 400 && (body.contains("\"code\":100") || body.contains("does not exist")));
+    }
+
+    public record IgComments(java.util.List<IgComment> data) {
+    }
+
+    public record IgComment(String id, String text, String username) {
+    }
+
+    public record IgMediaList(java.util.List<IgMedia> data) {
+    }
+
+    public record IgMedia(
+            String id,
+            String caption,
+            @JsonProperty("media_url") String mediaUrl,
+            String permalink,
+            String timestamp,
+            @JsonProperty("like_count") Integer likeCount,
+            @JsonProperty("comments_count") Integer commentsCount) {
+    }
+
+    public record IgProfile(
+            String username,
+            @JsonProperty("profile_picture_url") String profilePictureUrl,
+            @JsonProperty("followers_count") Integer followersCount,
+            @JsonProperty("follows_count") Integer followsCount,
+            @JsonProperty("media_count") Integer mediaCount) {
+    }
+
     public record PageIg(@JsonProperty("instagram_business_account") IgAccount instagramBusinessAccount) {
     }
 

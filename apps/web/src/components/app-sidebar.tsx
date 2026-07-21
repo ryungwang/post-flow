@@ -10,6 +10,7 @@ import {
   Cloud,
   Globe,
   HelpCircle,
+  Instagram,
   LayoutDashboard,
   Library,
   Link2,
@@ -72,6 +73,14 @@ const NAV: Item[] = [
       { label: "내 게시물", to: "/content/mastodon-posts", icon: Library, platform: "MASTODON" },
       { label: "멘션", to: "/mastodon-mentions", icon: AtSign, platform: "MASTODON" },
       { label: "인사이트", to: "/mastodon-insights", icon: TrendingUp, platform: "MASTODON" },
+    ],
+  },
+  {
+    label: "Instagram",
+    icon: Instagram,
+    children: [
+      { label: "내 게시물", to: "/content/instagram-posts", icon: Library, platform: "INSTAGRAM" },
+      { label: "인사이트", to: "/instagram-insights", icon: TrendingUp, platform: "INSTAGRAM" },
     ],
   },
   { label: "분석", to: "/analytics", icon: BarChart3, pro: true },

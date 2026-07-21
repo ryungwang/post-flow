@@ -100,15 +100,17 @@ _최종 업데이트: 2026-07-20 · 현재: **Threads·Bluesky·Mastodon 완료(
 - **구현됨**: `/facebook/connect`·`/facebook/callback`, ConnectService(페이지 목록 upsert·게이팅), 프론트 FacebookCard(OAuth 팝업)
 - **남음**: 라이브 OAuth E2E(`FACEBOOK_APP_ID/SECRET` + App Review 승인 후), 여러 페이지 선택 UI
 
-## Phase 5 — Instagram — 🟡 발행 통합 구현 (2026-07-11)
+## Phase 5 — Instagram — 🟡 발행 + 댓글 자동응답 + 인사이트 구현 (2026-07-21)
 
 - IG Graph API(페북 Graph 호스트) · IG 비즈니스 계정은 **연결된 FB 페이지에서 감지**(페이지 토큰 공유) · **무료 API**
 - 발행: `POST /{igUserId}/media`(image_url+caption로 컨테이너) → `POST /{igUserId}/media_publish`(creation_id). **이미지 필수**(없으면 명확한 에러). 삭제 = IG API 미지원 → no-op
 - 연결: Facebook 연결 시 각 페이지의 `instagram_business_account`를 best-effort 감지해 INSTAGRAM 채널 등록. `InstagramPublisher`=`PublisherRegistry` 자동 편입
-- **구현됨**: `InstagramApiClient`(discover·container·publish), `InstagramPublisher`, FacebookConnectService IG 등록, PROVIDER_LABEL
-- **남음(2가지 게이트)**:
-  1. **AI 이미지 생성 기능 = 유료·결정 필요** — 우리 콘텐츠는 텍스트라 IG용 이미지 소스가 없음. 사용자가 이미지 첨부하면 지금도 발행 가능하나, 자동화엔 이미지 생성이 선행. (프로바이더/비용은 미결정 — 유료라 이번 스윕서 제외)
-  2. 라이브 OAuth E2E: `FACEBOOK_SCOPES`에 `instagram_basic,instagram_content_publish` 추가 + App Review 승인 후
+- **댓글 자동응답 = 구현됨(2026-07-21)**: `InstagramCommentResponder`(`CommentResponder` 자동 편입). 댓글 조회 `GET /{mediaId}/comments`, 답글 `POST /{commentId}/replies`. 삭제된 게시물(404/코드100) → `PostDeletedException`으로 self-heal. 검수 권한 `instagram_manage_comments` 필요.
+- **인사이트·내 게시물 조회 = 구현됨(2026-07-21)**: `InstagramReadService` + `/social/instagram/{posts,insights}`, 프론트 사이드바 Instagram 그룹(내 게시물·인사이트). 프로필 카운트 + 최근 25건 참여 집계. 검수 권한 `instagram_manage_insights` 필요.
+- **구현됨(코드)**: `InstagramApiClient`(discover·container·publish·comments·replies·profile·media), `InstagramPublisher`, `InstagramCommentResponder`, `InstagramReadService`+Controller, 프론트 페이지·사이드바, FacebookConnectService IG 등록
+- **남음(라이브 게이트)**:
+  1. **AI 이미지 생성 = 유료·결정 필요** — 발행 자동화 선행. 힉스필드 MCP 품질 확인 완료(이미지 좋음), REST 통합은 미착수. [[keys-deferred-e2e]]
+  2. **키·검수**: `FACEBOOK_APP_ID/SECRET` 운영 투입 + `FACEBOOK_SCOPES`에 `instagram_basic,instagram_content_publish` (+ 승인 후 `instagram_manage_comments,instagram_manage_insights`) 추가 + App Review 승인
 - ⚠️ Threads API엔 `share_to_instagram` 같은 교차게시 파라미터가 **없음**(별도 IG Graph API 통합 필요) — 확인 완료
 
 ---
