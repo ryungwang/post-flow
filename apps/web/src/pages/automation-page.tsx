@@ -125,21 +125,27 @@ export function AutomationPage() {
                       같은 내용이 여러 글로 보일 수 있어 채널 뱃지+발행일로 구분해야 사용자가 고를 수 있다. */}
                   {publishedPosts.map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
-                      <span className="flex items-center gap-1.5">
-                        {publishedChannels(p).map((c) => (
-                          <Badge
-                            key={c.provider + (c.channel ?? "")}
-                            variant="secondary"
-                            className="px-1.5 py-0 text-[10px]"
-                          >
-                            {PROVIDER_LABEL[c.provider] ?? c.provider}
-                            {c.channel && <span className="ml-1 opacity-70">@{c.channel}</span>}
-                          </Badge>
-                        ))}
-                        <span className="truncate">{p.content.slice(0, 20)}</span>
-                        {p.publishedAt && (
-                          <span className="shrink-0 text-xs text-muted-foreground">{fmtDate(p.publishedAt)}</span>
-                        )}
+                      <span className="flex flex-col gap-1 py-0.5">
+                        {/* 본문이 게시물을 식별하는 주 정보라 항상 첫 줄에 온전히. */}
+                        <span className="flex items-center gap-2">
+                          <span className="truncate">{p.content.slice(0, 28)}</span>
+                          {p.publishedAt && (
+                            <span className="shrink-0 text-xs text-muted-foreground">{fmtDate(p.publishedAt)}</span>
+                          )}
+                        </span>
+                        {/* 발행 채널은 둘째 줄에 — 폭이 좁아도 본문을 밀어내지 않는다. */}
+                        <span className="flex flex-wrap items-center gap-1">
+                          {publishedChannels(p).map((c) => (
+                            <Badge
+                              key={c.provider + (c.channel ?? "")}
+                              variant="secondary"
+                              className="px-1.5 py-0 text-[10px] font-normal"
+                            >
+                              {PROVIDER_LABEL[c.provider] ?? c.provider}
+                              {c.channel && <span className="ml-1 opacity-70">@{c.channel}</span>}
+                            </Badge>
+                          ))}
+                        </span>
                       </span>
                     </SelectItem>
                   ))}
