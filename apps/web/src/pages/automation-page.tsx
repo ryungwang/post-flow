@@ -59,6 +59,7 @@ export function AutomationPage() {
   const [template, setTemplate] = useState("관심 가져주셔서 감사해요! 여기서 받아보세요 👉 {link}");
   const [postId, setPostId] = useState<string>(ALL);
   const [ctaLinkId, setCtaLinkId] = useState<string>(NONE);
+  const selectedPost = postId === ALL ? null : publishedPosts.find((p) => String(p.id) === postId);
 
   // 규칙 목록 필터
   const [ruleQ, setRuleQ] = useState("");
@@ -118,7 +119,28 @@ export function AutomationPage() {
             <div className="space-y-1.5">
               <Label>대상 게시물</Label>
               <Select value={postId} onValueChange={setPostId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                {/* 트리거는 한 줄 — 본문 + 작은 채널 칩. 상세(계정 핸들·발행일)는 열린 목록에서 본다.
+                    SelectValue는 항목의 2줄 JSX를 그대로 복제해 한 줄 높이에 눌리므로 직접 렌더한다. */}
+                <SelectTrigger>
+                  {selectedPost ? (
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{selectedPost.content.slice(0, 30)}</span>
+                      <span className="flex shrink-0 items-center gap-1">
+                        {publishedChannels(selectedPost).map((c) => (
+                          <Badge
+                            key={c.provider + (c.channel ?? "")}
+                            variant="secondary"
+                            className="px-1.5 py-0 text-[10px] font-normal"
+                          >
+                            {PROVIDER_LABEL[c.provider] ?? c.provider}
+                          </Badge>
+                        ))}
+                      </span>
+                    </span>
+                  ) : (
+                    <SelectValue />
+                  )}
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL}>전체 발행 게시물</SelectItem>
                   {/* 답글은 실제 발행된 채널에만 달 수 있으므로, 발행 성공한 채널이 하나라도 있는 글만.
