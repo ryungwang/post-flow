@@ -16,7 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { commentRulesApi, type CommentRule, type TestResult } from "@/lib/comment-rules-api";
-import { postsApi } from "@/lib/posts-api";
+import { postsApi, type Post } from "@/lib/posts-api";
+import { PROVIDER_LABEL } from "@/lib/social-api";
 import { roiApi } from "@/lib/roi-api";
 import { ApiError } from "@/lib/api";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -26,6 +27,23 @@ import { cn } from "@/lib/utils";
 const ALL = "__all__";
 const NONE = "__none__";
 
+/**
+ * 발행 성공한 채널 목록(계정 단위, 중복 제거). 자동응답은 이 채널들에만 적용된다.
+ * 같은 플랫폼에 복수 계정을 연결할 수 있어(Pro 5채널) provider만으론 구분이 안 된다 →
+ * socialAccountId로 중복 제거하고 계정 핸들까지 표시한다.
+ */
+function publishedChannels(p: Post): { provider: string; channel: string | null }[] {
+  const seen = new Set<number>();
+  return p.targets
+    .filter((t) => t.status === "PUBLISHED")
+    .filter((t) => (seen.has(t.socialAccountId) ? false : seen.add(t.socialAccountId)))
+    .map((t) => ({ provider: t.provider, channel: t.channel }));
+}
+
+function fmtDate(iso: string): string {
+  return new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric" }).format(new Date(iso));
+}
+
 export function AutomationPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -34,6 +52,8 @@ export function AutomationPage() {
   const { data: posts } = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
   const { data: links } = useQuery({ queryKey: ["cta-links"], queryFn: roiApi.listCtaLinks });
   const rules = data ?? [];
+  // 발행 성공한 채널이 하나라도 있는 글만 대상이 될 수 있다(답글 달 곳이 있어야 함).
+  const publishedPosts = (posts ?? []).filter((p) => publishedChannels(p).length > 0);
 
   const [keyword, setKeyword] = useState("");
   const [template, setTemplate] = useState("관심 가져주셔서 감사해요! 여기서 받아보세요 👉 {link}");
@@ -101,9 +121,27 @@ export function AutomationPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL}>전체 발행 게시물</SelectItem>
-                  {/* 실제 발행된 게시물만 대상(초안엔 답글 달 곳이 없음). 발행된 채널마다 각각 처리된다. */}
-                  {(posts ?? []).filter((p) => p.status === "PUBLISHED").map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.content.slice(0, 24)}</SelectItem>
+                  {/* 답글은 실제 발행된 채널에만 달 수 있으므로, 발행 성공한 채널이 하나라도 있는 글만.
+                      같은 내용이 여러 글로 보일 수 있어 채널 뱃지+발행일로 구분해야 사용자가 고를 수 있다. */}
+                  {publishedPosts.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      <span className="flex items-center gap-1.5">
+                        {publishedChannels(p).map((c) => (
+                          <Badge
+                            key={c.provider + (c.channel ?? "")}
+                            variant="secondary"
+                            className="px-1.5 py-0 text-[10px]"
+                          >
+                            {PROVIDER_LABEL[c.provider] ?? c.provider}
+                            {c.channel && <span className="ml-1 opacity-70">@{c.channel}</span>}
+                          </Badge>
+                        ))}
+                        <span className="truncate">{p.content.slice(0, 20)}</span>
+                        {p.publishedAt && (
+                          <span className="shrink-0 text-xs text-muted-foreground">{fmtDate(p.publishedAt)}</span>
+                        )}
+                      </span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
