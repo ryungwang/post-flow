@@ -45,13 +45,14 @@ const NAV: Item[] = [
     ],
   },
   { label: "스케줄", to: "/schedule", icon: CalendarClock },
+  // 댓글 자동화는 전 채널 공용(규칙 1개 → 발행된 모든 채널에 적용) → 플랫폼 그룹 밖 최상위.
+  { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true },
   {
     label: "Threads",
     icon: AtSign,
     children: [
       { label: "내 게시물", to: "/content/threads-posts", icon: Library, platform: "THREADS" },
       { label: "멘션", to: "/mentions", icon: AtSign, platform: "THREADS" },
-      { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true, platform: "THREADS" },
       { label: "인사이트", to: "/insights", icon: TrendingUp, pro: true, platform: "THREADS" },
       { label: "경쟁사 분석", to: "/competitors", icon: Search, pro: true, platform: "THREADS" },
     ],
@@ -70,7 +71,6 @@ const NAV: Item[] = [
     children: [
       { label: "내 게시물", to: "/content/mastodon-posts", icon: Library, platform: "MASTODON" },
       { label: "멘션", to: "/mastodon-mentions", icon: AtSign, platform: "MASTODON" },
-      { label: "댓글 자동화", to: "/automation", icon: MessageSquareReply, pro: true, platform: "MASTODON" },
       { label: "인사이트", to: "/mastodon-insights", icon: TrendingUp, platform: "MASTODON" },
     ],
   },
