@@ -101,6 +101,11 @@ public class PostTarget extends BaseTimeEntity {
         this.status = PostTargetStatus.RECONNECT_REQUIRED;
     }
 
+    /** 발행됐던 게시물이 플랫폼에서 삭제됨을 감지(404). 답글 달 곳이 없어 자동화 대상에서 빠진다. */
+    public void markDeletedOnPlatform() {
+        this.status = PostTargetStatus.DELETED_ON_PLATFORM;
+    }
+
     public boolean retriesExhausted() {
         return retryCount + 1 >= MAX_RETRIES;
     }

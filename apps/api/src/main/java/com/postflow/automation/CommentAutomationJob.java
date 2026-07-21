@@ -10,6 +10,7 @@ import com.postflow.social.CommentResponder;
 import com.postflow.social.CommentResponderRegistry;
 import com.postflow.social.ConnectionStatus;
 import com.postflow.social.InboundComment;
+import com.postflow.social.PostDeletedException;
 import com.postflow.social.SocialAccount;
 import com.postflow.social.SocialAccountRepository;
 import com.postflow.social.PublishException;
@@ -105,7 +106,19 @@ public class CommentAutomationJob {
             return; // 이 플랫폼은 댓글 자동응답 미지원(정상 상황)
         }
 
-        for (InboundComment comment : responder.fetchComments(account, target.getPlatformPostId())) {
+        List<InboundComment> comments;
+        try {
+            comments = responder.fetchComments(account, target.getPlatformPostId());
+        } catch (PostDeletedException gone) {
+            // 플랫폼에서 삭제된 게시물 → 타겟을 정리해 다음부터 대상·드롭다운에서 제외(self-healing).
+            target.markDeletedOnPlatform();
+            postTargetRepository.save(target);
+            log.info("Post target {} marked deleted on {} (post {})",
+                    target.getId(), account.getProvider(), post.getId());
+            return;
+        }
+
+        for (InboundComment comment : comments) {
             if (!rule.matches(comment.text())) {
                 continue;
             }

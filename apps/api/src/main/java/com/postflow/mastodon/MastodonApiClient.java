@@ -119,7 +119,8 @@ public class MastodonApiClient {
                 throw new MastodonAuthException("액세스 토큰이 만료됐어요.");
             }
             if (e.getStatusCode().value() == 404) {
-                return List.of(); // 원 게시물이 지워짐 → 댓글도 없음
+                // 원 게시물이 플랫폼에서 삭제됨 → 자동화가 타겟을 정리하도록 신호.
+                throw new com.postflow.social.PostDeletedException("마스토돈 게시물이 삭제됐어요.");
             }
             throw new MastodonApiException(
                     "마스토돈 댓글을 불러오지 못했어요. (" + e.getStatusCode().value() + ")", e);

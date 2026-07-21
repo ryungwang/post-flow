@@ -6,5 +6,6 @@ public enum PostTargetStatus {
     PUBLISHING,          // 발행 진행 중
     PUBLISHED,           // 발행 완료
     FAILED,              // 재시도 소진 후 실패
-    RECONNECT_REQUIRED   // 채널 토큰 만료/재연결 필요
+    RECONNECT_REQUIRED,  // 채널 토큰 만료/재연결 필요
+    DELETED_ON_PLATFORM  // 발행됐으나 플랫폼에서 삭제됨(외부 삭제 감지). 자동화 대상에서 제외.
 }

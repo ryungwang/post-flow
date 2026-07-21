@@ -14,7 +14,7 @@ export type PostTarget = {
   socialAccountId: number;
   provider: string; // THREADS / BLUESKY
   channel: string | null;
-  status: "PENDING" | "PUBLISHING" | "PUBLISHED" | "FAILED" | "RECONNECT_REQUIRED";
+  status: "PENDING" | "PUBLISHING" | "PUBLISHED" | "FAILED" | "RECONNECT_REQUIRED" | "DELETED_ON_PLATFORM";
   platformPostId: string | null;
   error: string | null;
 };
