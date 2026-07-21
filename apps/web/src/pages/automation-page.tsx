@@ -119,24 +119,10 @@ export function AutomationPage() {
             <div className="space-y-1.5">
               <Label>대상 게시물</Label>
               <Select value={postId} onValueChange={setPostId}>
-                {/* 트리거는 한 줄 — 본문 + 작은 채널 칩. 상세(계정 핸들·발행일)는 열린 목록에서 본다.
-                    SelectValue는 항목의 2줄 JSX를 그대로 복제해 한 줄 높이에 눌리므로 직접 렌더한다. */}
+                {/* 트리거는 본문만(한 줄). 선택한 글의 발행 채널은 Select 아래 별도 줄에 뱃지로. */}
                 <SelectTrigger>
                   {selectedPost ? (
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate">{selectedPost.content.slice(0, 30)}</span>
-                      <span className="flex shrink-0 items-center gap-1">
-                        {publishedChannels(selectedPost).map((c) => (
-                          <Badge
-                            key={c.provider + (c.channel ?? "")}
-                            variant="secondary"
-                            className="px-1.5 py-0 text-[10px] font-normal"
-                          >
-                            {PROVIDER_LABEL[c.provider] ?? c.provider}
-                          </Badge>
-                        ))}
-                      </span>
-                    </span>
+                    <span className="min-w-0 truncate">{selectedPost.content}</span>
                   ) : (
                     <SelectValue />
                   )}
@@ -173,6 +159,21 @@ export function AutomationPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {/* 선택한 글의 발행 채널(플랫폼+계정)을 드롭다운 아래에 뱃지로 — 어디에 답글이 나갈지 명확히. */}
+              {selectedPost && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {publishedChannels(selectedPost).map((c) => (
+                    <Badge
+                      key={c.provider + (c.channel ?? "")}
+                      variant="secondary"
+                      className="px-2 py-0.5 text-xs font-normal"
+                    >
+                      {PROVIDER_LABEL[c.provider] ?? c.provider}
+                      {c.channel && <span className="ml-1 opacity-70">@{c.channel}</span>}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>추적 링크 ({"{link}"} 치환)</Label>
