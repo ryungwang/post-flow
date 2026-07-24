@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { seriesApi, type SeriesItem } from "@/lib/series-api";
 import { brandApi } from "@/lib/brand-api";
 import { GENERATE_GOALS } from "@/lib/goals";
+import { GENERATE_PLATFORMS } from "@/lib/platforms";
 import { ScoreBadge } from "@/components/score-badge";
 import { ScoreAnalysisPanel } from "@/components/score-analysis-panel";
 import { ThreadsPreview } from "@/components/threads-preview";
@@ -24,6 +25,7 @@ export function SeriesPage() {
   const [topic, setTopic] = useState("");
   const [days, setDays] = useState(7);
   const [goal, setGoal] = useState("Engagement");
+  const [platform, setPlatform] = useState("THREADS");
   const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: brandApi.list });
   const [brandId, setBrandId] = useState("none");
   const currentGoal = GENERATE_GOALS.find((g) => g.value === goal) ?? GENERATE_GOALS[0];
@@ -36,7 +38,7 @@ export function SeriesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await seriesApi.generate(topic.trim(), days, goal, brandId === "none" ? null : Number(brandId));
+      const res = await seriesApi.generate(topic.trim(), days, goal, brandId === "none" ? null : Number(brandId), platform);
       setItems(res.items);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setError("로그인이 필요해요.");
@@ -86,6 +88,20 @@ export function SeriesPage() {
                 </button>
               ))}
             </div>
+          </div>
+          <div className="grid gap-2">
+            <Label>발행 플랫폼</Label>
+            <Select value={platform} onValueChange={setPlatform}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {GENERATE_PLATFORMS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {GENERATE_PLATFORMS.find((p) => p.value === platform)?.hint}
+            </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">

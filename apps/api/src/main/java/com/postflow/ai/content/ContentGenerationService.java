@@ -28,7 +28,6 @@ import java.util.List;
 @Service
 public class ContentGenerationService {
 
-    private static final int THREADS_MAX_CHARS = 500;
     private static final int MAX_OUTPUT_TOKENS = 16000;
 
     private final LLMProvider llmProvider;
@@ -58,7 +57,8 @@ public class ContentGenerationService {
     @Transactional
     public GenerateContentResponse generate(Long userId, GenerateContentRequest request) {
         usageService.assertCanGenerate(userId);
-        String systemPrompt = promptBuilder.systemPrompt();
+        PlatformContentProfile profile = PlatformContentProfile.fromRequest(request.platform());
+        String systemPrompt = promptBuilder.systemPrompt(profile);
         // 트렌드 반영: 키워드가 있으면 지금 뜨는 실제 게시물을 검색해 프롬프트에 주입(권한 없으면 조용히 스킵).
         String trendBlock = null;
         String kw = request.trendKeywordOrNull();
@@ -78,7 +78,7 @@ public class ContentGenerationService {
 
         GenerationResult result = llmProvider.generate(llmRequest);
 
-        List<GeneratedCard> cards = parseCards(result.text());
+        List<GeneratedCard> cards = parseCards(result.text(), profile);
 
         aiGenerationRepository.save(AiGeneration.record(
                 userId,
@@ -93,10 +93,12 @@ public class ContentGenerationService {
     }
 
     @Transactional
-    public GenerateSeriesResponse generateSeries(Long userId, String topic, int days, String goal, Long brandId) {
+    public GenerateSeriesResponse generateSeries(Long userId, String topic, int days, String goal,
+                                                 Long brandId, String platform) {
         usageService.assertCanSeries(userId);
         usageService.assertCanGenerate(userId);
-        String systemPrompt = promptBuilder.seriesSystemPrompt();
+        PlatformContentProfile profile = PlatformContentProfile.fromRequest(platform);
+        String systemPrompt = promptBuilder.seriesSystemPrompt(profile);
         String userPrompt = promptBuilder.seriesUserPrompt(topic, days, goal, brandContext(userId, brandId));
 
         GenerationRequest llmRequest = GenerationRequest.builder()
@@ -109,7 +111,7 @@ public class ContentGenerationService {
 
         GenerationResult result = llmProvider.generate(llmRequest);
 
-        List<SeriesItem> items = parseSeries(result.text());
+        List<SeriesItem> items = parseSeries(result.text(), profile);
 
         aiGenerationRepository.save(AiGeneration.record(
                 userId,
@@ -123,16 +125,18 @@ public class ContentGenerationService {
         return new GenerateSeriesResponse(items, result.provider(), result.model());
     }
 
-    private List<SeriesItem> parseSeries(String raw) {
+    private List<SeriesItem> parseSeries(String raw, PlatformContentProfile profile) {
         String json = extractJsonArray(raw);
         try {
             List<SeriesItem> items = objectMapper.readValue(json, new TypeReference<>() {});
             return items.stream()
-                    .map(it -> it.content() != null && it.content().length() > THREADS_MAX_CHARS
-                            ? new SeriesItem(it.day(), it.title(),
-                                    it.content().substring(0, THREADS_MAX_CHARS), it.hashtags(), it.cta())
-                            : it)
-                    .map(it -> it.withScore(ContentScorer.score(it.content(), it.hashtags(), it.cta())))
+                    .map(it -> {
+                        String clamped = profile.clamp(it.content());
+                        return clamped == it.content()
+                                ? it
+                                : new SeriesItem(it.day(), it.title(), clamped, it.hashtags(), it.cta());
+                    })
+                    .map(it -> it.withScore(ContentScorer.score(it.content(), it.hashtags(), it.cta(), profile)))
                     .toList();
         } catch (JsonProcessingException e) {
             throw new ContentGenerationException("Failed to parse series as JSON", e);
@@ -159,13 +163,13 @@ public class ContentGenerationService {
         return Math.min(MAX_OUTPUT_TOKENS, 1000 + days * 700);
     }
 
-    private List<GeneratedCard> parseCards(String raw) {
+    private List<GeneratedCard> parseCards(String raw, PlatformContentProfile profile) {
         String json = extractJsonArray(raw);
         try {
             List<GeneratedCard> cards = objectMapper.readValue(json, new TypeReference<>() {});
             return cards.stream()
-                    .map(this::clampContent)
-                    .map(c -> c.withScore(ContentScorer.score(c.content(), c.hashtags(), c.cta())))
+                    .map(c -> clampContent(c, profile))
+                    .map(c -> c.withScore(ContentScorer.score(c.content(), c.hashtags(), c.cta(), profile)))
                     .sorted(java.util.Comparator.comparingInt(GeneratedCard::score).reversed())
                     .toList();
         } catch (JsonProcessingException e) {
@@ -173,15 +177,12 @@ public class ContentGenerationService {
         }
     }
 
-    /** Defensive ≤500-char guard in case the model overruns the instruction. */
-    private GeneratedCard clampContent(GeneratedCard card) {
-        if (card.content() != null && card.content().length() > THREADS_MAX_CHARS) {
-            return new GeneratedCard(
-                    card.content().substring(0, THREADS_MAX_CHARS),
-                    card.hashtags(),
-                    card.cta());
-        }
-        return card;
+    /** Defensive per-platform char guard (code-point aware) in case the model overruns. */
+    private GeneratedCard clampContent(GeneratedCard card, PlatformContentProfile profile) {
+        String clamped = profile.clamp(card.content());
+        return clamped == card.content()
+                ? card
+                : new GeneratedCard(clamped, card.hashtags(), card.cta());
     }
 
     /** Strip markdown fences / prose and isolate the JSON array. */

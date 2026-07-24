@@ -33,6 +33,7 @@ import { ApiError } from "@/lib/api";
 
 const TOPIC_CHIPS = ["AI", "스타트업", "개발", "생산성", "여행", "음식", "운동", "육아"];
 import { GENERATE_GOALS as GOALS } from "@/lib/goals";
+import { GENERATE_PLATFORMS as PLATFORMS } from "@/lib/platforms";
 const TONES = [
   { value: "Expert", label: "전문가" },
   { value: "Friendly", label: "친근함" },
@@ -51,6 +52,7 @@ export function GeneratePage() {
   const [topic, setTopic] = useState(params.get("topic") ?? "");
   const [goal, setGoal] = useState("Engagement");
   const [tone, setTone] = useState("Friendly");
+  const [platform, setPlatform] = useState("THREADS");
   const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: brandApi.list });
   const [brandId, setBrandId] = useState("none");
   const currentGoal = GOALS.find((g) => g.value === goal) ?? GOALS[0];
@@ -86,7 +88,7 @@ export function GeneratePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await contentApi.generate({ topic: topic.trim(), goal, tone, quantity, brandId: brandId === "none" ? null : Number(brandId), trendKeyword: useTrend ? (trendKeyword.trim() || topic.trim()) : null });
+      const res = await contentApi.generate({ topic: topic.trim(), goal, tone, quantity, platform, brandId: brandId === "none" ? null : Number(brandId), trendKeyword: useTrend ? (trendKeyword.trim() || topic.trim()) : null });
       setCards(res.cards);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
@@ -156,6 +158,23 @@ export function GeneratePage() {
               </Select>
             </div>
           )}
+
+          <div className="grid gap-2">
+            <Label>발행 플랫폼</Label>
+            <Select value={platform} onValueChange={setPlatform}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PLATFORMS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {PLATFORMS.find((p) => p.value === platform)?.hint}
+            </p>
+          </div>
 
           <div className="grid items-start gap-4 sm:grid-cols-3">
             <div className="grid gap-2">

@@ -14,7 +14,8 @@ public record GenerateSeriesRequest(
         @NotBlank String topic,
         @Min(1) @Max(30) int days,
         String goal,
-        Long brandId
+        Long brandId,
+        String platform
 ) {
     public String goalOrDefault() {
         return goal == null || goal.isBlank() ? "Engagement" : goal;

@@ -16,6 +16,6 @@ export type SeriesResponse = {
 };
 
 export const seriesApi = {
-  generate: (topic: string, days: number, goal?: string, brandId?: number | null) =>
-    api.post<SeriesResponse>("/ai/series", { topic, days, goal, brandId }),
+  generate: (topic: string, days: number, goal?: string, brandId?: number | null, platform?: string) =>
+    api.post<SeriesResponse>("/ai/series", { topic, days, goal, brandId, platform }),
 };

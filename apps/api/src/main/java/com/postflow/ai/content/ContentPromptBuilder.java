@@ -15,12 +15,18 @@ import java.util.List;
 @Component
 public class ContentPromptBuilder {
 
-    /** Stable, cacheable prefix. */
-    public String systemPrompt() {
+    /** Stable, cacheable prefix — tailored to the target platform's algorithm & limits. */
+    public String systemPrompt(PlatformContentProfile p) {
+        String imageNote = p.imageCentric()
+                ? "\n- 이 플랫폼은 이미지가 핵심이라, \"content\"는 이미지에 붙는 캡션이다. 첫 줄에 가장 강한 훅을 둬라."
+                : "";
         return """
-                You are a top-tier social media copywriter for Threads. Write substantial,
+                You are a top-tier social media copywriter for %s. Write substantial,
                 scroll-stopping posts that people actually save and share — never a single
                 thin sentence.
+
+                PLATFORM — %s:
+                %s
 
                 Structure each post's "content" with line breaks (\\n):
                 1. Hook — a bold, curiosity-driving first line.
@@ -31,20 +37,23 @@ public class ContentPromptBuilder {
                    목표에 맞는 마무리를 쓰고, 모든 글을 질문으로 끝내지 말 것.
 
                 Hard rules:
-                - "content" MUST be a rich multi-line post, ideally 250-480 characters,
-                  and MUST be 500 characters or fewer (Threads limit).
+                - "content" MUST be a rich multi-line post, ideally %d-%d characters,
+                  and MUST be %d characters or fewer (%s limit). NEVER exceed the limit.
                 - Write everything (content, cta, hashtags) in natural KOREAN (한국어) by default.
                   Only use another language if the topic is itself clearly written in that language.
                   Use natural, human Korean — not translated-sounding.
                 - Tasteful emoji allowed (0-3), never spammy.
                 - The CTA goes in the separate "cta" field, NOT inside content.
-                - Hashtags: 3-5, relevant, no '#', no spaces.
+                - Hashtags: %d-%d, relevant to this platform, no '#', no spaces.%s
 
                 Output format:
                 - Return ONLY a JSON array, no prose, no markdown fences.
                 - Each element: {"content": string, "hashtags": string[], "cta": string}.
                 - Each "content" must differ meaningfully in angle and hook.
-                """;
+                """.formatted(
+                p.displayName(), p.displayName(), p.algorithmGuidance(),
+                p.idealMin(), p.idealMax(), p.maxChars(), p.displayName(),
+                p.hashtagMin(), p.hashtagMax(), imageNote);
     }
 
     /** Per-request user prompt. {@code brandContext} may be empty (no product selected). */
@@ -73,12 +82,13 @@ public class ContentPromptBuilder {
 
     /** 지금 뜨는 실제 게시물 샘플을 프롬프트에 주입 — 알고리즘 타는 훅·포맷·주제를 반영하게. */
     public String trendBlock(String keyword, List<String> trendTexts) {
+        // 샘플은 Threads 검색에서 오지만, 훅·리듬·화제성은 플랫폼 무관하게 참고 가치가 있다.
         if (trendTexts == null || trendTexts.isEmpty()) {
             return "";
         }
         StringBuilder sb = new StringBuilder();
         sb.append("\nTREND CONTEXT — '").append(keyword)
-                .append("' 키워드로 지금 Threads에서 반응 좋은 실제 게시물 샘플:\n");
+                .append("' 키워드로 지금 반응 좋은 실제 게시물 샘플:\n");
         int i = 1;
         for (String t : trendTexts) {
             String one = t.replace("\n", " ").trim();
@@ -121,27 +131,33 @@ public class ContentPromptBuilder {
         return sb.toString();
     }
 
-    /** Stable, cacheable prefix for a multi-day content series. */
-    public String seriesSystemPrompt() {
+    /** Stable, cacheable prefix for a multi-day content series — tailored to the platform. */
+    public String seriesSystemPrompt(PlatformContentProfile p) {
         return """
-                You are an expert content strategist for Threads.
+                You are an expert content strategist for %s.
                 Design a coherent multi-day content series that builds on itself day by day,
                 progressing from hook/awareness to depth to action.
+
+                PLATFORM — %s:
+                %s
 
                 Hard rules:
                 - Write everything (title, content, cta, hashtags) in natural KOREAN (한국어) by default,
                   unless the topic is itself clearly in another language. Natural, human Korean.
                 - Each day's "content" is a rich multi-line post (hook → 2-4 value lines →
-                  insight → question), ideally 250-480 chars, and ≤500 chars (Threads limit).
+                  insight → close), ideally %d-%d chars, and ≤%d chars (%s limit). NEVER exceed the limit.
                 - Use line breaks (\\n); be specific, human, not a single thin sentence.
                 - Each day has a short punchy title and the full post body.
-                - Hashtags: 3-5 per day, relevant, no '#', no spaces.
+                - Hashtags: %d-%d per day, relevant to this platform, no '#', no spaces.
 
                 Output format:
                 - Return ONLY a JSON array, no prose, no markdown fences.
                 - Exactly one element per day, in order.
                 - Each element: {"day": number, "title": string, "content": string, "hashtags": string[], "cta": string}.
-                """;
+                """.formatted(
+                p.displayName(), p.displayName(), p.algorithmGuidance(),
+                p.idealMin(), p.idealMax(), p.maxChars(), p.displayName(),
+                p.hashtagMin(), p.hashtagMax());
     }
 
     public String seriesUserPrompt(String topic, int days, String goal, String brandContext) {

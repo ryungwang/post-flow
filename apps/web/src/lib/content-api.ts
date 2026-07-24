@@ -20,6 +20,7 @@ export type GenerateRequest = {
   quantity: number;
   brandId?: number | null;
   trendKeyword?: string | null;
+  platform?: string; // THREADS/BLUESKY/MASTODON/INSTAGRAM/... — 플랫폼별 글자수·해시태그·훅. 미지정 시 THREADS.
 };
 
 export type HookVariant = { hook: string; score: number };

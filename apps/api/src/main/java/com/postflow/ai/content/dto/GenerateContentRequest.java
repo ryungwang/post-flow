@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
  * @param goal     목표 (Engagement / Followers / ... / Fun)
  * @param tone     톤 (Expert / Casual / Humor / ...)
  * @param quantity 생성 개수 (5 / 10 / 30)
+ * @param platform 발행 대상 플랫폼(THREADS/BLUESKY/MASTODON/INSTAGRAM/...) — 플랫폼별로 글자수·해시태그·훅을 달리 생성. null이면 THREADS.
  */
 public record GenerateContentRequest(
         @NotBlank String topic,
@@ -18,7 +19,8 @@ public record GenerateContentRequest(
         String tone,
         @Min(1) @Max(30) int quantity,
         Long brandId,
-        String trendKeyword
+        String trendKeyword,
+        String platform
 ) {
     public String goalOrDefault() {
         return goal == null || goal.isBlank() ? "Engagement" : goal;

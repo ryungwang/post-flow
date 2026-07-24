@@ -19,12 +19,18 @@ public final class ContentScorer {
                     + "secret|why|how|mistake|free|stop|never|truth|proven",
             java.util.regex.Pattern.CASE_INSENSITIVE);
 
+    /** Threads-default scoring (backward-compatible). */
     public static int score(String content, List<String> hashtags, String cta) {
+        return score(content, hashtags, cta, PlatformContentProfile.of(com.postflow.social.SocialProvider.THREADS));
+    }
+
+    /** Platform-aware scoring — length/hashtag sweet spots come from the target platform. */
+    public static int score(String content, List<String> hashtags, String cta, PlatformContentProfile p) {
         if (content == null || content.isBlank()) {
             return 0;
         }
-        int total = hook(firstLine(content)) + length(content) + question(content)
-                + cta(cta) + hashtags(hashtags) + structure(content);
+        int total = hook(firstLine(content)) + length(content, p) + question(content)
+                + cta(cta) + hashtags(hashtags, p) + structure(content);
         return Math.max(0, Math.min(100, total));
     }
 
@@ -39,9 +45,11 @@ public final class ContentScorer {
         if (content == null || content.isBlank()) {
             return new ScoreAnalysis(0, List.of(), List.of("본문을 입력하세요."));
         }
+        // 점수 분석은 사용자가 붙여넣은 임의 글 대상이라 플랫폼 컨텍스트가 없음 → Threads 기본 기준.
+        PlatformContentProfile p = PlatformContentProfile.of(com.postflow.social.SocialProvider.THREADS);
         String first = firstLine(content);
-        int h = hook(first), len = length(content), q = question(content),
-                c = cta(cta), tags = hashtags(hashtags), st = structure(content);
+        int h = hook(first), len = length(content, p), q = question(content),
+                c = cta(cta), tags = hashtags(hashtags, p), st = structure(content);
 
         List<Component> components = List.of(
                 new Component("훅", h, 35),
@@ -93,13 +101,13 @@ public final class ContentScorer {
         return Math.min(35, s);
     }
 
-    /** 0-20: Threads sweet spot ~150-480 chars. */
-    private static int length(String content) {
-        int n = content.length();
-        if (n >= 150 && n <= 480) return 20;
-        if (n > 480 && n <= 500) return 16;
-        if (n >= 80) return 12;
-        return Math.max(0, n * 8 / 80);
+    /** 0-20: length scored against the platform's sweet spot (idealMin~idealMax). */
+    private static int length(String content, PlatformContentProfile p) {
+        int n = content.codePointCount(0, content.length());
+        if (n >= p.idealMin() && n <= p.idealMax()) return 20;
+        if (n > p.idealMax() && n <= p.maxChars()) return 16;    // over ideal but still within limit
+        if (n >= p.idealMin() / 2) return 12;                    // roughly half the ideal floor
+        return Math.max(0, n * 8 / Math.max(1, p.idealMin() / 2));
     }
 
     private static int question(String content) {
@@ -110,13 +118,14 @@ public final class ContentScorer {
         return cta != null && !cta.isBlank() ? 13 : 0;
     }
 
-    /** 0-10: 3-5 hashtags is ideal. */
-    private static int hashtags(List<String> hashtags) {
+    /** 0-10: hashtag count scored against the platform's ideal band. */
+    private static int hashtags(List<String> hashtags, PlatformContentProfile p) {
         int n = hashtags == null ? 0 : hashtags.size();
-        if (n >= 3 && n <= 5) return 10;
-        if (n >= 6) return 6;
+        if (n >= p.hashtagMin() && n <= p.hashtagMax()) return 10;
+        if (p.hashtagMin() == 0 && n == 0) return 10;           // platforms where 0 tags is fine (FB)
+        if (n > p.hashtagMax()) return 6;
         if (n >= 1) return 5;
-        return 0;
+        return p.hashtagMin() == 0 ? 8 : 0;                     // no tags: fine on FB, weak elsewhere
     }
 
     /** 0-10: line breaks + list markers aid scannability. */
