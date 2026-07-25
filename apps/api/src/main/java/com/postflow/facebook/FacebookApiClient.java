@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 
 /**
@@ -52,10 +53,12 @@ public class FacebookApiClient {
 
     /** List the Pages this user manages — each entry carries its own Page access token. */
     public List<FbPage> getPages(String userToken) {
-        String uri = UriComponentsBuilder.fromPath(ver() + "/me/accounts")
+        // Graph 필드의 중첩 문법(picture{url})의 '{}'를 Spring이 URI 템플릿 변수로 확장하지 않도록
+        // encode() 후 URI 객체로 넘긴다(문자열을 넘기면 {url}을 변수로 착각해 확장 오류).
+        URI uri = UriComponentsBuilder.fromPath(ver() + "/me/accounts")
                 .queryParam("fields", "id,name,access_token,picture{url}")
                 .queryParam("access_token", userToken)
-                .build().toUriString();
+                .encode().build().toUri();
         try {
             FbPagesResponse res = graph.get().uri(uri).retrieve().body(FbPagesResponse.class);
             return res != null && res.data() != null ? res.data() : List.of();
@@ -112,12 +115,13 @@ public class FacebookApiClient {
      * A deleted post (404) has no comments rather than being an error.
      */
     public List<FbComment> getComments(String postId, String pageToken) {
-        String uri = UriComponentsBuilder.fromPath(ver() + "/" + postId + "/comments")
+        // from{name}의 '{}'를 URI 템플릿 확장에서 제외 — encode() 후 URI로 넘긴다.
+        URI uri = UriComponentsBuilder.fromPath(ver() + "/" + postId + "/comments")
                 .queryParam("fields", "id,message,from{name}")
                 .queryParam("filter", "toplevel")
                 .queryParam("limit", 50)
                 .queryParam("access_token", pageToken)
-                .build().toUriString();
+                .encode().build().toUri();
         try {
             FbCommentsResponse res = graph.get().uri(uri).retrieve().body(FbCommentsResponse.class);
             return res == null || res.data() == null ? List.of() : res.data();

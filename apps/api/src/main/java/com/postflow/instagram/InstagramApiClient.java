@@ -11,6 +11,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
+
 /**
  * Thin client over the Instagram Graph API (hosted on the Facebook Graph host). IG content
  * publishing is a two-step flow: create a media container from an image URL + caption, then
@@ -34,10 +36,11 @@ public class InstagramApiClient {
 
     /** The IG Business account linked to a Page (null if none / no instagram scope). */
     public IgAccount discoverIgAccount(String pageId, String pageToken) {
-        String uri = UriComponentsBuilder.fromPath(ver() + "/" + pageId)
+        // instagram_business_account{...}의 '{}'를 URI 템플릿 확장에서 제외 — encode() 후 URI로.
+        URI uri = UriComponentsBuilder.fromPath(ver() + "/" + pageId)
                 .queryParam("fields", "instagram_business_account{id,username,profile_picture_url}")
                 .queryParam("access_token", pageToken)
-                .build().toUriString();
+                .encode().build().toUri();
         try {
             PageIg res = graph.get().uri(uri).retrieve().body(PageIg.class);
             return res != null ? res.instagramBusinessAccount() : null;
