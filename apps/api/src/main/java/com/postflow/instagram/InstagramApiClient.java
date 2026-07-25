@@ -12,6 +12,8 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Thin client over the Instagram Graph API (hosted on the Facebook Graph host). IG content
@@ -36,11 +38,10 @@ public class InstagramApiClient {
 
     /** The IG Business account linked to a Page (null if none / no instagram scope). */
     public IgAccount discoverIgAccount(String pageId, String pageToken) {
-        // instagram_business_account{...}의 '{}'를 URI 템플릿 확장에서 제외 — encode() 후 URI로.
-        URI uri = UriComponentsBuilder.fromPath(ver() + "/" + pageId)
-                .queryParam("fields", "instagram_business_account{id,username,profile_picture_url}")
-                .queryParam("access_token", pageToken)
-                .encode().build().toUri();
+        // Graph 중첩 필드 '{}'는 UriComponentsBuilder가 URI 템플릿으로 오인 → 값을 직접 인코딩해 절대 URI로.
+        URI uri = URI.create(fb.graphBaseUrlOrDefault() + ver() + "/" + pageId
+                + "?fields=" + URLEncoder.encode("instagram_business_account{id,username,profile_picture_url}", StandardCharsets.UTF_8)
+                + "&access_token=" + URLEncoder.encode(pageToken, StandardCharsets.UTF_8));
         try {
             PageIg res = graph.get().uri(uri).retrieve().body(PageIg.class);
             return res != null ? res.instagramBusinessAccount() : null;
