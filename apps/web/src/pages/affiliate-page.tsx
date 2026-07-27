@@ -1,7 +1,7 @@
 // 콘텐츠 → 제휴(쿠팡파트너스): 리뷰형 소프트셀 + 대가성 고지문·subId·링크를 서버가 자동 부착.
 // 네이버 쇼핑 검색으로 실제 상품 정보를 근거로 채운다.
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, Check, Copy, Info, Link2, Loader2, Search, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { contentApi, type AffiliateResponse, type GeneratedCard } from "@/lib/content-api";
-import { naverApi, type NaverProduct, type RisingKeyword } from "@/lib/naver-api";
+import { naverApi, type NaverProduct, type RadarProduct, type RadarResponse } from "@/lib/naver-api";
 import { postsApi } from "@/lib/posts-api";
 import { GENERATE_PLATFORMS as PLATFORMS } from "@/lib/platforms";
 import { ScoreBadge } from "@/components/score-badge";
@@ -59,30 +59,30 @@ export function AffiliatePage() {
     }
   };
 
-  // 카테고리 → 급상승 후보 발굴(네이버 쇼핑인사이트)
-  const { data: trendCats } = useQuery({ queryKey: ["naver-trend-cats"], queryFn: naverApi.trendCategories, retry: false });
-  const [activeCat, setActiveCat] = useState<string | null>(null);
-  const [rising, setRising] = useState<RisingKeyword[] | null>(null);
-  const [risingLoading, setRisingLoading] = useState(false);
+  // 상품 레이더 — 카테고리별 급상승 후보(네이버 DataLab 검색+쇼핑 점수)
+  const [radarCat, setRadarCat] = useState("living");
+  const [radarWindow, setRadarWindow] = useState<7 | 30>(7);
+  const [radar, setRadar] = useState<RadarResponse | null>(null);
+  const [radarLoading, setRadarLoading] = useState(false);
 
-  const openCategory = async (key: string) => {
-    setActiveCat(key);
-    setRising(null);
-    setRisingLoading(true);
+  const loadRadar = async (cat: string, win: 7 | 30) => {
+    setRadarCat(cat);
+    setRadarWindow(win);
+    setRadarLoading(true);
     try {
-      setRising(await naverApi.rising(key));
+      setRadar(await naverApi.radar(cat, win));
     } catch (e) {
-      show(e instanceof ApiError ? e.message : "트렌드 조회에 실패했어요.", "error");
-      setActiveCat(null);
+      show(e instanceof ApiError ? e.message : "레이더 조회에 실패했어요.", "error");
     } finally {
-      setRisingLoading(false);
+      setRadarLoading(false);
     }
   };
+  useEffect(() => { loadRadar("living", 7); }, []); // 최초 1회(카테고리 목록·후보 로드)
 
-  const pickRising = (kw: string) => {
+  // 후보 키워드로 바로 상품 검색(제품 정보 채우기로 연결)
+  const searchByKeyword = (kw: string) => {
     setNq(kw);
     setNResults(null);
-    // 바로 그 키워드로 상품 검색
     setNLoading(true);
     naverApi.searchShop(kw, 10)
       .then((r) => setNResults(r))
@@ -148,40 +148,38 @@ export function AffiliatePage() {
       </div>
 
       <Card className="space-y-4 p-5">
-        {/* 카테고리 → 지금 뜨는 후보 발굴 */}
-        {trendCats && trendCats.length > 0 && (
-          <div className="space-y-2 rounded-lg border border-dashed p-3">
-            <Label className="flex items-center gap-1.5"><TrendingUp className="size-3.5" /> 지금 뜨는 것 둘러보기 <span className="font-normal text-muted-foreground">(카테고리 → 급상승 후보)</span></Label>
-            <div className="flex flex-wrap gap-1.5">
-              {trendCats.map((c) => (
-                <Button key={c.key} variant={activeCat === c.key ? "default" : "outline"} size="sm" onClick={() => openCategory(c.key)}>
-                  {c.label}
-                </Button>
+        {/* 상품 레이더 — 카테고리별 급상승 후보(검색+쇼핑 점수) */}
+        <div className="space-y-2 rounded-lg border border-dashed p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Label className="flex items-center gap-1.5"><TrendingUp className="size-3.5" /> 상품 레이더 <span className="font-normal text-muted-foreground">(카테고리별 급상승 후보)</span></Label>
+            <div className="flex overflow-hidden rounded-md border text-xs">
+              {([7, 30] as const).map((w) => (
+                <button key={w} type="button" onClick={() => loadRadar(radarCat, w)} className={`px-2.5 py-1 ${radarWindow === w ? "bg-foreground text-background" : "hover:bg-muted/50"}`}>
+                  최근 {w}일
+                </button>
               ))}
             </div>
-            {risingLoading && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> 트렌드 불러오는 중…</p>}
-            {rising && rising.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {rising.map((r) => (
-                  <button
-                    key={r.keyword}
-                    type="button"
-                    onClick={() => pickRising(r.keyword)}
-                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs hover:bg-muted/50"
-                    title={`관심도 ${r.score} · 상승률 ${r.growth}%`}
-                  >
-                    <span className="font-medium">{r.keyword}</span>
-                    <span className={r.growth > 0 ? "text-emerald-500" : "text-muted-foreground"}>
-                      {r.growth > 0 ? "▲" : ""}{r.growth}%
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {rising && rising.length === 0 && <p className="text-xs text-muted-foreground">이 카테고리 트렌드 데이터가 없어요.</p>}
-            <p className="text-[11px] text-muted-foreground">키워드를 누르면 그걸로 상품을 검색해요. 상승률은 최근 몇 주 클릭 추이 기준(네이버 쇼핑).</p>
           </div>
-        )}
+          <div className="flex flex-wrap gap-1.5">
+            {(radar?.categories ?? []).map((c) => (
+              <Button key={c.key} variant={radarCat === c.key ? "default" : "outline"} size="sm" onClick={() => loadRadar(c.key, radarWindow)}>
+                {c.label}
+              </Button>
+            ))}
+          </div>
+          {radar && !radar.dataLab && (
+            <p className="text-xs text-amber-600">네이버 앱에 <span className="font-medium">데이터랩(검색어트렌드·쇼핑인사이트)</span> API 사용 설정이 필요해요. 켜면 상승률 점수가 채워집니다.</p>
+          )}
+          {radarLoading && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> 레이더 분석 중…</p>}
+          {radar && !radarLoading && (
+            <ul className="space-y-1.5">
+              {radar.products.slice(0, 8).map((p) => (
+                <RadarRow key={p.name} p={p} onSearch={() => searchByKeyword(p.name)} />
+              ))}
+            </ul>
+          )}
+          <p className="text-[11px] text-muted-foreground">점수 = 검색 추이·쇼핑 상승률·계절·카테고리 적합(확인 불가 항목은 제외하고 정규화). 상품을 누르면 그 키워드로 검색해 정보를 채워요.</p>
+        </div>
 
         {/* 네이버 상품 검색 — 실제 상품 정보로 근거 자동 채움 */}
         <div className="space-y-2 rounded-lg border border-dashed p-3">
@@ -309,6 +307,30 @@ export function AffiliatePage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** 레이더 후보 한 줄 — 점수 + 검색·쇼핑 상승률·계절(확인 불가는 그대로 표기). 누르면 그 키워드로 상품 검색. */
+function RadarRow({ p, onSearch }: { p: RadarProduct; onSearch: () => void }) {
+  const find = (label: string) => p.breakdown.find((b) => b.label === label);
+  const search = find("검색 추이 상승률");
+  const shop = find("쇼핑 검색 상승률");
+  const season = find("계절·시기 적합성");
+  return (
+    <li>
+      <button type="button" onClick={onSearch} className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/50">
+        <ScoreBadge score={p.score} compact />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium">{p.name}</div>
+          <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+            <span className={search?.status === "available" ? "text-emerald-600" : ""}>검색 {search?.status === "available" ? search.note : "확인 불가"}</span>
+            <span className={shop?.status === "available" ? "text-emerald-600" : ""}>쇼핑 {shop?.status === "available" ? shop.note.replace("네이버쇼핑 ", "") : "확인 불가"}</span>
+            {season?.status === "available" && <span>· {season.note}</span>}
+          </div>
+        </div>
+        <Search className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+    </li>
   );
 }
 

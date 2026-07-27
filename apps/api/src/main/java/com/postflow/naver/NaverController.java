@@ -20,11 +20,11 @@ import java.util.Map;
 public class NaverController {
 
     private final NaverShopClient client;
-    private final NaverTrendClient trendClient;
+    private final ProductRadarService productRadar;
 
-    public NaverController(NaverShopClient client, NaverTrendClient trendClient) {
+    public NaverController(NaverShopClient client, ProductRadarService productRadar) {
         this.client = client;
-        this.trendClient = trendClient;
+        this.productRadar = productRadar;
     }
 
     @GetMapping("/shop/search")
@@ -33,22 +33,17 @@ public class NaverController {
         return client.searchShop(query.trim(), Math.min(Math.max(display, 1), 20));
     }
 
-    /** 발굴용 카테고리 목록(칩). */
-    @GetMapping("/trend/categories")
-    public List<Map<String, String>> categories() {
-        return NaverTrendCategories.ALL.stream()
-                .map(c -> Map.of("key", c.key(), "label", c.label()))
-                .toList();
-    }
-
-    /** 카테고리 후보 키워드를 최근 쇼핑 트렌드 상승률 순으로. */
-    @GetMapping("/trend/rising")
-    public List<RisingKeyword> rising(@RequestParam String category) {
-        NaverTrendCategories.Cat cat = NaverTrendCategories.byKey(category);
-        if (cat == null) {
-            return List.of();
-        }
-        return trendClient.rising(cat.code(), cat.keywords());
+    /**
+     * 상품 레이더 — 카테고리별 급상승 후보(네이버 DataLab 검색 추이 + 쇼핑인사이트 점수). {@code window}=7|30.
+     * 응답: {@code categories}(칩), {@code dataLab}(사용 가능 여부), {@code products}(점수 내림차순).
+     */
+    @GetMapping("/radar")
+    public Map<String, Object> radar(@RequestParam(defaultValue = "living") String category,
+                                     @RequestParam(defaultValue = "7") int window) {
+        return Map.of(
+                "categories", ProductRadarService.CATEGORIES,
+                "dataLab", productRadar.dataLabConfigured(),
+                "products", productRadar.radar(category, window));
     }
 
     @ExceptionHandler(NaverException.class)
