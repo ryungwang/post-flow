@@ -1,3 +1,4 @@
+// 콘텐츠 → 제휴(쿠팡파트너스): 리뷰형 소프트셀 + 대가성 고지문·subId·링크를 서버가 자동 부착.
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, Check, Copy, Info, Link2, Loader2 } from "lucide-react";
