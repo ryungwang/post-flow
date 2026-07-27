@@ -9,6 +9,8 @@ import { threadsApi } from "@/lib/threads-api";
 import { linkedinApi } from "@/lib/linkedin-api";
 import { facebookApi } from "@/lib/facebook-api";
 import { instagramApi } from "@/lib/instagram-api";
+import { mastodonApi } from "@/lib/mastodon-api";
+import { blueskyApi } from "@/lib/bluesky-api";
 import { socialApi } from "@/lib/social-api";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast";
@@ -556,6 +558,17 @@ function ConnectedChannelsCard() {
   const toast = useToast();
   const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
   const { data: threads } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
+  // 각 SNS 인사이트(팔로워·게시물 등) — 해당 채널이 있을 때만. 실패해도 조용히 지표만 생략.
+  const has = (p: string) => (channels ?? []).some((c) => c.provider === p);
+  const { data: igInsights } = useQuery({
+    queryKey: ["instagram-insights"], queryFn: instagramApi.insights, enabled: has("INSTAGRAM"), retry: false,
+  });
+  const { data: mastoInsights } = useQuery({
+    queryKey: ["mastodon-insights"], queryFn: mastodonApi.insights, enabled: has("MASTODON"), retry: false,
+  });
+  const { data: bskyInsights } = useQuery({
+    queryKey: ["bluesky-insights"], queryFn: blueskyApi.insights, enabled: has("BLUESKY"), retry: false,
+  });
 
   // refetch까지 기다려야 스피너(useIsMutating)가 화면 갱신 끝날 때까지 유지됨.
   const invalidate = () =>
@@ -619,6 +632,11 @@ function ConnectedChannelsCard() {
                   const dname = c.name?.trim();
                   const uname = c.username?.trim();
                   const title = dname || (uname ? `@${uname}` : "이름 없음");
+                  // 인사이트는 계정 단일 집계 — username/handle(대소문자 무시) 일치하는 행에 붙인다.
+                  const lc = uname?.toLowerCase();
+                  const ig = c.provider === "INSTAGRAM" && igInsights?.username?.toLowerCase() === lc ? igInsights : null;
+                  const masto = c.provider === "MASTODON" && mastoInsights?.handle?.toLowerCase() === lc ? mastoInsights : null;
+                  const bsky = c.provider === "BLUESKY" && bskyInsights?.handle?.toLowerCase() === lc ? bskyInsights : null;
                   return (
                     <li key={c.id} className="p-3">
                       <div className="flex items-center gap-3">
@@ -661,6 +679,43 @@ function ConnectedChannelsCard() {
                           {(st.views != null || st.likes != null) && (
                             <p className="mt-2 text-[11px] text-muted-foreground">조회·좋아요·답글·리포스트·인용은 최근 30일 기준</p>
                           )}
+                        </>
+                      )}
+                      {ig && (
+                        <>
+                          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                            <Stat label="팔로워" value={ig.followers} />
+                            <Stat label="팔로잉" value={ig.following} />
+                            <Stat label="게시물" value={ig.posts} />
+                            <Stat label="좋아요" value={ig.totalLikes} />
+                            <Stat label="댓글" value={ig.totalComments} />
+                          </div>
+                          <p className="mt-2 text-[11px] text-muted-foreground">좋아요·댓글은 최근 게시물 {ig.sampledPosts}개 합계</p>
+                        </>
+                      )}
+                      {masto && (
+                        <>
+                          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                            <Stat label="팔로워" value={masto.followers} />
+                            <Stat label="팔로잉" value={masto.following} />
+                            <Stat label="게시물" value={masto.posts} />
+                            <Stat label="좋아요" value={masto.totalFavourites} />
+                            <Stat label="부스트" value={masto.totalReblogs} />
+                            <Stat label="답글" value={masto.totalReplies} />
+                          </div>
+                          <p className="mt-2 text-[11px] text-muted-foreground">좋아요·부스트·답글은 최근 게시물 {masto.sampledPosts}개 합계</p>
+                        </>
+                      )}
+                      {bsky && (
+                        <>
+                          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                            <Stat label="팔로워" value={bsky.followers} />
+                            <Stat label="게시물" value={bsky.posts} />
+                            <Stat label="좋아요" value={bsky.totalLikes} />
+                            <Stat label="리포스트" value={bsky.totalReposts} />
+                            <Stat label="답글" value={bsky.totalReplies} />
+                          </div>
+                          <p className="mt-2 text-[11px] text-muted-foreground">좋아요·리포스트·답글은 최근 게시물 {bsky.sampledPosts}개 합계</p>
                         </>
                       )}
                     </li>
