@@ -1,4 +1,5 @@
 // 콘텐츠 → 제휴(쿠팡파트너스): 리뷰형 소프트셀 + 대가성 고지문·subId·링크를 서버가 자동 부착.
+// 네이버 쇼핑 검색으로 실제 상품 정보를 근거로 채운다.
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, Check, Copy, Info, Link2, Loader2, Search } from "lucide-react";
