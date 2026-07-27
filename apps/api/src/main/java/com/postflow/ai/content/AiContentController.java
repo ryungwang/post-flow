@@ -1,6 +1,8 @@
 package com.postflow.ai.content;
 
 import com.postflow.ai.content.HookGenerator.HookVariant;
+import com.postflow.ai.content.dto.GenerateAffiliateRequest;
+import com.postflow.ai.content.dto.GenerateAffiliateResponse;
 import com.postflow.ai.content.dto.GenerateContentRequest;
 import com.postflow.ai.content.dto.GenerateContentResponse;
 import com.postflow.ai.content.dto.GenerateSeriesRequest;
@@ -51,6 +53,14 @@ public class AiContentController {
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody GenerateContentRequest request) {
         return contentGenerationService.generate(userId, request);
+    }
+
+    /** 제휴(쿠팡파트너스) 콘텐츠 생성 — 링크·subId·대가성 고지문을 서버가 자동 부착. */
+    @PostMapping("/affiliate/generate")
+    public GenerateAffiliateResponse affiliate(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody GenerateAffiliateRequest request) {
+        return contentGenerationService.generateAffiliate(userId, request);
     }
 
     @PostMapping("/series")

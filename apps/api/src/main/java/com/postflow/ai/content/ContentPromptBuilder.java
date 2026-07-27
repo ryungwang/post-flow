@@ -1,5 +1,6 @@
 package com.postflow.ai.content;
 
+import com.postflow.ai.content.dto.GenerateAffiliateRequest;
 import com.postflow.ai.content.dto.GenerateContentRequest;
 import org.springframework.stereotype.Component;
 
@@ -78,6 +79,37 @@ public class ContentPromptBuilder {
                 brandContext == null ? "" : brandContext,
                 trendBlock == null ? "" : trendBlock,
                 request.quantity());
+    }
+
+    /**
+     * 제휴(쿠팡파트너스) 리뷰형 소프트셀 프롬프트. 링크·대가성 고지문·subId는 서버가 코드로 덧붙이므로
+     * 모델에겐 본문/CTA에 URL·고지문을 넣지 말라고 지시한다. 스펙·수치·후기·"내돈내산" 날조를 금지해
+     * 공정위 추천·보증 지침 위반과 신뢰 훼손을 막는다. {@code bodyBudget}는 링크·고지문 자리를 남긴 본문 상한.
+     */
+    public String affiliateUserPrompt(GenerateAffiliateRequest req, int bodyBudget) {
+        String features = req.featuresOrNull();
+        String featuresLine = features == null
+                ? "실제 확인된 특징 정보가 제공되지 않았다 → 일반적이고 검증 가능한 장점만 담고, 구체 수치·효과는 지어내지 마라."
+                : "실제 특징·장점(이 범위 안에서만 근거로 쓰라, 여기 없는 수치·효과는 만들지 마라): " + features;
+        return """
+                제품(쿠팡파트너스 제휴 게시물): %s
+                %s
+                톤: %s
+
+                이건 제휴 게시물이다. 광고티 나게 소개하지 말고, 제품을 정직하게 추천하는 리뷰형 소프트셀로 써라:
+                1) 흔히 겪는 문제·상황에 공감 → 2) 이 제품이 왜 도움이 되는지 → 3) 정직한 장점(필요하면 한계도 한 줄) → 4) 부담 없는 추천 마무리.
+
+                엄격 규칙(반드시 지켜라):
+                - 실제로 확인되지 않은 스펙·가격·할인·수치·효과·후기·"내가 써봤다/내돈내산" 같은 경험을 지어내지 마라.
+                - "광고 아님"처럼 대가성을 숨기는 표현 금지 — 제휴는 정직한 고지가 원칙이다.
+                - 본문(content)과 cta 어디에도 URL(링크)이나 고지 문구를 넣지 마라. 링크·고지문은 시스템이 자동으로 덧붙인다.
+                - 각 content 는 %d자 이내로 써라(뒤에 링크·고지문이 붙는다). 자연스럽게 끝나게.
+                - cta 는 부담 없는 추천 한 줄로(예: "필요하면 링크로 확인해 보세요", 이미지 중심 플랫폼이면 "프로필 링크에서 확인").
+
+                %d개의 서로 다른 각도의 게시물을 JSON 배열로.
+                """.formatted(
+                req.productName(), featuresLine, req.toneOrDefault(),
+                bodyBudget, req.quantity());
     }
 
     /** 지금 뜨는 실제 게시물 샘플을 프롬프트에 주입 — 알고리즘 타는 훅·포맷·주제를 반영하게. */

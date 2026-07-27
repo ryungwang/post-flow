@@ -41,6 +41,7 @@ const NAV: Item[] = [
     children: [
       { label: "AI 생성", to: "/content/generate", icon: Wand2 },
       { label: "시리즈 생성", to: "/content/series", icon: Sparkles, pro: true },
+      { label: "제휴", to: "/content/affiliate", icon: Link2 },
       { label: "브랜드/제품", to: "/brands", icon: Megaphone },
       { label: "라이브러리", to: "/content/library", icon: Library },
     ],

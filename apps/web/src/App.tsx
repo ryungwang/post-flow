@@ -16,6 +16,7 @@ const DashboardPage = lazyPage(() => import("@/pages/dashboard-page"), "Dashboar
 const GeneratePage = lazyPage(() => import("@/pages/generate-page"), "GeneratePage");
 const LibraryPage = lazyPage(() => import("@/pages/library-page"), "LibraryPage");
 const SeriesPage = lazyPage(() => import("@/pages/series-page"), "SeriesPage");
+const AffiliatePage = lazyPage(() => import("@/pages/affiliate-page"), "AffiliatePage");
 const SchedulePage = lazyPage(() => import("@/pages/schedule-page"), "SchedulePage");
 const AnalyticsPage = lazyPage(() => import("@/pages/analytics-page"), "AnalyticsPage");
 const AccountPage = lazyPage(() => import("@/pages/account-page"), "AccountPage");
@@ -64,6 +65,7 @@ export default function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/content/generate" element={<GeneratePage />} />
             <Route path="/content/series" element={<SeriesPage />} />
+            <Route path="/content/affiliate" element={<AffiliatePage />} />
             <Route path="/content/library" element={<LibraryPage />} />
             <Route path="/content/threads-posts" element={<AccountPostsPage />} />
             <Route path="/insights" element={<ThreadsInsightsPage />} />
