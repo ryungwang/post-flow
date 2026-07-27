@@ -615,7 +615,10 @@ function ConnectedChannelsCard() {
               <ul className="divide-y divide-border/60 overflow-hidden rounded-lg border">
                 {items.map((c) => {
                   const st = threadsStats.get(c.id);
-                  const title = c.name ?? (c.username ? `@${c.username}` : "계정");
+                  // name 이 빈 문자열("")일 수 있어 ?? 대신 || — 표시이름 없으면 @username 으로 폴백.
+                  const dname = c.name?.trim();
+                  const uname = c.username?.trim();
+                  const title = dname || (uname ? `@${uname}` : "이름 없음");
                   return (
                     <li key={c.id} className="p-3">
                       <div className="flex items-center gap-3">
@@ -632,7 +635,7 @@ function ConnectedChannelsCard() {
                             {c.isDefault && <Badge variant="success">기본</Badge>}
                           </div>
                           <div className="truncate text-xs text-muted-foreground">
-                            {c.name && c.username ? `@${c.username} · ` : ""}
+                            {dname && uname ? `@${uname} · ` : ""}
                             {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
                           </div>
                         </div>
