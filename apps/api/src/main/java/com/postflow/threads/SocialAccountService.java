@@ -353,10 +353,16 @@ public class SocialAccountService {
                 .orElseGet(() -> {
                     List<SocialAccount> mine = repository.findByUserIdAndProviderOrderByIdAsc(userId, THREADS);
                     if (!multi && !mine.isEmpty()) {
-                        // single-account plans: replace the existing connection
+                        // single-account plans: replace the existing Threads connection
                         SocialAccount only = mine.get(0);
                         only.reconnect(threadsUserId, token, expiresAt);
                         return only;
+                    }
+                    // single-account plans cap at 1 channel TOTAL across providers — 기존에 (Threads가 아닌)
+                    // 다른 SNS 채널이 이미 있으면 Threads 신규 연결로 한도를 넘기지 못하게 막는다.
+                    // (Threads만 provider별로 세던 버그로 무료에서 총 2채널이 생기던 문제 수정.)
+                    if (!multi && repository.countByUserId(userId) >= 1) {
+                        throw new PlanLimitException("다중 채널 연결은 Pro 플랜부터 가능해요. (현재 플랜은 1채널)");
                     }
                     return repository.save(SocialAccount.connect(userId, threadsUserId, token, expiresAt));
                 });
