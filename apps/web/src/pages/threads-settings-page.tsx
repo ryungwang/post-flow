@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Cloud, Facebook, Globe, Info, Instagram, Linkedin, Loader2 } from "lucide-react";
+import { AtSign, Cloud, Facebook, Globe, Instagram, Linkedin, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { threadsApi } from "@/lib/threads-api";
 import { linkedinApi } from "@/lib/linkedin-api";
 import { facebookApi } from "@/lib/facebook-api";
 import { instagramApi } from "@/lib/instagram-api";
-import { accountApi } from "@/lib/account-api";
 import { socialApi } from "@/lib/social-api";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast";
@@ -143,7 +142,7 @@ export function ThreadsSettingsPage() {
       <FacebookCard />
       <InstagramCard />
 
-      <AccountsCard onAdd={connect} adding={connecting} />
+      <ConnectedChannelsCard />
     </div>
   );
 }
@@ -152,12 +151,8 @@ export function ThreadsSettingsPage() {
 function BlueskyCard() {
   const qc = useQueryClient();
   const { show } = useToast();
-  const confirm = useConfirm();
   const [handle, setHandle] = useState("");
   const [appPassword, setAppPassword] = useState("");
-
-  const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
-  const bluesky = (channels ?? []).filter((c) => c.provider === "BLUESKY");
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["social-channels"] });
@@ -173,22 +168,6 @@ function BlueskyCard() {
       invalidate();
     },
   });
-
-  const disconnect = useMutation({
-    mutationFn: (id: number) => socialApi.disconnect(id),
-    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
-    onSuccess: invalidate,
-  });
-
-  const askDisconnect = async (username: string | null, id: number) => {
-    const ok = await confirm({
-      title: "채널 연결 해제",
-      description: `${username ?? "이 계정"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
-      confirmText: "연결 해제",
-      destructive: true,
-    });
-    if (ok) disconnect.mutate(id);
-  };
 
   const submit = () => {
     if (!handle.trim() || !appPassword.trim()) {
@@ -212,25 +191,6 @@ function BlueskyCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {bluesky.length > 0 && (
-          <div className="space-y-2">
-            {bluesky.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
-                <Cloud className="size-4 text-sky-500" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">@{c.username}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
-                    {c.isDefault && " · 기본 채널"}
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.username, c.id)}>
-                  연결 해제
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
         <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
           <Input
             placeholder="핸들 (예: name.bsky.social)"
@@ -262,7 +222,6 @@ function BlueskyCard() {
 /** LinkedIn 연결 — OAuth2(팝업). 발행 전용(개인 프로필 읽기/분석은 파트너 승인 필요). */
 function LinkedInCard() {
   const qc = useQueryClient();
-  const confirm = useConfirm();
   const [connecting, setConnecting] = useState(false);
 
   const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
@@ -309,22 +268,6 @@ function LinkedInCard() {
     }
   };
 
-  const disconnect = useMutation({
-    mutationFn: (id: number) => socialApi.disconnect(id),
-    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
-    onSuccess: invalidate,
-  });
-
-  const askDisconnect = async (username: string | null, id: number) => {
-    const ok = await confirm({
-      title: "채널 연결 해제",
-      description: `${username ?? "이 계정"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
-      confirmText: "연결 해제",
-      destructive: true,
-    });
-    if (ok) disconnect.mutate(id);
-  };
-
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -339,25 +282,6 @@ function LinkedInCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {linkedin.length > 0 && (
-          <div className="space-y-2">
-            {linkedin.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
-                <Linkedin className="size-4 text-[#0a66c2]" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{c.name ?? c.username}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
-                    {c.isDefault && " · 기본 채널"}
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.name ?? c.username, c.id)}>
-                  연결 해제
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
         <Button onClick={connect} disabled={connecting} className="gap-2">
           {connecting && <Loader2 className="size-4 animate-spin" />}
           {linkedin.length > 0 ? "다시 연결" : "LinkedIn 연결하기"}
@@ -375,12 +299,8 @@ function LinkedInCard() {
 function MastodonCard() {
   const qc = useQueryClient();
   const { show } = useToast();
-  const confirm = useConfirm();
   const [instanceUrl, setInstanceUrl] = useState("");
   const [accessToken, setAccessToken] = useState("");
-
-  const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
-  const mastodon = (channels ?? []).filter((c) => c.provider === "MASTODON");
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["social-channels"] });
@@ -396,22 +316,6 @@ function MastodonCard() {
       invalidate();
     },
   });
-
-  const disconnect = useMutation({
-    mutationFn: (id: number) => socialApi.disconnect(id),
-    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
-    onSuccess: invalidate,
-  });
-
-  const askDisconnect = async (username: string | null, id: number) => {
-    const ok = await confirm({
-      title: "채널 연결 해제",
-      description: `${username ?? "이 계정"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
-      confirmText: "연결 해제",
-      destructive: true,
-    });
-    if (ok) disconnect.mutate(id);
-  };
 
   const submit = () => {
     if (!instanceUrl.trim() || !accessToken.trim()) {
@@ -435,25 +339,6 @@ function MastodonCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {mastodon.length > 0 && (
-          <div className="space-y-2">
-            {mastodon.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
-                <Globe className="size-4 text-[#6364ff]" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">@{c.username}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
-                    {c.isDefault && " · 기본 채널"}
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.username, c.id)}>
-                  연결 해제
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
         <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
           <Input
             placeholder="핸들 또는 인스턴스 (예: @me@mastodon.social)"
@@ -488,7 +373,6 @@ function MastodonCard() {
 /** Facebook 페이지 연결 — OAuth2(팝업). 관리하는 페이지를 채널로 등록. 발행 텍스트+이미지. */
 function FacebookCard() {
   const qc = useQueryClient();
-  const confirm = useConfirm();
   const [connecting, setConnecting] = useState(false);
 
   const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
@@ -535,22 +419,6 @@ function FacebookCard() {
     }
   };
 
-  const disconnect = useMutation({
-    mutationFn: (id: number) => socialApi.disconnect(id),
-    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
-    onSuccess: invalidate,
-  });
-
-  const askDisconnect = async (name: string | null, id: number) => {
-    const ok = await confirm({
-      title: "채널 연결 해제",
-      description: `${name ?? "이 페이지"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
-      confirmText: "연결 해제",
-      destructive: true,
-    });
-    if (ok) disconnect.mutate(id);
-  };
-
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -565,25 +433,6 @@ function FacebookCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {facebook.length > 0 && (
-          <div className="space-y-2">
-            {facebook.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
-                <Facebook className="size-4 text-[#1877f2]" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{c.name ?? c.username}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
-                    {c.isDefault && " · 기본 채널"}
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.name ?? c.username, c.id)}>
-                  연결 해제
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
         <Button onClick={connect} disabled={connecting} className="gap-2">
           {connecting && <Loader2 className="size-4 animate-spin" />}
           {facebook.length > 0 ? "다시 연결" : "Facebook 페이지 연결하기"}
@@ -601,7 +450,6 @@ function FacebookCard() {
 /** Instagram 직접 연결 — "Instagram API with Instagram login"(페북 페이지 불필요). 비즈니스·크리에이터 계정. */
 function InstagramCard() {
   const qc = useQueryClient();
-  const confirm = useConfirm();
   const [connecting, setConnecting] = useState(false);
 
   const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
@@ -648,22 +496,6 @@ function InstagramCard() {
     }
   };
 
-  const disconnect = useMutation({
-    mutationFn: (id: number) => socialApi.disconnect(id),
-    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
-    onSuccess: invalidate,
-  });
-
-  const askDisconnect = async (name: string | null, id: number) => {
-    const ok = await confirm({
-      title: "채널 연결 해제",
-      description: `${name ?? "이 계정"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
-      confirmText: "연결 해제",
-      destructive: true,
-    });
-    if (ok) disconnect.mutate(id);
-  };
-
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -678,25 +510,6 @@ function InstagramCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {instagram.length > 0 && (
-          <div className="space-y-2">
-            {instagram.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
-                <Instagram className="size-4 text-[#d62976]" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{c.username ?? c.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
-                    {c.isDefault && " · 기본 채널"}
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.username ?? c.name, c.id)}>
-                  연결 해제
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
         <Button onClick={connect} disabled={connecting} className="gap-2">
           {connecting && <Loader2 className="size-4 animate-spin" />}
           {instagram.length > 0 ? "다시 연결" : "Instagram 계정 연결하기"}
@@ -721,117 +534,139 @@ function Stat({ label, value }: { label: string; value: number | null }) {
   );
 }
 
-function AccountsCard({ onAdd, adding }: { onAdd: () => void; adding: boolean }) {
+/** SNS별 아이콘·라벨·색 (연결된 계정 통합 섹션 + 각 카드 헤더 공용). */
+const CHANNEL_META: Record<string, { label: string; Icon: typeof AtSign; chip: string }> = {
+  THREADS: { label: "Threads", Icon: AtSign, chip: "bg-foreground text-background" },
+  INSTAGRAM: { label: "Instagram", Icon: Instagram, chip: "bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#4f5bd5] text-white" },
+  FACEBOOK: { label: "Facebook", Icon: Facebook, chip: "bg-[#1877f2] text-white" },
+  LINKEDIN: { label: "LinkedIn", Icon: Linkedin, chip: "bg-[#0a66c2] text-white" },
+  MASTODON: { label: "Mastodon", Icon: Globe, chip: "bg-[#6364ff] text-white" },
+  BLUESKY: { label: "Bluesky", Icon: Cloud, chip: "bg-sky-500 text-white" },
+};
+const CHANNEL_ORDER = ["THREADS", "INSTAGRAM", "FACEBOOK", "LINKEDIN", "MASTODON", "BLUESKY"];
+
+/**
+ * 연결된 계정 — 전 SNS를 한 섹션에 SNS별로 그룹핑해 보여준다. 각 provider 카드는 '연결'만 담당하고
+ * 실제 연결된 계정 목록·기본 설정·연결 해제는 전부 여기서 관리한다. Threads 계정은 상세 지표(팔로워·조회 등)를
+ * threads-accounts에서 끌어와 함께 표시한다.
+ */
+function ConnectedChannelsCard() {
   const qc = useQueryClient();
   const confirm = useConfirm();
   const toast = useToast();
-  const { data: accounts } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
-  const { data: usage } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
-  // refetch까지 기다려야 스피너(useIsMutating)가 화면 갱신 끝날 때까지 유지됨(안 그러면 스피너 먼저 꺼짐).
+  const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
+  const { data: threads } = useQuery({ queryKey: ["threads-accounts"], queryFn: threadsApi.accounts });
+
+  // refetch까지 기다려야 스피너(useIsMutating)가 화면 갱신 끝날 때까지 유지됨.
   const invalidate = () =>
     Promise.all([
+      qc.invalidateQueries({ queryKey: ["social-channels"] }),
       qc.invalidateQueries({ queryKey: ["threads-accounts"] }),
       qc.invalidateQueries({ queryKey: ["threads-status"] }),
     ]);
-  // 로딩 토스트 = meta(전역 MutationCache가 표시·해제) — 계정 행이 언마운트돼도 확실히 닫힘.
   const setDefault = useMutation({
-    mutationFn: (id: number) => threadsApi.setDefault(id),
-    meta: { loading: "기본 계정 설정 중…" },
-    onSuccess: async () => { await invalidate(); toast.show("기본 계정으로 설정했어요.", "success"); },
+    mutationFn: (id: number) => socialApi.setDefault(id),
+    meta: { loading: "기본 채널 설정 중…" },
+    onSuccess: async () => { await invalidate(); toast.show("기본 채널로 설정했어요.", "success"); },
     onError: () => toast.show("설정에 실패했어요.", "error"),
   });
-  const onSetDefault = (id: number) => setDefault.mutate(id);
   const disconnect = useMutation({
-    mutationFn: (id: number) => threadsApi.disconnect(id),
+    mutationFn: (id: number) => socialApi.disconnect(id),
     meta: { loading: "연결 해제 중…" },
     onSuccess: async () => { await invalidate(); toast.show("연결을 해제했어요.", "success"); },
     onError: () => toast.show("연결 해제에 실패했어요.", "error"),
   });
-  const askDisconnect = async (username: string, id: number) => {
+  const askDisconnect = async (name: string, id: number) => {
     const ok = await confirm({
-      title: "연결 해제",
-      description: `@${username} 연결을 해제할까요? 해제 후 다른 Threads 계정으로 다시 연결할 수 있어요.`,
+      title: "채널 연결 해제",
+      description: `${name} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
       confirmText: "연결 해제",
       destructive: true,
     });
-    if (!ok) return;
-    disconnect.mutate(id);
+    if (ok) disconnect.mutate(id);
   };
-  const list = accounts ?? [];
+
+  const list = channels ?? [];
   if (list.length === 0) return null;
+  const threadsStats = new Map((threads ?? []).map((a) => [a.id, a] as const));
+  const groups = CHANNEL_ORDER
+    .map((provider) => ({ provider, items: list.filter((c) => c.provider === provider) }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <Card className="mt-6">
       <CardHeader>
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <CardTitle>연결된 계정</CardTitle>
-            <CardDescription>발행은 기본 계정으로 나갑니다.</CardDescription>
-          </div>
-          {usage?.canMultiAccount && (
-            <Button variant="outline" size="sm" disabled={adding} onClick={onAdd}>+ 계정 추가</Button>
-          )}
-        </div>
+        <CardTitle>연결된 계정</CardTitle>
+        <CardDescription>SNS별로 묶여 있어요. 발행은 각 SNS의 기본 채널로 나갑니다.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ul className="divide-y divide-border/60">
-          {list.map((a) => (
-            <li key={a.id} className="py-4">
-              <div className="flex items-center gap-3">
-                {a.profilePictureUrl ? (
-                  <img src={a.profilePictureUrl} alt="" className="size-12 shrink-0 rounded-full object-cover" />
-                ) : (
-                  <div className="bg-brand-gradient flex size-12 shrink-0 items-center justify-center rounded-full text-base font-semibold text-brand-foreground">
-                    {(a.name ?? a.username).charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-sm font-medium">
-                    {a.name ?? `@${a.username}`}
-                    {a.isDefault && <Badge variant="success">기본</Badge>}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {a.name && <span>@{a.username}</span>}
-                    <span>· {a.status}</span>
-                  </div>
-                  {a.biography && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{a.biography}</p>}
+      <CardContent className="space-y-6">
+        {groups.map(({ provider, items }) => {
+          const meta = CHANNEL_META[provider] ?? { label: provider, Icon: AtSign, chip: "bg-muted" };
+          const Icon = meta.Icon;
+          return (
+            <div key={provider}>
+              <div className="mb-2 flex items-center gap-2">
+                <div className={`flex size-6 items-center justify-center rounded-md ${meta.chip}`}>
+                  <Icon className="size-3.5" />
                 </div>
-                {!a.isDefault && (
-                  <Button variant="ghost" size="sm" disabled={setDefault.isPending} onClick={() => onSetDefault(a.id)}>
-                    {setDefault.isPending && setDefault.variables === a.id ? <Loader2 className="size-4 animate-spin" /> : "기본으로"}
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" className="text-destructive" disabled={disconnect.isPending} onClick={() => askDisconnect(a.username, a.id)}>
-                  {disconnect.isPending && disconnect.variables === a.id ? <Loader2 className="size-4 animate-spin" /> : "연결 해제"}
-                </Button>
+                <span className="text-sm font-semibold">{meta.label}</span>
+                <span className="text-xs text-muted-foreground">{items.length}개</span>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
-                <Stat label="팔로워" value={a.followersCount} />
-                <Stat label="조회" value={a.views} />
-                <Stat label="좋아요" value={a.likes} />
-                <Stat label="답글" value={a.replies} />
-                <Stat label="리포스트" value={a.reposts} />
-                <Stat label="인용" value={a.quotes} />
-              </div>
-              {(a.views != null || a.likes != null) && (
-                <p className="mt-2 text-[11px] text-muted-foreground">조회·좋아요·답글·리포스트·인용은 최근 30일 기준</p>
-              )}
-            </li>
-          ))}
-        </ul>
-        {!usage?.canMultiAccount && list.length >= 1 && (
-          <p className="mt-3 text-xs text-muted-foreground">여러 채널을 동시에 연결하려면 <b className="text-foreground/70">Pro 플랜</b>이 필요해요.</p>
-        )}
-        {usage?.canMultiAccount && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
-            <Info className="mt-0.5 size-3.5 shrink-0" />
-            <span>
-              <b className="text-foreground/80">다른 계정을 추가하려면?</b> Threads는 브라우저에 로그인된 계정으로 연결돼요.
-              먼저 <a href="https://www.threads.net/settings/account" target="_blank" rel="noreferrer" className="text-brand underline">threads.net에서 로그아웃</a>하거나
-              <b> 시크릿 창</b>에서 "+ 계정 추가"를 누르면 다른 계정으로 로그인할 수 있어요.
-            </span>
-          </div>
-        )}
+              <ul className="divide-y divide-border/60 overflow-hidden rounded-lg border">
+                {items.map((c) => {
+                  const st = threadsStats.get(c.id);
+                  const title = c.name ?? (c.username ? `@${c.username}` : "계정");
+                  return (
+                    <li key={c.id} className="p-3">
+                      <div className="flex items-center gap-3">
+                        {c.profilePictureUrl ? (
+                          <img src={c.profilePictureUrl} alt="" className="size-9 shrink-0 rounded-full object-cover" />
+                        ) : (
+                          <div className={`flex size-9 shrink-0 items-center justify-center rounded-full ${meta.chip}`}>
+                            <Icon className="size-4" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 text-sm font-medium">
+                            <span className="truncate">{title}</span>
+                            {c.isDefault && <Badge variant="success">기본</Badge>}
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {c.name && c.username ? `@${c.username} · ` : ""}
+                            {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
+                          </div>
+                        </div>
+                        {!c.isDefault && (
+                          <Button variant="ghost" size="sm" disabled={setDefault.isPending} onClick={() => setDefault.mutate(c.id)}>
+                            {setDefault.isPending && setDefault.variables === c.id ? <Loader2 className="size-4 animate-spin" /> : "기본으로"}
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" className="text-destructive" disabled={disconnect.isPending} onClick={() => askDisconnect(title, c.id)}>
+                          {disconnect.isPending && disconnect.variables === c.id ? <Loader2 className="size-4 animate-spin" /> : "연결 해제"}
+                        </Button>
+                      </div>
+                      {st && (
+                        <>
+                          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                            <Stat label="팔로워" value={st.followersCount} />
+                            <Stat label="조회" value={st.views} />
+                            <Stat label="좋아요" value={st.likes} />
+                            <Stat label="답글" value={st.replies} />
+                            <Stat label="리포스트" value={st.reposts} />
+                            <Stat label="인용" value={st.quotes} />
+                          </div>
+                          {(st.views != null || st.likes != null) && (
+                            <p className="mt-2 text-[11px] text-muted-foreground">조회·좋아요·답글·리포스트·인용은 최근 30일 기준</p>
+                          )}
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
