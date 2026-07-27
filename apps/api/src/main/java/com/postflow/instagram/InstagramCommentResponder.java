@@ -33,7 +33,8 @@ public class InstagramCommentResponder implements CommentResponder {
 
     @Override
     public List<InboundComment> fetchComments(SocialAccount account, String platformPostId) {
-        List<IgComment> comments = client.getComments(platformPostId, account.getAccessToken());
+        List<IgComment> comments = client.getComments(
+                account.getInstanceUrl(), platformPostId, account.getAccessToken());
         return comments.stream()
                 .map(c -> new InboundComment(c.id(), c.text(), c.username()))
                 .toList();
@@ -42,6 +43,6 @@ public class InstagramCommentResponder implements CommentResponder {
     @Override
     public void reply(SocialAccount account, String platformPostId, String commentId, String text) {
         // 게시물이 아니라 '댓글'에 답글 → 답글로 중첩되고 작성자에게 알림이 간다.
-        client.replyToComment(commentId, account.getAccessToken(), text);
+        client.replyToComment(account.getInstanceUrl(), commentId, account.getAccessToken(), text);
     }
 }

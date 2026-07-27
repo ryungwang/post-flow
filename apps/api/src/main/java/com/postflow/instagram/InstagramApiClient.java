@@ -9,7 +9,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -36,6 +35,20 @@ public class InstagramApiClient {
         return "/" + fb.apiVersionOrDefault();
     }
 
+    private static String enc(String s) {
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 이 계정을 호출할 Graph 호스트(버전 포함). {@code override} 는 계정의 instanceUrl —
+     * IG 직접 로그인 계정은 graph.instagram.com 이 들어있고, FB 페이지 연결 IG 계정은 null
+     * 이라 페북 Graph 호스트로 떨어진다. 발행·댓글·인사이트가 계정 종류에 맞는 호스트로 나간다.
+     */
+    private String graphBase(String override) {
+        String host = (override != null && !override.isBlank()) ? override : fb.graphBaseUrlOrDefault();
+        return host + ver();
+    }
+
     /** The IG Business account linked to a Page (null if none / no instagram scope). */
     public IgAccount discoverIgAccount(String pageId, String pageToken) {
         // Graph 중첩 필드 '{}'는 UriComponentsBuilder가 URI 템플릿으로 오인 → 값을 직접 인코딩해 절대 URI로.
@@ -55,20 +68,22 @@ public class InstagramApiClient {
      * Instagram requires an image — a null/blank {@code imageUrl} throws.
      * Returns the published media id.
      */
-    public String publishImage(String igUserId, String pageToken, String caption, String imageUrl) {
+    public String publishImage(String graphBaseOverride, String igUserId, String token,
+                               String caption, String imageUrl) {
         if (imageUrl == null || imageUrl.isBlank()) {
             throw new InstagramApiException("인스타그램은 이미지가 있어야 발행할 수 있어요. 이미지를 첨부해 주세요.");
         }
+        String base = graphBase(graphBaseOverride);
         // 1) create media container
         MultiValueMap<String, String> create = new LinkedMultiValueMap<>();
         create.add("image_url", imageUrl);
         if (caption != null && !caption.isBlank()) {
             create.add("caption", caption);
         }
-        create.add("access_token", pageToken);
+        create.add("access_token", token);
         String creationId;
         try {
-            IgId res = graph.post().uri(ver() + "/" + igUserId + "/media")
+            IgId res = graph.post().uri(URI.create(base + "/" + igUserId + "/media"))
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(create)
                     .retrieve().body(IgId.class);
@@ -84,9 +99,9 @@ public class InstagramApiClient {
         // 2) publish the container
         MultiValueMap<String, String> publish = new LinkedMultiValueMap<>();
         publish.add("creation_id", creationId);
-        publish.add("access_token", pageToken);
+        publish.add("access_token", token);
         try {
-            IgId res = graph.post().uri(ver() + "/" + igUserId + "/media_publish")
+            IgId res = graph.post().uri(URI.create(base + "/" + igUserId + "/media_publish"))
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(publish)
                     .retrieve().body(IgId.class);
@@ -103,12 +118,11 @@ public class InstagramApiClient {
      * A deleted media (404 / code 100) signals {@link com.postflow.social.PostDeletedException}
      * so comment automation can self-heal the target.
      */
-    public java.util.List<IgComment> getComments(String mediaId, String pageToken) {
-        String uri = UriComponentsBuilder.fromPath(ver() + "/" + mediaId + "/comments")
-                .queryParam("fields", "id,text,username")
-                .queryParam("limit", 50)
-                .queryParam("access_token", pageToken)
-                .build().toUriString();
+    public java.util.List<IgComment> getComments(String graphBaseOverride, String mediaId, String token) {
+        URI uri = URI.create(graphBase(graphBaseOverride) + "/" + mediaId + "/comments"
+                + "?fields=" + enc("id,text,username")
+                + "&limit=50"
+                + "&access_token=" + enc(token));
         try {
             IgComments res = graph.get().uri(uri).retrieve().body(IgComments.class);
             return res == null || res.data() == null ? java.util.List.of() : res.data();
@@ -124,12 +138,12 @@ public class InstagramApiClient {
     }
 
     /** Reply to a comment (nested under it). Requires {@code instagram_manage_comments}. */
-    public String replyToComment(String commentId, String pageToken, String text) {
+    public String replyToComment(String graphBaseOverride, String commentId, String token, String text) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("message", text == null ? "" : text);
-        form.add("access_token", pageToken);
+        form.add("access_token", token);
         try {
-            IgId res = graph.post().uri(ver() + "/" + commentId + "/replies")
+            IgId res = graph.post().uri(URI.create(graphBase(graphBaseOverride) + "/" + commentId + "/replies"))
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(form)
                     .retrieve().body(IgId.class);
@@ -143,11 +157,10 @@ public class InstagramApiClient {
     }
 
     /** Account profile + counts for insights. Requires {@code instagram_manage_insights}. */
-    public IgProfile getProfile(String igUserId, String pageToken) {
-        String uri = UriComponentsBuilder.fromPath(ver() + "/" + igUserId)
-                .queryParam("fields", "username,profile_picture_url,followers_count,follows_count,media_count")
-                .queryParam("access_token", pageToken)
-                .build().toUriString();
+    public IgProfile getProfile(String graphBaseOverride, String igUserId, String token) {
+        URI uri = URI.create(graphBase(graphBaseOverride) + "/" + igUserId
+                + "?fields=" + enc("username,profile_picture_url,followers_count,follows_count,media_count")
+                + "&access_token=" + enc(token));
         try {
             return graph.get().uri(uri).retrieve().body(IgProfile.class);
         } catch (RestClientResponseException e) {
@@ -159,12 +172,12 @@ public class InstagramApiClient {
     }
 
     /** Recent media with engagement counts (for insights aggregation). */
-    public java.util.List<IgMedia> getRecentMedia(String igUserId, String pageToken, int limit) {
-        String uri = UriComponentsBuilder.fromPath(ver() + "/" + igUserId + "/media")
-                .queryParam("fields", "id,caption,media_url,permalink,timestamp,like_count,comments_count")
-                .queryParam("limit", limit)
-                .queryParam("access_token", pageToken)
-                .build().toUriString();
+    public java.util.List<IgMedia> getRecentMedia(String graphBaseOverride, String igUserId,
+                                                  String token, int limit) {
+        URI uri = URI.create(graphBase(graphBaseOverride) + "/" + igUserId + "/media"
+                + "?fields=" + enc("id,caption,media_url,permalink,timestamp,like_count,comments_count")
+                + "&limit=" + limit
+                + "&access_token=" + enc(token));
         try {
             IgMediaList res = graph.get().uri(uri).retrieve().body(IgMediaList.class);
             return res == null || res.data() == null ? java.util.List.of() : res.data();

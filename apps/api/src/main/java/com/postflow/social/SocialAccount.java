@@ -287,6 +287,43 @@ public class SocialAccount extends BaseTimeEntity {
         this.status = ConnectionStatus.CONNECTED;
     }
 
+    /**
+     * Connect an Instagram Business/Creator account via "Instagram API with Instagram login" —
+     * no linked Facebook Page. Auth = the IG user's own long-lived (60-day) token; calls go to
+     * {@code graph.instagram.com} (stored in {@code instanceUrl} so the client routes there
+     * instead of the Facebook Graph host). {@code igUserId} = the IG account id.
+     */
+    public static SocialAccount connectInstagramLogin(Long userId, String igUserId, String username,
+                                                      String pictureUrl, String accessToken,
+                                                      String graphHost, Instant expiresAt) {
+        SocialAccount a = new SocialAccount();
+        a.userId = userId;
+        a.provider = SocialProvider.INSTAGRAM;
+        a.externalId = igUserId;
+        a.username = username;
+        a.name = username;
+        a.profilePictureUrl = pictureUrl;
+        a.accessToken = accessToken;
+        a.instanceUrl = graphHost;
+        a.expiresAt = expiresAt;
+        a.lastRefreshedAt = Instant.now();
+        a.status = ConnectionStatus.CONNECTED;
+        return a;
+    }
+
+    /** Re-link an IG-login account on reconnect (fresh long-lived token / profile). */
+    public void reconnectInstagramLogin(String username, String pictureUrl, String accessToken,
+                                        String graphHost, Instant expiresAt) {
+        this.username = username;
+        this.name = username;
+        this.profilePictureUrl = pictureUrl;
+        this.accessToken = accessToken;
+        this.instanceUrl = graphHost;
+        this.expiresAt = expiresAt;
+        this.lastRefreshedAt = Instant.now();
+        this.status = ConnectionStatus.CONNECTED;
+    }
+
     public void setUsername(String username) {
         this.username = username;
     }

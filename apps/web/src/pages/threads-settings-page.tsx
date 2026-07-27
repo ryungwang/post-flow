@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Cloud, Facebook, Globe, Info, Linkedin, Loader2 } from "lucide-react";
+import { AtSign, Cloud, Facebook, Globe, Info, Instagram, Linkedin, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { threadsApi } from "@/lib/threads-api";
 import { linkedinApi } from "@/lib/linkedin-api";
 import { facebookApi } from "@/lib/facebook-api";
+import { instagramApi } from "@/lib/instagram-api";
 import { accountApi } from "@/lib/account-api";
 import { socialApi } from "@/lib/social-api";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -35,7 +36,7 @@ export function ThreadsSettingsPage() {
   // Threads(?threads=) and LinkedIn(?linkedin=) share this settings page as their frontend redirect.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    for (const provider of ["threads", "linkedin", "facebook"] as const) {
+    for (const provider of ["threads", "linkedin", "facebook", "instagram"] as const) {
       const result = params.get(provider);
       if (result && window.opener) {
         window.opener.postMessage({ type: `${provider}-oauth`, result }, window.location.origin);
@@ -91,7 +92,7 @@ export function ThreadsSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">채널 연결</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          SNS 채널을 연결하면 한 번 만든 콘텐츠를 예약·자동 발행할 수 있어요. (Threads · Bluesky · LinkedIn · Mastodon · Facebook)
+          SNS 채널을 연결하면 한 번 만든 콘텐츠를 예약·자동 발행할 수 있어요. (Threads · Bluesky · LinkedIn · Mastodon · Facebook · Instagram)
         </p>
       </div>
 
@@ -140,6 +141,7 @@ export function ThreadsSettingsPage() {
       <MastodonCard />
 
       <FacebookCard />
+      <InstagramCard />
 
       <AccountsCard onAdd={connect} adding={connecting} />
     </div>
@@ -590,6 +592,118 @@ function FacebookCard() {
           연결에는 Facebook 앱 설정(서버 키)이 필요해요. 키 미설정 시 연결이 진행되지 않을 수 있어요.
           내가 <span className="font-medium">관리자인 페이지</span>가 채널로 등록됩니다. (개인 타임라인이 아닌 페이지)
           페이지에 연결된 <span className="font-medium">인스타그램 비즈니스 계정</span>도 함께 등록돼요(이미지 발행).
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Instagram 직접 연결 — "Instagram API with Instagram login"(페북 페이지 불필요). 비즈니스·크리에이터 계정. */
+function InstagramCard() {
+  const qc = useQueryClient();
+  const confirm = useConfirm();
+  const [connecting, setConnecting] = useState(false);
+
+  const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
+  const instagram = (channels ?? []).filter((c) => c.provider === "INSTAGRAM");
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["social-channels"] });
+    qc.invalidateQueries({ queryKey: ["threads-accounts"] });
+  };
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      const { authorizeUrl } = await instagramApi.connectUrl();
+      const w = 600;
+      const h = 720;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      const popup = window.open(authorizeUrl, "instagram-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+      if (!popup) {
+        window.location.href = authorizeUrl;
+        return;
+      }
+      const onMessage = (e: MessageEvent) => {
+        if (e.origin !== window.location.origin) return;
+        if (e.data?.type === "instagram-oauth") {
+          window.removeEventListener("message", onMessage);
+          clearInterval(timer);
+          setConnecting(false);
+          invalidate();
+        }
+      };
+      window.addEventListener("message", onMessage);
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          window.removeEventListener("message", onMessage);
+          setConnecting(false);
+          invalidate();
+        }
+      }, 600);
+    } catch {
+      setConnecting(false);
+    }
+  };
+
+  const disconnect = useMutation({
+    mutationFn: (id: number) => socialApi.disconnect(id),
+    meta: { loading: "연결 해제 중…", success: "연결 해제됨", error: "연결 해제 실패" },
+    onSuccess: invalidate,
+  });
+
+  const askDisconnect = async (name: string | null, id: number) => {
+    const ok = await confirm({
+      title: "채널 연결 해제",
+      description: `${name ?? "이 계정"} 연결을 해제할까요? 예약된 발행은 이 채널로 나가지 않아요.`,
+      confirmText: "연결 해제",
+      destructive: true,
+    });
+    if (ok) disconnect.mutate(id);
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#4f5bd5] text-white">
+            <Instagram className="size-5" />
+          </div>
+          <div className="flex-1">
+            <CardTitle>Instagram 직접 연결</CardTitle>
+            <CardDescription>페이스북 페이지 없이 인스타그램 계정으로 바로 연결해요. 이미지 게시물을 발행합니다.</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {instagram.length > 0 && (
+          <div className="space-y-2">
+            {instagram.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <Instagram className="size-4 text-[#d62976]" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{c.username ?? c.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {c.status === "RECONNECT_REQUIRED" ? "재연결 필요" : "연결됨"}
+                    {c.isDefault && " · 기본 채널"}
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => askDisconnect(c.username ?? c.name, c.id)}>
+                  연결 해제
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <Button onClick={connect} disabled={connecting} className="gap-2">
+          {connecting && <Loader2 className="size-4 animate-spin" />}
+          {instagram.length > 0 ? "다시 연결" : "Instagram 계정 연결하기"}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          <span className="font-medium">비즈니스·크리에이터(프로페셔널) 계정</span>만 연결돼요. 개인 계정은 인스타그램 앱에서 프로페셔널로 전환해 주세요.
+          발행 시 <span className="font-medium">이미지가 반드시 필요</span>합니다(인스타 정책). 페이스북 페이지에 연결된 계정이면 Facebook 카드로도 함께 등록돼요.
         </p>
       </CardContent>
     </Card>

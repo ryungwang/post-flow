@@ -33,16 +33,17 @@ public class InstagramReadService {
     public List<InstagramPostDto> posts(Long userId, int limit) {
         SocialAccount account = account(userId);
         List<IgMedia> media = client.getRecentMedia(
-                account.getExternalId(), account.getAccessToken(), limit);
+                account.getInstanceUrl(), account.getExternalId(), account.getAccessToken(), limit);
         return media.stream().map(InstagramReadService::toPostDto).toList();
     }
 
     @Transactional(readOnly = true)
     public InstagramInsightsDto insights(Long userId) {
         SocialAccount account = account(userId);
-        IgProfile profile = client.getProfile(account.getExternalId(), account.getAccessToken());
+        IgProfile profile = client.getProfile(
+                account.getInstanceUrl(), account.getExternalId(), account.getAccessToken());
         List<IgMedia> media = client.getRecentMedia(
-                account.getExternalId(), account.getAccessToken(), INSIGHTS_SAMPLE);
+                account.getInstanceUrl(), account.getExternalId(), account.getAccessToken(), INSIGHTS_SAMPLE);
 
         long likes = 0, comments = 0;
         for (IgMedia m : media) {
@@ -62,7 +63,7 @@ public class InstagramReadService {
         return repository.findByUserIdAndProviderOrderByIdAsc(userId, SocialProvider.INSTAGRAM).stream()
                 .findFirst()
                 .orElseThrow(() -> new InstagramApiException(
-                        "연결된 인스타그램 계정이 없어요. Facebook 페이지 연결 시 함께 등록돼요."));
+                        "연결된 인스타그램 계정이 없어요. 인스타그램으로 직접 연결하거나 Facebook 페이지를 연결해 주세요."));
     }
 
     private static InstagramPostDto toPostDto(IgMedia m) {

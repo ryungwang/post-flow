@@ -31,7 +31,8 @@ public class InstagramPublisher implements Publisher {
     public String publish(Long accountId, String text, String mediaUrl) {
         SocialAccount account = repository.findById(accountId)
                 .orElseThrow(() -> new InstagramApiException("연결된 인스타그램 계정을 찾을 수 없어요."));
-        return client.publishImage(account.getExternalId(), account.getAccessToken(), text, mediaUrl);
+        return client.publishImage(account.getInstanceUrl(), account.getExternalId(),
+                account.getAccessToken(), text, mediaUrl);
     }
 
     // Instagram Graph API can't delete published media → deletePost stays a no-op (Publisher default).

@@ -33,6 +33,8 @@ const BlueskyInsightsPage = lazyPage(() => import("@/pages/bluesky-insights-page
 const MastodonPostsPage = lazyPage(() => import("@/pages/mastodon-posts-page"), "MastodonPostsPage");
 const MastodonInsightsPage = lazyPage(() => import("@/pages/mastodon-insights-page"), "MastodonInsightsPage");
 const MastodonMentionsPage = lazyPage(() => import("@/pages/mastodon-mentions-page"), "MastodonMentionsPage");
+const InstagramPostsPage = lazyPage(() => import("@/pages/instagram-posts-page"), "InstagramPostsPage");
+const InstagramInsightsPage = lazyPage(() => import("@/pages/instagram-insights-page"), "InstagramInsightsPage");
 
 /** /settings(잘못된 콜백 경로) → /settings/threads로 쿼리 보존 리다이렉트. */
 function SettingsRedirect() {
@@ -72,6 +74,8 @@ export default function App() {
             <Route path="/content/mastodon-posts" element={<MastodonPostsPage />} />
             <Route path="/mastodon-insights" element={<MastodonInsightsPage />} />
             <Route path="/mastodon-mentions" element={<MastodonMentionsPage />} />
+            <Route path="/content/instagram-posts" element={<InstagramPostsPage />} />
+            <Route path="/instagram-insights" element={<InstagramInsightsPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/automation" element={<AutomationPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />

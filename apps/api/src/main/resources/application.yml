@@ -126,3 +126,18 @@ facebook:
   dialog-base-url: https://www.facebook.com
   api-version: v21.0
   frontend-redirect-url: ${FACEBOOK_FRONTEND_REDIRECT_URL:http://localhost:5173/settings/threads?facebook=connected}
+
+instagram:
+  # "Instagram API with Instagram login" — 페이스북 페이지 없이 IG 비즈니스/크리에이터 계정을 직접 연결.
+  # Meta 앱 > Instagram > "Instagram 로그인 API 설정"의 인스타그램 앱 ID/시크릿(페북·Threads 앱과 별개).
+  # 미설정 시 authorizeUrl에 client_id 없어 실제 연결은 안 됨(UI는 렌더).
+  app-id: ${INSTAGRAM_APP_ID:}
+  app-secret: ${INSTAGRAM_APP_SECRET:}
+  redirect-uri: ${INSTAGRAM_REDIRECT_URI:http://localhost:8080/instagram/callback}
+  # 개인 계정은 발행 불가 → 비즈니스/크리에이터 계정만 실제 동작(연결 시 account_type 검사).
+  scopes: ${INSTAGRAM_SCOPES:instagram_business_basic,instagram_business_content_publish,instagram_business_manage_comments,instagram_business_manage_insights}
+  authorize-base-url: https://www.instagram.com
+  graph-base-url: https://graph.instagram.com
+  api-base-url: https://api.instagram.com
+  api-version: v21.0
+  frontend-redirect-url: ${INSTAGRAM_FRONTEND_REDIRECT_URL:http://localhost:5173/settings/threads?instagram=connected}
