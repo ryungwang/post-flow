@@ -1,7 +1,7 @@
 // 콘텐츠 → 제휴(쿠팡파트너스): 리뷰형 소프트셀 + 대가성 고지문·subId·링크를 서버가 자동 부착.
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookmarkPlus, Check, Copy, Info, Link2, Loader2 } from "lucide-react";
+import { BookmarkPlus, Check, Copy, Info, Link2, Loader2, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { contentApi, type AffiliateResponse, type GeneratedCard } from "@/lib/content-api";
+import { naverApi, type NaverProduct } from "@/lib/naver-api";
 import { postsApi } from "@/lib/posts-api";
 import { GENERATE_PLATFORMS as PLATFORMS } from "@/lib/platforms";
 import { ScoreBadge } from "@/components/score-badge";
@@ -38,6 +39,34 @@ export function AffiliatePage() {
   const [res, setRes] = useState<AffiliateResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 네이버 상품 검색(제품 정보 근거 채우기)
+  const [nq, setNq] = useState("");
+  const [nResults, setNResults] = useState<NaverProduct[] | null>(null);
+  const [nLoading, setNLoading] = useState(false);
+  const [picked, setPicked] = useState<NaverProduct | null>(null);
+
+  const searchNaver = async () => {
+    if (!nq.trim()) return;
+    setNLoading(true);
+    try {
+      setNResults(await naverApi.searchShop(nq.trim(), 10));
+    } catch (e) {
+      show(e instanceof ApiError ? e.message : "상품 검색에 실패했어요.", "error");
+    } finally {
+      setNLoading(false);
+    }
+  };
+
+  const pickProduct = (p: NaverProduct) => {
+    setProductName(p.name);
+    setPicked(p);
+    setNResults(null);
+    // 브랜드·카테고리를 근거 힌트로(사용자가 이미 적은 특징은 보존, 가격은 넣지 않음).
+    const hint = [p.brand && `브랜드 ${p.brand}`, p.maker && p.maker !== p.brand && `제조사 ${p.maker}`, p.category && `카테고리 ${p.category}`]
+      .filter(Boolean).join(" · ");
+    if (hint && !productFeatures.trim()) setProductFeatures(hint);
+  };
 
   const generate = async () => {
     if (!productName.trim() || !affiliateLink.trim()) return;
@@ -87,6 +116,52 @@ export function AffiliatePage() {
       </div>
 
       <Card className="space-y-4 p-5">
+        {/* 네이버 상품 검색 — 실제 상품 정보로 근거 자동 채움 */}
+        <div className="space-y-2 rounded-lg border border-dashed p-3">
+          <Label className="flex items-center gap-1.5"><Search className="size-3.5" /> 네이버에서 상품 정보 가져오기 <span className="font-normal text-muted-foreground">(선택 · 정확도↑)</span></Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="상품 키워드 검색 (예: 무선 핸디 청소기)"
+              value={nq}
+              onChange={(e) => setNq(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && searchNaver()}
+            />
+            <Button variant="outline" onClick={searchNaver} disabled={nLoading || !nq.trim()} className="shrink-0 gap-1.5">
+              {nLoading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} 검색
+            </Button>
+          </div>
+          {nResults && nResults.length === 0 && <p className="text-xs text-muted-foreground">검색 결과가 없어요.</p>}
+          {nResults && nResults.length > 0 && (
+            <ul className="max-h-72 space-y-1 overflow-y-auto">
+              {nResults.map((p, i) => (
+                <li key={i}>
+                  <button type="button" onClick={() => pickProduct(p)} className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/50">
+                    {p.image && <img src={p.image} alt="" className="size-11 shrink-0 rounded object-cover" />}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{p.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {[p.brand, p.category].filter(Boolean).join(" · ")}
+                        {p.price != null && <span> · 참고가 {p.price.toLocaleString()}원</span>}
+                      </div>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {picked && (
+            <div className="flex items-center gap-3 rounded-md bg-muted/40 p-2 text-xs">
+              {picked.image && <img src={picked.image} alt="" className="size-10 shrink-0 rounded object-cover" />}
+              <div className="min-w-0 flex-1">
+                <span className="font-medium">선택됨:</span> {picked.name}
+                {picked.price != null && <span className="text-muted-foreground"> · 참고가 {picked.price.toLocaleString()}원(네이버)</span>}
+                <div className="text-muted-foreground">가격·이미지는 네이버 기준 참고용 — 쿠팡과 다를 수 있어 본문엔 자동 삽입되지 않아요.</div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>해제</Button>
+            </div>
+          )}
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>제품명 *</Label>
