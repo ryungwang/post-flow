@@ -12,6 +12,7 @@ import { instagramApi } from "@/lib/instagram-api";
 import { mastodonApi } from "@/lib/mastodon-api";
 import { blueskyApi } from "@/lib/bluesky-api";
 import { socialApi } from "@/lib/social-api";
+import { accountApi } from "@/lib/account-api";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast";
 import { CountUp } from "@/components/count-up";
@@ -28,8 +29,25 @@ function fmt(iso: string | null) {
   return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" }).format(new Date(iso));
 }
 
+/** Pro 등 다계정 허용 플랜인지(각 SNS 카드가 '계정 추가' 안내를 켤지 판단). react-query 캐시 공유. */
+function useCanMulti() {
+  const { data } = useQuery({ queryKey: ["account", "usage"], queryFn: accountApi.usage });
+  return !!data?.canMultiAccount;
+}
+
+/** 다계정 플랜에서 '다른 계정을 추가하려면 다른 계정으로 로그인' 안내(교체가 아니라 추가임을 명확히). */
+function MultiAccountHint({ sns }: { sns: string }) {
+  return (
+    <p className="text-xs text-muted-foreground">
+      이미 연결돼 있어도 <span className="font-medium">계정을 더 추가</span>할 수 있어요(Pro). 다른 {sns} 계정을 추가하려면
+      브라우저에서 <span className="font-medium">그 계정으로 로그인</span>(또는 시크릿 창)한 뒤 위 버튼을 누르세요. 같은 계정이면 정보만 갱신돼요.
+    </p>
+  );
+}
+
 export function ThreadsSettingsPage() {
   const qc = useQueryClient();
+  const canMulti = useCanMulti();
   const { data, isLoading } = useQuery({ queryKey: ["threads-status"], queryFn: threadsApi.status });
   const [connecting, setConnecting] = useState(false);
 
@@ -125,13 +143,17 @@ export function ThreadsSettingsPage() {
           )}
           <Button onClick={connect} disabled={connecting} className="gap-2">
             {connecting && <Loader2 className="size-4 animate-spin" />}
-            {connected ? "다시 연결" : "Threads 연결하기"}
+            {!connected ? "Threads 연결하기" : canMulti ? "+ Threads 계정 추가" : "다시 연결"}
           </Button>
-          <p className="mt-3 text-xs text-muted-foreground">
-            {connected
-              ? "다른 계정으로 바꾸려면 아래에서 연결 해제 후 다시 연결하세요. (다른 계정으로 인증하면 현재 연결이 교체됩니다.)"
-              : "연결에는 Threads 앱 설정(서버 키)이 필요합니다. 키 미설정 시 연결이 진행되지 않을 수 있어요."}
-          </p>
+          <div className="mt-3">
+            {!connected ? (
+              <p className="text-xs text-muted-foreground">연결에는 Threads 앱 설정(서버 키)이 필요합니다. 키 미설정 시 연결이 진행되지 않을 수 있어요.</p>
+            ) : canMulti ? (
+              <MultiAccountHint sns="Threads" />
+            ) : (
+              <p className="text-xs text-muted-foreground">다른 계정으로 바꾸려면 아래에서 연결 해제 후 다시 연결하세요. (다른 계정으로 인증하면 현재 연결이 교체됩니다.)</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -153,6 +175,7 @@ export function ThreadsSettingsPage() {
 function BlueskyCard() {
   const qc = useQueryClient();
   const { show } = useToast();
+  const canMulti = useCanMulti();
   const [handle, setHandle] = useState("");
   const [appPassword, setAppPassword] = useState("");
 
@@ -215,6 +238,7 @@ function BlueskyCard() {
         <p className="text-xs text-muted-foreground">
           Bluesky 설정 → <span className="font-medium">앱 비밀번호(App Passwords)</span>에서 발급한 비밀번호를 넣으세요.
           일반 로그인 비밀번호가 아니에요. 앱 비밀번호는 저장하지 않고, 연결용 토큰만 보관합니다.
+          {canMulti && <span> 다른 계정을 추가하려면 <span className="font-medium">다른 핸들·앱 비밀번호</span>를 넣으면 돼요(Pro).</span>}
         </p>
       </CardContent>
     </Card>
@@ -224,6 +248,7 @@ function BlueskyCard() {
 /** LinkedIn 연결 — OAuth2(팝업). 발행 전용(개인 프로필 읽기/분석은 파트너 승인 필요). */
 function LinkedInCard() {
   const qc = useQueryClient();
+  const canMulti = useCanMulti();
   const [connecting, setConnecting] = useState(false);
 
   const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
@@ -286,12 +311,13 @@ function LinkedInCard() {
       <CardContent className="space-y-3">
         <Button onClick={connect} disabled={connecting} className="gap-2">
           {connecting && <Loader2 className="size-4 animate-spin" />}
-          {linkedin.length > 0 ? "다시 연결" : "LinkedIn 연결하기"}
+          {linkedin.length === 0 ? "LinkedIn 연결하기" : canMulti ? "+ LinkedIn 계정 추가" : "다시 연결"}
         </Button>
         <p className="text-xs text-muted-foreground">
           연결에는 LinkedIn 앱 설정(서버 키)이 필요해요. 키 미설정 시 연결이 진행되지 않을 수 있어요.
           개인 프로필 피드에 텍스트·이미지를 발행합니다.
         </p>
+        {canMulti && linkedin.length > 0 && <MultiAccountHint sns="LinkedIn" />}
       </CardContent>
     </Card>
   );
@@ -301,6 +327,7 @@ function LinkedInCard() {
 function MastodonCard() {
   const qc = useQueryClient();
   const { show } = useToast();
+  const canMulti = useCanMulti();
   const [instanceUrl, setInstanceUrl] = useState("");
   const [accessToken, setAccessToken] = useState("");
 
@@ -366,6 +393,7 @@ function MastodonCard() {
           <span className="font-medium">설정 → 개발 → 새 애플리케이션</span>에서 만든 앱의{" "}
           <span className="font-medium">액세스 토큰</span>을 넣으세요. (권한: <code>write</code> 포함)
           토큰만 보관하며, 텍스트·이미지를 발행합니다.
+          {canMulti && <span> 다른 계정을 추가하려면 <span className="font-medium">다른 인스턴스·토큰</span>을 넣으면 돼요(Pro).</span>}
         </p>
       </CardContent>
     </Card>
@@ -375,6 +403,7 @@ function MastodonCard() {
 /** Facebook 페이지 연결 — OAuth2(팝업). 관리하는 페이지를 채널로 등록. 발행 텍스트+이미지. */
 function FacebookCard() {
   const qc = useQueryClient();
+  const canMulti = useCanMulti();
   const [connecting, setConnecting] = useState(false);
 
   const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
@@ -437,13 +466,14 @@ function FacebookCard() {
       <CardContent className="space-y-3">
         <Button onClick={connect} disabled={connecting} className="gap-2">
           {connecting && <Loader2 className="size-4 animate-spin" />}
-          {facebook.length > 0 ? "다시 연결" : "Facebook 페이지 연결하기"}
+          {facebook.length === 0 ? "Facebook 페이지 연결하기" : canMulti ? "+ Facebook 페이지 추가" : "다시 연결"}
         </Button>
         <p className="text-xs text-muted-foreground">
           연결에는 Facebook 앱 설정(서버 키)이 필요해요. 키 미설정 시 연결이 진행되지 않을 수 있어요.
           내가 <span className="font-medium">관리자인 페이지</span>가 채널로 등록됩니다. (개인 타임라인이 아닌 페이지)
           페이지에 연결된 <span className="font-medium">인스타그램 비즈니스 계정</span>도 함께 등록돼요(이미지 발행).
         </p>
+        {canMulti && facebook.length > 0 && <MultiAccountHint sns="Facebook" />}
       </CardContent>
     </Card>
   );
@@ -452,6 +482,7 @@ function FacebookCard() {
 /** Instagram 직접 연결 — "Instagram API with Instagram login"(페북 페이지 불필요). 비즈니스·크리에이터 계정. */
 function InstagramCard() {
   const qc = useQueryClient();
+  const canMulti = useCanMulti();
   const [connecting, setConnecting] = useState(false);
 
   const { data: channels } = useQuery({ queryKey: ["social-channels"], queryFn: socialApi.channels });
@@ -514,12 +545,13 @@ function InstagramCard() {
       <CardContent className="space-y-3">
         <Button onClick={connect} disabled={connecting} className="gap-2">
           {connecting && <Loader2 className="size-4 animate-spin" />}
-          {instagram.length > 0 ? "다시 연결" : "Instagram 계정 연결하기"}
+          {instagram.length === 0 ? "Instagram 계정 연결하기" : canMulti ? "+ Instagram 계정 추가" : "다시 연결"}
         </Button>
         <p className="text-xs text-muted-foreground">
           <span className="font-medium">비즈니스·크리에이터(프로페셔널) 계정</span>만 연결돼요. 개인 계정은 인스타그램 앱에서 프로페셔널로 전환해 주세요.
           발행 시 <span className="font-medium">이미지가 반드시 필요</span>합니다(인스타 정책). 페이스북 페이지에 연결된 계정이면 Facebook 카드로도 함께 등록돼요.
         </p>
+        {canMulti && instagram.length > 0 && <MultiAccountHint sns="Instagram" />}
       </CardContent>
     </Card>
   );
