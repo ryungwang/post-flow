@@ -172,8 +172,8 @@ export function AffiliatePage() {
           )}
           {radarLoading && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> 레이더 분석 중…</p>}
           {radar && !radarLoading && (
-            <ul className="space-y-1.5">
-              {radar.products.slice(0, 8).map((p) => (
+            <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+              {radar.products.map((p) => (
                 <RadarRow key={p.name} p={p} onSearch={() => searchByKeyword(p.name)} />
               ))}
             </ul>
