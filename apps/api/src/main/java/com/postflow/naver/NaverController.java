@@ -20,15 +20,35 @@ import java.util.Map;
 public class NaverController {
 
     private final NaverShopClient client;
+    private final NaverTrendClient trendClient;
 
-    public NaverController(NaverShopClient client) {
+    public NaverController(NaverShopClient client, NaverTrendClient trendClient) {
         this.client = client;
+        this.trendClient = trendClient;
     }
 
     @GetMapping("/shop/search")
     public List<NaverProduct> searchShop(@RequestParam String query,
                                          @RequestParam(defaultValue = "10") int display) {
         return client.searchShop(query.trim(), Math.min(Math.max(display, 1), 20));
+    }
+
+    /** 발굴용 카테고리 목록(칩). */
+    @GetMapping("/trend/categories")
+    public List<Map<String, String>> categories() {
+        return NaverTrendCategories.ALL.stream()
+                .map(c -> Map.of("key", c.key(), "label", c.label()))
+                .toList();
+    }
+
+    /** 카테고리 후보 키워드를 최근 쇼핑 트렌드 상승률 순으로. */
+    @GetMapping("/trend/rising")
+    public List<RisingKeyword> rising(@RequestParam String category) {
+        NaverTrendCategories.Cat cat = NaverTrendCategories.byKey(category);
+        if (cat == null) {
+            return List.of();
+        }
+        return trendClient.rising(cat.code(), cat.keywords());
     }
 
     @ExceptionHandler(NaverException.class)

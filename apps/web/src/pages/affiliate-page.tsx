@@ -1,8 +1,8 @@
 // 콘텐츠 → 제휴(쿠팡파트너스): 리뷰형 소프트셀 + 대가성 고지문·subId·링크를 서버가 자동 부착.
 // 네이버 쇼핑 검색으로 실제 상품 정보를 근거로 채운다.
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { BookmarkPlus, Check, Copy, Info, Link2, Loader2, Search } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { BookmarkPlus, Check, Copy, Info, Link2, Loader2, Search, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { contentApi, type AffiliateResponse, type GeneratedCard } from "@/lib/content-api";
-import { naverApi, type NaverProduct } from "@/lib/naver-api";
+import { naverApi, type NaverProduct, type RisingKeyword } from "@/lib/naver-api";
 import { postsApi } from "@/lib/posts-api";
 import { GENERATE_PLATFORMS as PLATFORMS } from "@/lib/platforms";
 import { ScoreBadge } from "@/components/score-badge";
@@ -57,6 +57,37 @@ export function AffiliatePage() {
     } finally {
       setNLoading(false);
     }
+  };
+
+  // 카테고리 → 급상승 후보 발굴(네이버 쇼핑인사이트)
+  const { data: trendCats } = useQuery({ queryKey: ["naver-trend-cats"], queryFn: naverApi.trendCategories, retry: false });
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [rising, setRising] = useState<RisingKeyword[] | null>(null);
+  const [risingLoading, setRisingLoading] = useState(false);
+
+  const openCategory = async (key: string) => {
+    setActiveCat(key);
+    setRising(null);
+    setRisingLoading(true);
+    try {
+      setRising(await naverApi.rising(key));
+    } catch (e) {
+      show(e instanceof ApiError ? e.message : "트렌드 조회에 실패했어요.", "error");
+      setActiveCat(null);
+    } finally {
+      setRisingLoading(false);
+    }
+  };
+
+  const pickRising = (kw: string) => {
+    setNq(kw);
+    setNResults(null);
+    // 바로 그 키워드로 상품 검색
+    setNLoading(true);
+    naverApi.searchShop(kw, 10)
+      .then((r) => setNResults(r))
+      .catch((e) => show(e instanceof ApiError ? e.message : "상품 검색에 실패했어요.", "error"))
+      .finally(() => setNLoading(false));
   };
 
   const pickProduct = (p: NaverProduct) => {
@@ -117,6 +148,41 @@ export function AffiliatePage() {
       </div>
 
       <Card className="space-y-4 p-5">
+        {/* 카테고리 → 지금 뜨는 후보 발굴 */}
+        {trendCats && trendCats.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-dashed p-3">
+            <Label className="flex items-center gap-1.5"><TrendingUp className="size-3.5" /> 지금 뜨는 것 둘러보기 <span className="font-normal text-muted-foreground">(카테고리 → 급상승 후보)</span></Label>
+            <div className="flex flex-wrap gap-1.5">
+              {trendCats.map((c) => (
+                <Button key={c.key} variant={activeCat === c.key ? "default" : "outline"} size="sm" onClick={() => openCategory(c.key)}>
+                  {c.label}
+                </Button>
+              ))}
+            </div>
+            {risingLoading && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> 트렌드 불러오는 중…</p>}
+            {rising && rising.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {rising.map((r) => (
+                  <button
+                    key={r.keyword}
+                    type="button"
+                    onClick={() => pickRising(r.keyword)}
+                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs hover:bg-muted/50"
+                    title={`관심도 ${r.score} · 상승률 ${r.growth}%`}
+                  >
+                    <span className="font-medium">{r.keyword}</span>
+                    <span className={r.growth > 0 ? "text-emerald-500" : "text-muted-foreground"}>
+                      {r.growth > 0 ? "▲" : ""}{r.growth}%
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {rising && rising.length === 0 && <p className="text-xs text-muted-foreground">이 카테고리 트렌드 데이터가 없어요.</p>}
+            <p className="text-[11px] text-muted-foreground">키워드를 누르면 그걸로 상품을 검색해요. 상승률은 최근 몇 주 클릭 추이 기준(네이버 쇼핑).</p>
+          </div>
+        )}
+
         {/* 네이버 상품 검색 — 실제 상품 정보로 근거 자동 채움 */}
         <div className="space-y-2 rounded-lg border border-dashed p-3">
           <Label className="flex items-center gap-1.5"><Search className="size-3.5" /> 네이버에서 상품 정보 가져오기 <span className="font-normal text-muted-foreground">(선택 · 정확도↑)</span></Label>
