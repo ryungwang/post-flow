@@ -61,6 +61,16 @@ public record PlatformContentProfile(
         };
     }
 
+    /**
+     * 블로그(제휴 리뷰 글) 프로필. SNS 플랫폼(SocialProvider)이 아니라 provider=null. 검색 유입(SEO)
+     * 중심의 긴 글이라 글자수 넉넉하고 해시태그는 최소. 제휴 블로그 생성에서만 쓴다.
+     */
+    public static PlatformContentProfile blog() {
+        return new PlatformContentProfile(null, "블로그", 5000, 800, 2500, 0, 3, false,
+                "블로그는 검색 유입(SEO)이 핵심이다. 소제목으로 문단을 나눠 구조화하고, 제품을 실제로 리뷰하듯 "
+                        + "구체적이고 길게 쓴다. 도입에서 검색 의도를 잡고, 장점·한계·추천 대상을 명확히.");
+    }
+
     /** 코드포인트 기준 하드 제한(이모지 서러게이트를 정확히 셈). 초과분은 잘라낸다. */
     public String clamp(String content) {
         if (content == null) {

@@ -31,6 +31,7 @@ export type GenerateAffiliateRequest = {
   tone: string;
   quantity: number;
   platform: string;
+  blogHtml?: string; // 쿠팡 HTML(상품·배너·프로모션) — 블로그 모드에서 본문에 삽입
 };
 
 export type AffiliateResponse = {

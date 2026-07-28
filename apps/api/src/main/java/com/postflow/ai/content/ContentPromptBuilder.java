@@ -112,6 +112,37 @@ public class ContentPromptBuilder {
                 bodyBudget, req.quantity());
     }
 
+    /**
+     * 제휴 <b>블로그</b> 리뷰 글 프롬프트. SNS 카드가 아니라 검색 유입용 긴 리뷰. 링크·쿠팡 HTML 배너·
+     * 대가성 고지문은 서버가 코드로 붙이므로 본문엔 URL·이미지태그·고지문을 넣지 말라고 지시한다.
+     * 스펙·수치·후기·'내돈내산' 날조 금지(공정위 지침).
+     */
+    public String affiliateBlogUserPrompt(GenerateAffiliateRequest req, int bodyBudget) {
+        String features = req.featuresOrNull();
+        String featuresLine = features == null
+                ? "실제 확인된 특징 정보가 제공되지 않았다 → 일반적이고 검증 가능한 장점만 담고, 구체 수치·효과는 지어내지 마라."
+                : "실제 특징·장점(이 범위 안에서만 근거로 쓰라, 여기 없는 수치·효과는 만들지 마라): " + features;
+        return """
+                제품(쿠팡파트너스 제휴 블로그 글): %s
+                %s
+                톤: %s
+
+                검색해서 들어온 사람에게 도움이 되는 정직한 제품 리뷰 블로그 글을 써라:
+                1) 검색 의도·고민에 공감하는 도입 → 2) 제품 소개(무엇을·왜) → 3) 실제 장점(구체적으로) + 정직한 한계 한두 줄
+                → 4) 추천 대상·사용 팁 → 5) 마무리. 소제목/줄바꿈으로 문단을 나눠 읽기 쉽게.
+
+                엄격 규칙:
+                - 확인 안 된 스펙·가격·할인·수치·효과·후기·"내가 써봤다/내돈내산" 날조 금지. "광고 아님" 사칭 금지.
+                - 본문(content)·cta 에 URL(링크)·이미지태그(<img>)·고지 문구를 넣지 마라 — 링크·쿠팡 배너·고지문은 시스템이 붙인다.
+                - 각 content 는 %d자 이내. 자연스럽게 마무리.
+                - cta 는 부담 없는 추천 한 줄.
+
+                %d개의 서로 다른 각도의 글을 JSON 배열로.
+                """.formatted(
+                req.productName(), featuresLine, req.toneOrDefault(),
+                bodyBudget, req.quantity());
+    }
+
     /** 지금 뜨는 실제 게시물 샘플을 프롬프트에 주입 — 알고리즘 타는 훅·포맷·주제를 반영하게. */
     public String trendBlock(String keyword, List<String> trendTexts) {
         // 샘플은 Threads 검색에서 오지만, 훅·리듬·화제성은 플랫폼 무관하게 참고 가치가 있다.

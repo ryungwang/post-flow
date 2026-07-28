@@ -109,6 +109,9 @@ public class ContentGenerationService {
     @Transactional
     public GenerateAffiliateResponse generateAffiliate(Long userId, GenerateAffiliateRequest req) {
         usageService.assertCanGenerate(userId);
+        if (req.isBlog()) {
+            return generateAffiliateBlog(userId, req);
+        }
         PlatformContentProfile profile = PlatformContentProfile.fromRequest(req.platform());
         String subId = buildSubId(req.subIdPrefix(), profile.provider().name());
         String linkWithSub = appendSubId(req.affiliateLink(), subId);
@@ -140,6 +143,54 @@ public class ContentGenerationService {
 
         return new GenerateAffiliateResponse(
                 cards, subId, linkWithSub, linkInBody, result.provider(), result.model());
+    }
+
+    /**
+     * 제휴 <b>블로그</b> 생성 — 긴 리뷰 글 + (쿠팡 HTML 배너 상단 삽입 | 링크) + 대가성 고지문(하단).
+     * 블로그는 검색 유입용이라 별도 프로필(길고 SEO). 쿠팡 HTML이 있으면 그 배너(상품·카테고리·프로모션
+     * 어느 것이든)를 글 맨 위에 넣고, 없으면 subId 링크를 하단에 넣는다. 고지문은 항상 하단에 강제.
+     */
+    private GenerateAffiliateResponse generateAffiliateBlog(Long userId, GenerateAffiliateRequest req) {
+        PlatformContentProfile profile = PlatformContentProfile.blog();
+        String subId = buildSubId(req.subIdPrefix(), "blog");
+        String blogHtml = req.blogHtmlOrNull();
+        String linkWithSub = blogHtml == null ? appendSubId(req.affiliateLink(), subId) : null;
+
+        String prefix = blogHtml != null ? blogHtml + "\n\n" : "";
+        String suffix = "\n\n"
+                + (blogHtml == null && linkWithSub != null ? "👉 " + linkWithSub + "\n\n" : "")
+                + COUPANG_DISCLOSURE;
+        int reserved = codePoints(prefix) + codePoints(suffix);
+        int bodyBudget = Math.max(200, profile.maxChars() - reserved);
+
+        String systemPrompt = promptBuilder.systemPrompt(profile);
+        String userPrompt = promptBuilder.affiliateBlogUserPrompt(req, bodyBudget);
+
+        GenerationRequest llmRequest = GenerationRequest.builder()
+                .systemPrompt(systemPrompt)
+                .prompt(userPrompt)
+                .maxTokens(estimateMaxTokens(req.quantity()))
+                .tier(ModelTier.STANDARD)
+                .cacheHint(true)
+                .build();
+
+        GenerationResult result = llmProvider.generate(llmRequest);
+
+        List<GeneratedCard> cards = parseCards(result.text(), profile).stream()
+                .map(c -> {
+                    String body = clampCodePoints(c.content(), bodyBudget);
+                    String content = prefix + body + suffix;
+                    int score = ContentScorer.score(content, c.hashtags(), c.cta(), profile);
+                    return new GeneratedCard(content, c.hashtags(), c.cta(), score);
+                })
+                .toList();
+
+        aiGenerationRepository.save(AiGeneration.record(
+                userId, result.provider(), result.model(),
+                userPrompt, result.text(), result.inputTokens(), result.outputTokens()));
+
+        return new GenerateAffiliateResponse(
+                cards, subId, linkWithSub, true, result.provider(), result.model());
     }
 
     /** 본문 끝에 붙일 링크(선택) + 대가성 고지문 블록. */

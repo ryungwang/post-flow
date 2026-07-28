@@ -25,7 +25,8 @@ public record GenerateAffiliateRequest(
         String subIdPrefix,
         String tone,
         @Min(1) @Max(30) int quantity,
-        String platform
+        String platform,
+        String blogHtml
 ) {
     public String toneOrDefault() {
         return tone == null || tone.isBlank() ? "Friendly" : tone;
@@ -33,5 +34,14 @@ public record GenerateAffiliateRequest(
 
     public String featuresOrNull() {
         return productFeatures == null || productFeatures.isBlank() ? null : productFeatures.trim();
+    }
+
+    /** 쿠팡 '블로그용 HTML' 배너(<a><img>…) — 블로그 모드에서 본문에 삽입. 비면 null. */
+    public String blogHtmlOrNull() {
+        return blogHtml == null || blogHtml.isBlank() ? null : blogHtml.trim();
+    }
+
+    public boolean isBlog() {
+        return "BLOG".equalsIgnoreCase(platform);
     }
 }

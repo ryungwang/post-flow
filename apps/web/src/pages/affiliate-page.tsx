@@ -26,6 +26,8 @@ const TONES = [
   { value: "Educational", label: "교육적" },
 ];
 const QUANTITIES = [5, 10, 30];
+// SNS + 블로그(쿠팡 HTML 배너 삽입). 블로그는 긴 리뷰 글 + 상품·배너·프로모션 HTML.
+const AFF_PLATFORMS = [...PLATFORMS, { value: "BLOG", label: "블로그 (HTML)", hint: "긴 리뷰 글 + 쿠팡 HTML 배너 삽입" }];
 
 export function AffiliatePage() {
   const { show } = useToast();
@@ -34,8 +36,10 @@ export function AffiliatePage() {
   const [subIdPrefix, setSubIdPrefix] = useState("");
   const [productFeatures, setProductFeatures] = useState("");
   const [platform, setPlatform] = useState("THREADS");
+  const [blogHtml, setBlogHtml] = useState("");
   const [tone, setTone] = useState("Friendly");
   const [quantity, setQuantity] = useState(5);
+  const isBlog = platform === "BLOG";
 
   const [res, setRes] = useState<AffiliateResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -113,6 +117,7 @@ export function AffiliatePage() {
         tone,
         quantity,
         platform,
+        blogHtml: isBlog ? blogHtml.trim() || undefined : undefined,
       });
       setRes(r);
     } catch (e) {
@@ -124,7 +129,7 @@ export function AffiliatePage() {
     }
   };
 
-  const platformLabel = PLATFORMS.find((p) => p.value === platform)?.label ?? platform;
+  const platformLabel = AFF_PLATFORMS.find((p) => p.value === platform)?.label ?? platform;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-7">
@@ -254,7 +259,7 @@ export function AffiliatePage() {
             <Select value={platform} onValueChange={setPlatform}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {PLATFORMS.map((p) => (<SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>))}
+                {AFF_PLATFORMS.map((p) => (<SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>
@@ -263,6 +268,22 @@ export function AffiliatePage() {
             <Input placeholder="예: haru → subId=haru_threads" value={subIdPrefix} autoCapitalize="none" onChange={(e) => setSubIdPrefix(e.target.value)} />
           </div>
         </div>
+
+        {isBlog && (
+          <div className="space-y-1.5">
+            <Label>쿠팡 HTML <span className="font-normal text-muted-foreground">(상품·배너·프로모션 · 선택)</span></Label>
+            <Textarea
+              rows={3}
+              className="font-mono text-xs"
+              placeholder={'쿠팡 파트너스에서 만든 HTML을 붙여넣으세요. 예) <a href="https://link.coupang.com/a/..." ...><img src="..."></a>'}
+              value={blogHtml}
+              onChange={(e) => setBlogHtml(e.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              붙여넣은 배너(상품·카테고리·프로모션)가 <span className="font-medium">글 맨 위</span>에 삽입돼요. HTML을 넣으면 그 안의 링크(=subId는 쿠팡 '채널 아이디'로 지정)를 그대로 쓰고, 비우면 위 파트너스 링크에 subId를 붙여 하단에 넣어요.
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -300,7 +321,7 @@ export function AffiliatePage() {
 
       {res && (
         <div className="mt-6 space-y-4">
-          <LinkBanner res={res} platformLabel={platformLabel} />
+          {res.linkWithSubId && <LinkBanner res={res} platformLabel={platformLabel} />}
           {res.cards.map((c, i) => (
             <AffiliateCardView key={i} card={c} onSaved={() => show("임시저장했어요. 라이브러리에서 예약·발행할 수 있어요.", "success")} />
           ))}
