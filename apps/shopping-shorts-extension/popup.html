@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>쇼핑쇼츠 상품 추출</title>
+    <style>
+      body {
+        width: 360px;
+        margin: 0;
+        background: #111;
+        color: #f4f4f5;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        padding: 16px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+      p {
+        margin: 0;
+        color: #a1a1aa;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      button {
+        width: 100%;
+        height: 38px;
+        margin-top: 14px;
+        border: 0;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #10b981, #06b6d4);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.6;
+      }
+      button.secondary {
+        margin-top: 8px;
+        border: 1px solid #3f3f46;
+        background: #18181b;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: 76px 1fr;
+        gap: 6px 10px;
+        margin: 12px 0 0;
+        padding: 10px;
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        background: #18181b;
+        font-size: 12px;
+      }
+      dt {
+        color: #a1a1aa;
+      }
+      dd {
+        min-width: 0;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      pre {
+        max-height: 240px;
+        overflow: auto;
+        margin: 12px 0 0;
+        padding: 10px;
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        background: #050505;
+        color: #d4d4d8;
+        font-size: 11px;
+        white-space: pre-wrap;
+      }
+      .status {
+        margin-top: 10px;
+        color: #d4d4d8;
+      }
+      .error {
+        color: #fca5a5;
+      }
+      .warning {
+        color: #fbbf24;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>쇼핑쇼츠 상품 추출</h1>
+      <p>현재 탭의 쿠팡 상품 페이지 DOM만 읽습니다. 쿠키, 로그인 정보, 자동 순회 요청은 수집하지 않습니다.</p>
+      <button id="capture">현재 상품 추출 후 복사</button>
+      <button id="open-app" class="secondary">쇼핑쇼츠생성 화면 열기</button>
+      <p id="status" class="status"></p>
+      <dl id="summary" hidden></dl>
+      <pre id="preview" hidden></pre>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

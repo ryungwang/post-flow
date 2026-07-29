@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "required": ["productId", "productAnalysis", "campaignCandidates"],
+  "properties": {
+    "productId": { "type": "string" },
+    "productAnalysis": {
+      "type": "object",
+      "required": ["productId", "targetSituations", "sellingPoints", "riskNotes", "recommendedStyles", "hookCandidates", "recommendedDuration"]
+    },
+    "campaignCandidates": {
+      "type": "array",
+      "minItems": 3
+    }
+  }
+}

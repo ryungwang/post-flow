@@ -57,6 +57,46 @@ ai:
       STANDARD: claude-sonnet-4-6
       PREMIUM: claude-opus-4-8
 
+shopping-shorts:
+  live-api-enabled: ${SHOPPING_SHORTS_LIVE_API_ENABLED:false}
+  planning:
+    provider: ${SHOPPING_SHORTS_PLANNING_PROVIDER:mock}
+  storyboard:
+    provider: ${SHOPPING_SHORTS_STORYBOARD_PROVIDER:mock}
+  video:
+    provider: ${SHOPPING_SHORTS_VIDEO_PROVIDER:mock}
+  tts:
+    provider: ${SHOPPING_SHORTS_TTS_PROVIDER:mock}
+    say-path: ${SHOPPING_SHORTS_TTS_SAY_PATH:/usr/bin/say}
+    voice: ${SHOPPING_SHORTS_TTS_VOICE:}
+    rate: ${SHOPPING_SHORTS_TTS_RATE:185}
+    openai:
+      api-key: ${SHOPPING_SHORTS_OPENAI_API_KEY:${OPENAI_API_KEY:}}
+      endpoint: ${SHOPPING_SHORTS_OPENAI_TTS_ENDPOINT:https://api.openai.com/v1/audio/speech}
+      model: ${SHOPPING_SHORTS_OPENAI_TTS_MODEL:gpt-4o-mini-tts}
+      voice: ${SHOPPING_SHORTS_OPENAI_TTS_VOICE:verse}
+  render:
+    provider: ${SHOPPING_SHORTS_RENDER_PROVIDER:mock}
+  quality:
+    provider: ${SHOPPING_SHORTS_QUALITY_PROVIDER:local-file}
+  ffmpeg:
+    path: ${SHOPPING_SHORTS_FFMPEG_PATH:/opt/homebrew/bin/ffmpeg}
+    font-path: ${SHOPPING_SHORTS_FFMPEG_FONT_PATH:/System/Library/Fonts/AppleSDGothicNeo.ttc}
+  ffprobe:
+    path: ${SHOPPING_SHORTS_FFPROBE_PATH:/opt/homebrew/bin/ffprobe}
+  kling:
+    api-key: ${SHOPPING_SHORTS_KLING_API_KEY:${KLING_API_KEY:}}
+    access-key: ${SHOPPING_SHORTS_KLING_ACCESS_KEY:${KLING_ACCESS_KEY:}}
+    secret-key: ${SHOPPING_SHORTS_KLING_SECRET_KEY:${KLING_SECRET_KEY:}}
+    base-url: ${SHOPPING_SHORTS_KLING_BASE_URL:${KLING_BASE_URL:https://api-singapore.klingai.com}}
+    model: ${SHOPPING_SHORTS_KLING_MODEL:${KLING_MODEL:kling-v2.1}}
+    mode: ${SHOPPING_SHORTS_KLING_MODE:${KLING_MODE:std}}
+    text-to-video-path: ${SHOPPING_SHORTS_KLING_TEXT_TO_VIDEO_PATH:${KLING_TEXT_TO_VIDEO_PATH:/v1/videos/text2video}}
+    image-to-video-path: ${SHOPPING_SHORTS_KLING_IMAGE_TO_VIDEO_PATH:${KLING_IMAGE_TO_VIDEO_PATH:/v1/videos/image2video}}
+    task-status-path: ${SHOPPING_SHORTS_KLING_TASK_STATUS_PATH:${KLING_TASK_STATUS_PATH:}}
+    text-to-video-status-path: ${SHOPPING_SHORTS_KLING_TEXT_TO_VIDEO_STATUS_PATH:${KLING_TEXT_TO_VIDEO_STATUS_PATH:/v1/videos/text2video/{taskId}}}
+    image-to-video-status-path: ${SHOPPING_SHORTS_KLING_IMAGE_TO_VIDEO_STATUS_PATH:${KLING_IMAGE_TO_VIDEO_STATUS_PATH:/v1/videos/image2video/{taskId}}}
+
 # synub 통합 시스템 연동(office 컨벤션과 동일). 로그인=SSO 토큰 검증, 구독=중앙 빌링.
 synub:
   sso:

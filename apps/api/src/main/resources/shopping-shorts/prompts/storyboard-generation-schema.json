@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "required": ["productId", "campaignId", "title", "style", "hook", "duration", "scenes", "youtube", "disclosure"],
+  "properties": {
+    "productId": { "type": "string" },
+    "campaignId": { "type": "string" },
+    "title": { "type": "string" },
+    "style": { "type": "string" },
+    "hook": { "type": "string" },
+    "duration": { "type": "integer" },
+    "scenes": { "type": "array", "minItems": 4, "maxItems": 7 },
+    "youtube": { "type": "object" },
+    "disclosure": { "type": "string" }
+  }
+}

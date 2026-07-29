@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "PostFlow Shopping Shorts Capture",
+  "version": "0.1.0",
+  "description": "현재 열려 있는 쿠팡 상품 페이지의 DOM에서 쇼핑쇼츠 원본 데이터를 추출합니다.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "쇼핑쇼츠 상품 추출"
+  },
+  "permissions": ["activeTab", "scripting", "clipboardWrite"],
+  "host_permissions": ["https://www.coupang.com/*", "https://*.coupang.com/*"]
+}
