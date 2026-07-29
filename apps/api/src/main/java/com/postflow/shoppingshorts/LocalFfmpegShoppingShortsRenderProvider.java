@@ -356,43 +356,76 @@ public class LocalFfmpegShoppingShortsRenderProvider implements ShoppingShortsRe
         try {
             graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            graphics.setColor(parseColor(bg));
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+
+            // 프리미엄 다크 스튜디오 배경 — 흐린 제품 복제 배경(지저분)을 제거. 흰/밝은 제품이 또렷하게 뜬다.
+            graphics.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x2a, 0x2f, 0x3b), 0, 1920, new Color(0x0e, 0x11, 0x17)));
             graphics.fillRect(0, 0, 1080, 1920);
 
             Font baseFont = loadFont();
             BufferedImage sourceImage = loadSceneSourceImage(campaignDir, scene);
             if (sourceImage != null && !"TEXT_CARD".equals(scene.sourceType())) {
-                drawCover(graphics, sourceImage, 0, 0, 1080, 1920);
-                // 전체를 균일하게 덮으면 칙칙해진다 → 하단(자막)·상단(라벨)만 그라디언트로 어둡게, 가운데 제품은 밝게.
-                graphics.setPaint(new java.awt.GradientPaint(0, 820, new Color(0, 0, 0, 0), 0, 1920, new Color(0, 0, 0, 205)));
-                graphics.fillRect(0, 820, 1080, 1100);
-                graphics.setPaint(new java.awt.GradientPaint(0, 0, new Color(0, 0, 0, 150), 0, 340, new Color(0, 0, 0, 0)));
-                graphics.fillRect(0, 0, 1080, 340);
-                if ("COMPOSITE".equals(scene.sourceType())) {
-                    drawContain(graphics, sourceImage, 150, 260, 780, 780);
-                    drawTextPanel(graphics, baseFont, scene, 80, 1110, 920, 560);
-                } else {
-                    drawContain(graphics, sourceImage, 90, 260, 900, 900);
-                    drawTextPanel(graphics, baseFont, scene, 80, 1230, 920, 430);
-                }
+                // 히어로 제품 카드(흰 라운드 + 소프트 섀도)를 크게 상단-중앙에. 데드 스페이스 없이 하단은 훅 자막.
+                drawHeroCard(graphics, sourceImage, 96, 190, 888, 1010);
+                drawCaptionBlock(graphics, baseFont, safeText(scene.caption()), safeText(scene.purpose()));
             } else {
-                graphics.setColor(new Color(167, 243, 208));
-                graphics.setFont(baseFont.deriveFont(Font.BOLD, 40f));
-                graphics.drawString(safeText(scene.purpose()), 70, 130);
-
+                // 텍스트 카드: 큰 훅 자막 중앙 배치.
+                drawKicker(graphics, baseFont, safeText(scene.purpose()));
                 graphics.setColor(Color.WHITE);
-                graphics.setFont(baseFont.deriveFont(Font.BOLD, 74f));
-                drawWrapped(graphics, safeText(scene.caption()), 110, 760, 860, 100);
-
-                graphics.setColor(new Color(203, 213, 225));
-                graphics.setFont(baseFont.deriveFont(Font.PLAIN, 34f));
-                drawWrapped(graphics, safeText(scene.narration()), 110, 1320, 860, 52);
+                graphics.setFont(baseFont.deriveFont(Font.BOLD, 96f));
+                drawWrapped(graphics, safeText(scene.caption()), 96, 840, 888, 118);
             }
-
         } finally {
             graphics.dispose();
         }
         ImageIO.write(image, "png", imagePath.toFile());
+    }
+
+    /** 히어로 제품 카드: 제품을 contain으로 크게 담고, 흰 라운드 카드 + 소프트 섀도로 프리미엄하게. */
+    private void drawHeroCard(Graphics2D g, BufferedImage src, int x, int y, int w, int h) {
+        double scale = Math.min((double) w / src.getWidth(), (double) h / src.getHeight());
+        int dw = (int) Math.round(src.getWidth() * scale);
+        int dh = (int) Math.round(src.getHeight() * scale);
+        int pad = 46;
+        int cardW = dw + pad * 2;
+        int cardH = dh + pad * 2;
+        int cardX = x + (w - cardW) / 2;
+        int cardY = y + (h - cardH) / 2;
+        for (int i = 10; i >= 1; i--) {
+            g.setColor(new Color(0, 0, 0, 10));
+            g.fillRoundRect(cardX - i, cardY + i * 4, cardW + i * 2, cardH + i * 2, 64, 64);
+        }
+        g.setColor(Color.WHITE);
+        g.fillRoundRect(cardX, cardY, cardW, cardH, 54, 54);
+        g.drawImage(src, cardX + pad, cardY + pad, dw, dh, null);
+    }
+
+    /** 하단 훅 자막 블록: 액센트 바 + 키커(퍼포즈) + 큰 볼드 자막. 다크 배경이라 별도 패널 불필요. */
+    private void drawCaptionBlock(Graphics2D g, Font baseFont, String caption, String kicker) {
+        int x = 96;
+        int barY = 1380;
+        if (StringUtils.hasText(kicker)) {
+            g.setColor(new Color(0xaa, 0xb6, 0xc8));
+            g.setFont(baseFont.deriveFont(Font.BOLD, 40f));
+            g.drawString(kicker, x, barY - 30);
+        }
+        g.setColor(new Color(0x38, 0xbd, 0xf8));
+        g.fillRoundRect(x, barY, 104, 14, 7, 7);
+        g.setColor(Color.WHITE);
+        g.setFont(baseFont.deriveFont(Font.BOLD, 88f));
+        drawWrapped(g, caption, x, barY + 120, 900, 110);
+    }
+
+    private void drawKicker(Graphics2D g, Font baseFont, String kicker) {
+        if (!StringUtils.hasText(kicker)) {
+            return;
+        }
+        g.setColor(new Color(0xaa, 0xb6, 0xc8));
+        g.setFont(baseFont.deriveFont(Font.BOLD, 44f));
+        g.drawString(kicker, 96, 150);
+        g.setColor(new Color(0x38, 0xbd, 0xf8));
+        g.fillRoundRect(96, 178, 104, 14, 7, 7);
     }
 
     private void writeOverlayImage(ShoppingShortsDtos.StoryboardScene scene, Path imagePath) throws IOException {
@@ -411,11 +444,14 @@ public class LocalFfmpegShoppingShortsRenderProvider implements ShoppingShortsRe
 
     private void drawTextPanel(Graphics2D graphics, Font baseFont, ShoppingShortsDtos.StoryboardScene scene,
                                int x, int y, int width, int height) {
-        graphics.setColor(new Color(0, 0, 0, 132));
-        graphics.fillRoundRect(x, y, width, height, 34, 34);
+        // AI 영상 위 자막: 하단 스크림 그라디언트 + 액센트 바 + 큰 볼드 자막(패널 박스 대신 스크림으로 자연스럽게).
+        graphics.setPaint(new java.awt.GradientPaint(0, y - 140, new Color(0, 0, 0, 0), 0, Math.min(1920, y + height + 60), new Color(0, 0, 0, 225)));
+        graphics.fillRect(0, y - 140, 1080, height + 260);
+        graphics.setColor(new Color(0x38, 0xbd, 0xf8));
+        graphics.fillRoundRect(x, y + 20, 104, 14, 7, 7);
         graphics.setColor(Color.WHITE);
-        graphics.setFont(baseFont.deriveFont(Font.BOLD, 58f));
-        drawWrapped(graphics, impactCaption(scene.caption()), x + 42, y + 86, width - 84, 70);
+        graphics.setFont(baseFont.deriveFont(Font.BOLD, 80f));
+        drawWrapped(graphics, impactCaption(scene.caption()), x, y + 128, width - 20, 96);
     }
 
     private void drawBrandBar(Graphics2D graphics, Font baseFont) {
