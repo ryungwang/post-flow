@@ -45,4 +45,10 @@ public class InstagramCommentResponder implements CommentResponder {
         // 게시물이 아니라 '댓글'에 답글 → 답글로 중첩되고 작성자에게 알림이 간다.
         client.replyToComment(account.getInstanceUrl(), commentId, account.getAccessToken(), text);
     }
+
+    @Override
+    public void commentOnPost(SocialAccount account, String platformPostId, String text) {
+        // 내 미디어(게시물)에 최상위 댓글(첫 댓글).
+        client.commentOnMedia(account.getInstanceUrl(), platformPostId, account.getAccessToken(), text);
+    }
 }

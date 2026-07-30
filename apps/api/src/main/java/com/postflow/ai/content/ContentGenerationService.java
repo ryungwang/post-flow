@@ -116,8 +116,10 @@ public class ContentGenerationService {
         String subId = buildSubId(req.subIdPrefix(), profile.provider().name());
         String linkWithSub = appendSubId(req.affiliateLink(), subId);
         boolean linkInBody = !profile.imageCentric(); // 이미지 중심(IG)은 본문 링크 클릭 불가 → 프로필 링크
+        // 고지 위치: 댓글 모드 + 첫 댓글 지원 플랫폼이면 본문에서 고지문을 빼고 발행 시 첫 댓글로 단다.
+        boolean disclosureInBody = !(req.disclosureAsComment() && supportsFirstComment(profile.provider()));
 
-        String suffix = affiliateSuffix(linkInBody, linkWithSub);
+        String suffix = affiliateSuffix(linkInBody, linkWithSub, disclosureInBody);
         int bodyBudget = Math.max(80, profile.maxChars() - codePoints(suffix));
 
         String systemPrompt = promptBuilder.systemPrompt(profile);
@@ -142,7 +144,16 @@ public class ContentGenerationService {
                 userPrompt, result.text(), result.inputTokens(), result.outputTokens()));
 
         return new GenerateAffiliateResponse(
-                cards, subId, linkWithSub, linkInBody, result.provider(), result.model());
+                cards, subId, linkWithSub, linkInBody, COUPANG_DISCLOSURE, disclosureInBody,
+                result.provider(), result.model());
+    }
+
+    /** 첫 댓글(자기 게시물 댓글)을 지원하는 플랫폼 — 이 플랫폼만 고지문을 댓글로 뺄 수 있다. */
+    private static boolean supportsFirstComment(com.postflow.social.SocialProvider p) {
+        return p == com.postflow.social.SocialProvider.THREADS
+                || p == com.postflow.social.SocialProvider.FACEBOOK
+                || p == com.postflow.social.SocialProvider.INSTAGRAM
+                || p == com.postflow.social.SocialProvider.MASTODON;
     }
 
     /**
@@ -189,17 +200,21 @@ public class ContentGenerationService {
                 userId, result.provider(), result.model(),
                 userPrompt, result.text(), result.inputTokens(), result.outputTokens()));
 
+        // 블로그는 첫 댓글 개념이 없어 고지문은 항상 본문(하단)에 둔다.
         return new GenerateAffiliateResponse(
-                cards, subId, linkWithSub, true, result.provider(), result.model());
+                cards, subId, linkWithSub, true, COUPANG_DISCLOSURE, true, result.provider(), result.model());
     }
 
-    /** 본문 끝에 붙일 링크(선택) + 대가성 고지문 블록. */
-    private static String affiliateSuffix(boolean linkInBody, String linkWithSub) {
-        String s = "\n\n";
-        if (linkInBody) {
-            s += "👉 " + linkWithSub + "\n\n";
+    /** 본문 끝에 붙일 링크(선택) + (선택) 대가성 고지문 블록. 댓글 모드면 고지문 제외. */
+    private static String affiliateSuffix(boolean linkInBody, String linkWithSub, boolean includeDisclosure) {
+        StringBuilder s = new StringBuilder();
+        if (linkInBody && linkWithSub != null) {
+            s.append("\n\n👉 ").append(linkWithSub);
         }
-        return s + COUPANG_DISCLOSURE;
+        if (includeDisclosure) {
+            s.append("\n\n").append(COUPANG_DISCLOSURE);
+        }
+        return s.toString();
     }
 
     /** 모델 본문을 (링크·고지문 자리 확보 후) 잘라 붙이고 재채점. 고지문은 절대 잘리지 않는다. */

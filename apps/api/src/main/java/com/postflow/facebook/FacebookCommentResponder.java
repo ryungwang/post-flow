@@ -43,4 +43,10 @@ public class FacebookCommentResponder implements CommentResponder {
         // 게시물이 아니라 '댓글'에 달아야 답글로 중첩되고 작성자에게 알림이 간다.
         client.replyToComment(commentId, account.getAccessToken(), text);
     }
+
+    @Override
+    public void commentOnPost(SocialAccount account, String platformPostId, String text) {
+        // 게시물 id로 POST /{postId}/comments → 게시물에 최상위 댓글(첫 댓글). pages_manage_engagement 필요.
+        client.replyToComment(platformPostId, account.getAccessToken(), text);
+    }
 }

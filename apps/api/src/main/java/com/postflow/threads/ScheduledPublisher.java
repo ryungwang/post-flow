@@ -29,13 +29,16 @@ public class ScheduledPublisher {
     private final PostRepository postRepository;
     private final TargetPublishingProcessor targetProcessor;
     private final PublisherRegistry publisherRegistry;
+    private final com.postflow.post.FirstCommentPublisher firstCommentPublisher;
 
     public ScheduledPublisher(PostRepository postRepository,
                               TargetPublishingProcessor targetProcessor,
-                              PublisherRegistry publisherRegistry) {
+                              PublisherRegistry publisherRegistry,
+                              com.postflow.post.FirstCommentPublisher firstCommentPublisher) {
         this.postRepository = postRepository;
         this.targetProcessor = targetProcessor;
         this.publisherRegistry = publisherRegistry;
+        this.firstCommentPublisher = firstCommentPublisher;
     }
 
     @Scheduled(fixedDelayString = "${threads.publisher.interval-ms:60000}")
@@ -47,12 +50,14 @@ public class ScheduledPublisher {
         }
         log.info("Publishing {} due post(s)", due.size());
         for (Post post : due) {
+            String firstComment = post.getFirstComment();
             for (Long targetId : targetProcessor.pendingTargetIds(post.getId())) {
                 targetProcessor.claim(targetId).ifPresent(task -> {
                     try {
                         String platformPostId = publisherRegistry.get(task.provider())
                                 .publish(task.accountId(), task.content(), task.mediaUrl());
                         targetProcessor.complete(targetId, platformPostId);
+                        firstCommentPublisher.post(task.provider(), task.accountId(), platformPostId, firstComment);
                     } catch (PublishException e) {
                         log.warn("Publish failed for post {} target {}: {}",
                                 post.getId(), targetId, e.getMessage());

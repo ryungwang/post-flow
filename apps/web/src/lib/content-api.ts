@@ -32,6 +32,7 @@ export type GenerateAffiliateRequest = {
   quantity: number;
   platform: string;
   blogHtml?: string; // 쿠팡 HTML(상품·배너·프로모션) — 블로그 모드에서 본문에 삽입
+  disclosureAsComment?: boolean; // 대가성 고지문을 본문 대신 '첫 댓글'로(발행 시 자동). 지원 플랫폼만.
 };
 
 export type AffiliateResponse = {
@@ -39,6 +40,8 @@ export type AffiliateResponse = {
   subId: string;
   linkWithSubId: string;
   linkInBody: boolean;
+  disclosure: string; // 대가성 고지문(항상 제공)
+  disclosureInBody: boolean; // false면 본문에 없음 → 첫 댓글로 써야 함
   provider: string;
   model: string;
 };

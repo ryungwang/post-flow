@@ -39,7 +39,10 @@ export function AffiliatePage() {
   const [blogHtml, setBlogHtml] = useState("");
   const [tone, setTone] = useState("Friendly");
   const [quantity, setQuantity] = useState(5);
+  const [disclosureAsComment, setDisclosureAsComment] = useState(false);
   const isBlog = platform === "BLOG";
+  // 첫 댓글(=고지문 댓글) 지원 플랫폼. 나머지는 본문 고지로 폴백.
+  const commentCapable = ["THREADS", "FACEBOOK", "INSTAGRAM", "MASTODON"].includes(platform);
 
   const [res, setRes] = useState<AffiliateResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -118,6 +121,7 @@ export function AffiliatePage() {
         quantity,
         platform,
         blogHtml: isBlog ? blogHtml.trim() || undefined : undefined,
+        disclosureAsComment: !isBlog && disclosureAsComment,
       });
       setRes(r);
     } catch (e) {
@@ -306,6 +310,34 @@ export function AffiliatePage() {
           </div>
         </div>
 
+        {!isBlog && (
+          <div className="space-y-1.5">
+            <Label>대가성 고지 위치</Label>
+            <div className="flex overflow-hidden rounded-md border text-sm">
+              {([["body", "본문에 포함"], ["comment", "첫 댓글로"]] as const).map(([v, label]) => {
+                const active = (v === "comment") === disclosureAsComment;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setDisclosureAsComment(v === "comment")}
+                    className={`flex-1 px-3 py-1.5 ${active ? "bg-foreground text-background" : "hover:bg-muted/50"}`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {disclosureAsComment
+                ? commentCapable
+                  ? "본문엔 고지문을 넣지 않고, 발행 시 고지문이 자동으로 첫 댓글로 달려요(도달 저하 방지)."
+                  : `${platformLabel}는 첫 댓글 자동이 안 돼서 이 플랫폼은 본문에 고지문이 들어갑니다.`
+                : "고지문이 본문 하단에 포함됩니다."}
+            </p>
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <p className="flex-1 text-xs text-muted-foreground">
             subId는 플랫폼별로 자동 부착돼 쿠팡 리포트에서 채널별 실적이 갈려요. ({platformLabel} → <code>subId={(subIdPrefix.trim() ? subIdPrefix.trim() + "_" : "")}{platform.toLowerCase()}</code>)
@@ -323,7 +355,12 @@ export function AffiliatePage() {
         <div className="mt-6 space-y-4">
           {res.linkWithSubId && <LinkBanner res={res} platformLabel={platformLabel} />}
           {res.cards.map((c, i) => (
-            <AffiliateCardView key={i} card={c} onSaved={() => show("임시저장했어요. 라이브러리에서 예약·발행할 수 있어요.", "success")} />
+            <AffiliateCardView
+              key={i}
+              card={c}
+              firstComment={res.disclosureInBody ? undefined : res.disclosure}
+              onSaved={() => show("임시저장했어요. 라이브러리에서 예약·발행하면 고지문이 첫 댓글로 달려요.", "success")}
+            />
           ))}
         </div>
       )}
@@ -383,7 +420,7 @@ function LinkBanner({ res, platformLabel }: { res: AffiliateResponse; platformLa
   );
 }
 
-function AffiliateCardView({ card, onSaved }: { card: GeneratedCard; onSaved: () => void }) {
+function AffiliateCardView({ card, firstComment, onSaved }: { card: GeneratedCard; firstComment?: string; onSaved: () => void }) {
   const qc = useQueryClient();
   const { show } = useToast();
   const [copied, setCopied] = useState(false);
@@ -402,7 +439,7 @@ function AffiliateCardView({ card, onSaved }: { card: GeneratedCard; onSaved: ()
   const save = async () => {
     setSaving(true);
     try {
-      await postsApi.create({ content: card.content, hashtags: card.hashtags, cta: card.cta });
+      await postsApi.create({ content: card.content, hashtags: card.hashtags, cta: card.cta, firstComment });
       qc.invalidateQueries({ queryKey: ["posts"] });
       onSaved();
     } catch {
@@ -431,6 +468,11 @@ function AffiliateCardView({ card, onSaved }: { card: GeneratedCard; onSaved: ()
         <div className="flex flex-wrap gap-1.5">
           {card.hashtags.map((h) => (<Badge key={h} variant="secondary">#{h}</Badge>))}
         </div>
+      )}
+      {firstComment && (
+        <p className="rounded-md border border-dashed px-2.5 py-1.5 text-[11px] text-muted-foreground">
+          첫 댓글(발행 시 자동): {firstComment}
+        </p>
       )}
     </Card>
   );

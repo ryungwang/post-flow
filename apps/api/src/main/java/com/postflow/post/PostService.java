@@ -29,19 +29,22 @@ public class PostService {
     private final PublisherRegistry publisherRegistry;
     private final com.postflow.user.UsageService usageService;
     private final SocialAccountRepository socialAccountRepository;
+    private final FirstCommentPublisher firstCommentPublisher;
 
     public PostService(PostRepository postRepository,
                        PostTargetRepository targetRepository,
                        TargetPublishingProcessor targetProcessor,
                        PublisherRegistry publisherRegistry,
                        com.postflow.user.UsageService usageService,
-                       SocialAccountRepository socialAccountRepository) {
+                       SocialAccountRepository socialAccountRepository,
+                       FirstCommentPublisher firstCommentPublisher) {
         this.postRepository = postRepository;
         this.targetRepository = targetRepository;
         this.targetProcessor = targetProcessor;
         this.publisherRegistry = publisherRegistry;
         this.usageService = usageService;
         this.socialAccountRepository = socialAccountRepository;
+        this.firstCommentPublisher = firstCommentPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +74,8 @@ public class PostService {
 
     @Transactional
     public PostDto create(Long userId, CreatePostRequest request) {
-        Post post = Post.create(userId, request.content(), request.hashtags(), request.cta(), request.mediaUrl());
+        Post post = Post.create(userId, request.content(), request.hashtags(), request.cta(),
+                request.mediaUrl(), request.firstComment());
         if (request.scheduledAt() != null) {
             usageService.assertCanSchedule(userId);
             post.schedule(request.scheduledAt());
@@ -132,13 +136,16 @@ public class PostService {
      * per-target state transitions go through {@link TargetPublishingProcessor}.
      */
     public PostDto publishNow(Long userId, Long id) {
-        loadOwned(userId, id); // ownership / existence guard
+        Post post = loadOwned(userId, id); // ownership / existence guard
+        String firstComment = post.getFirstComment();
         for (Long targetId : targetProcessor.pendingTargetIds(id)) {
             targetProcessor.claim(targetId).ifPresent(task -> {
                 try {
                     String platformPostId = publisherRegistry.get(task.provider())
                             .publish(task.accountId(), task.content(), task.mediaUrl());
                     targetProcessor.complete(targetId, platformPostId);
+                    // 발행 성공 직후, 트랜잭션 밖에서 첫 댓글(고지문 등)을 best-effort로 단다.
+                    firstCommentPublisher.post(task.provider(), task.accountId(), platformPostId, firstComment);
                 } catch (PublishException e) {
                     targetProcessor.fail(targetId, e.getMessage());
                 }

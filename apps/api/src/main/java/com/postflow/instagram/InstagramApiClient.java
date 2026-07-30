@@ -156,6 +156,25 @@ public class InstagramApiClient {
         }
     }
 
+    /** 내 미디어에 최상위 댓글(첫 댓글)을 단다 — POST /{mediaId}/comments. {@code instagram_manage_comments} 필요. */
+    public String commentOnMedia(String graphBaseOverride, String mediaId, String token, String text) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("message", text == null ? "" : text);
+        form.add("access_token", token);
+        try {
+            IgId res = graph.post().uri(URI.create(graphBase(graphBaseOverride) + "/" + mediaId + "/comments"))
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve().body(IgId.class);
+            return res == null ? null : res.id();
+        } catch (RestClientResponseException e) {
+            throw new InstagramApiException(
+                    "인스타그램 댓글 작성에 실패했어요. (" + e.getStatusCode().value() + ")", e);
+        } catch (RestClientException e) {
+            throw new InstagramApiException("인스타그램 댓글 작성에 실패했어요.", e);
+        }
+    }
+
     /** Account profile + counts for insights. Requires {@code instagram_manage_insights}. */
     public IgProfile getProfile(String graphBaseOverride, String igUserId, String token) {
         URI uri = URI.create(graphBase(graphBaseOverride) + "/" + igUserId

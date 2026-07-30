@@ -68,13 +68,23 @@ public class Post extends BaseTimeEntity {
     @Column(name = "retry_count", nullable = false)
     private int retryCount = 0;
 
+    /** 발행 후 자동으로 다는 첫 댓글(제휴 대가성 고지문 등). null/blank면 첫 댓글 없음. */
+    @Column(name = "first_comment", length = 1000)
+    private String firstComment;
+
     public static Post create(Long userId, String content, List<String> hashtags, String cta, String mediaUrl) {
+        return create(userId, content, hashtags, cta, mediaUrl, null);
+    }
+
+    public static Post create(Long userId, String content, List<String> hashtags, String cta,
+                              String mediaUrl, String firstComment) {
         Post p = new Post();
         p.userId = userId;
         p.content = content;
         p.hashtags = hashtags != null ? hashtags : new ArrayList<>();
         p.cta = cta;
         p.mediaUrl = mediaUrl;
+        p.firstComment = firstComment == null || firstComment.isBlank() ? null : firstComment;
         p.status = PostStatus.DRAFT;
         return p;
     }

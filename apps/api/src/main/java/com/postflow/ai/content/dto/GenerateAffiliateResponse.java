@@ -17,6 +17,8 @@ public record GenerateAffiliateResponse(
         String subId,
         String linkWithSubId,
         boolean linkInBody,
+        String disclosure,        // 대가성 고지문(항상 제공). disclosureInBody=false면 본문엔 없고 첫 댓글로 써야 함.
+        boolean disclosureInBody, // true=고지문이 본문에 포함됨 / false=본문에 없음(발행 시 첫 댓글로)
         String provider,
         String model
 ) {

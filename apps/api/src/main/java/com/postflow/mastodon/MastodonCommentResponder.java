@@ -45,4 +45,10 @@ public class MastodonCommentResponder implements CommentResponder {
         // 원 게시물이 아니라 '댓글'에 답글을 달아야 알림이 그 사람에게 간다.
         client.createReply(account.getInstanceUrl(), account.getAccessToken(), text, commentId);
     }
+
+    @Override
+    public void commentOnPost(SocialAccount account, String platformPostId, String text) {
+        // 내 게시물 자체에 답글(=첫 댓글). in_reply_to_id를 내 status id로 준다.
+        client.createReply(account.getInstanceUrl(), account.getAccessToken(), text, platformPostId);
+    }
 }

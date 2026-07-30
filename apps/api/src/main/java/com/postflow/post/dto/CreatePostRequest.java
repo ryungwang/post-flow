@@ -18,6 +18,7 @@ public record CreatePostRequest(
         String cta,
         String mediaUrl,
         Instant scheduledAt,
-        List<Long> channelIds  // 발행 대상 채널(SocialAccount id) 다중선택. 비면 기본 채널.
+        List<Long> channelIds,  // 발행 대상 채널(SocialAccount id) 다중선택. 비면 기본 채널.
+        @Size(max = 1000) String firstComment  // 발행 후 자동으로 다는 첫 댓글(제휴 대가성 고지문 등). null이면 없음.
 ) {
 }

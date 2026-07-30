@@ -26,7 +26,8 @@ public record GenerateAffiliateRequest(
         String tone,
         @Min(1) @Max(30) int quantity,
         String platform,
-        String blogHtml
+        String blogHtml,
+        boolean disclosureAsComment  // true면 대가성 고지문을 본문 대신 '첫 댓글'로(발행 시 자동). 지원 플랫폼만.
 ) {
     public String toneOrDefault() {
         return tone == null || tone.isBlank() ? "Friendly" : tone;

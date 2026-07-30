@@ -19,4 +19,12 @@ public interface CommentResponder {
 
     /** 특정 댓글에 답글을 단다. */
     void reply(SocialAccount account, String platformPostId, String commentId, String text);
+
+    /**
+     * 내가 발행한 게시물 자체에 첫 댓글을 단다(제휴 대가성 고지문 등). 답글(reply)이 '댓글에 대한 답글'인 것과
+     * 달리, 이건 '게시물에 대한 최상위 댓글'이다. 미지원 플랫폼은 기본 구현이 예외를 던지고 호출부가 스킵한다.
+     */
+    default void commentOnPost(SocialAccount account, String platformPostId, String text) {
+        throw new UnsupportedOperationException(provider() + "는 게시물 첫 댓글을 지원하지 않아요.");
+    }
 }

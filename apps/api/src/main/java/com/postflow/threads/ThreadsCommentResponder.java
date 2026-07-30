@@ -39,4 +39,10 @@ public class ThreadsCommentResponder implements CommentResponder {
         // Threads는 답글 대상 id만 있으면 되고, 원 게시물 id는 쓰지 않는다.
         publishService.publishReply(account.getThreadsUserId(), account.getAccessToken(), text, commentId);
     }
+
+    @Override
+    public void commentOnPost(SocialAccount account, String platformPostId, String text) {
+        // 내 게시물 자체에 답글(=첫 댓글). reply_to_id를 게시물 media id로 준다.
+        publishService.publishReply(account.getThreadsUserId(), account.getAccessToken(), text, platformPostId);
+    }
 }
