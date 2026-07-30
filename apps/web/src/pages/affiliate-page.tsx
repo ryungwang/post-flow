@@ -2,7 +2,7 @@
 // 네이버 쇼핑 검색으로 실제 상품 정보를 근거로 채운다.
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookmarkPlus, Check, Copy, Info, Link2, Loader2, Search, TrendingUp } from "lucide-react";
+import { BookmarkPlus, Check, Copy, Film, Info, Link2, Loader2, Search, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { contentApi, type AffiliateResponse, type GeneratedCard } from "@/lib/content-api";
 import { naverApi, type NaverProduct, type RadarProduct, type RadarResponse } from "@/lib/naver-api";
+import { affiliateVideoApi } from "@/lib/affiliate-video-api";
 import { postsApi } from "@/lib/posts-api";
 import { GENERATE_PLATFORMS as PLATFORMS } from "@/lib/platforms";
 import { ScoreBadge } from "@/components/score-badge";
@@ -349,6 +350,8 @@ export function AffiliatePage() {
         </div>
       </Card>
 
+      <AffiliateVideoSection productName={productName} features={productFeatures} imageUrl={picked?.image ?? null} />
+
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
       {res && (
@@ -365,6 +368,86 @@ export function AffiliatePage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** 독립 "AI 광고영상" 섹션 — 네이버에서 고른 제품 이미지로 6초 세로 광고영상(Kling 1컷). 비동기 폴링. */
+function AffiliateVideoSection({ productName, features, imageUrl }: { productName: string; features: string; imageUrl: string | null }) {
+  const { show } = useToast();
+  const [hook, setHook] = useState("");
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [vError, setVError] = useState<string | null>(null);
+
+  const start = async () => {
+    if (!imageUrl) { show("네이버에서 상품을 선택해 제품 이미지를 먼저 잡아주세요.", "error"); return; }
+    if (!productName.trim()) { show("제품명을 입력해 주세요.", "error"); return; }
+    setVError(null); setVideoUrl(null); setStatus("SUBMITTED"); setJobId(null);
+    try {
+      const r = await affiliateVideoApi.submit({
+        productName: productName.trim(),
+        features: features.trim() || undefined,
+        hook: hook.trim() || undefined,
+        imageUrl,
+      });
+      setJobId(r.jobId);
+      setStatus(r.status);
+    } catch (e) {
+      setStatus(null);
+      setVError(e instanceof ApiError ? e.message : "영상 생성 시작에 실패했어요.");
+    }
+  };
+
+  useEffect(() => {
+    if (!jobId || status === "READY" || status === "FAILED") return;
+    const t = setInterval(async () => {
+      try {
+        const s = await affiliateVideoApi.status(jobId);
+        setStatus(s.status);
+        if (s.status === "READY") {
+          clearInterval(t);
+          setVideoUrl(await affiliateVideoApi.fetchVideoUrl(jobId));
+        } else if (s.status === "FAILED") {
+          clearInterval(t);
+          setVError(s.error ?? "영상 생성에 실패했어요.");
+        }
+      } catch {
+        /* 폴링 중 일시 오류는 무시하고 계속 */
+      }
+    }, 5000);
+    return () => clearInterval(t);
+  }, [jobId, status]);
+
+  const busy = !!status && status !== "READY" && status !== "FAILED";
+
+  return (
+    <Card className="mt-6 space-y-3 p-5">
+      <div className="flex items-center gap-2">
+        <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-500 to-fuchsia-500 text-white">
+          <Film className="size-4" />
+        </div>
+        <h2 className="font-semibold">AI 광고영상 <span className="text-xs font-normal text-muted-foreground">(6초 · Kling · 세로 SNS)</span></h2>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        네이버에서 고른 제품 이미지로 <span className="font-medium">6초짜리 세로 광고영상</span>을 만들어요. SNS는 음소거 자동재생이라 큰 자막이 전달합니다.
+      </p>
+      {!imageUrl && <p className="text-xs text-amber-600">위 "네이버에서 상품 정보 가져오기"에서 상품을 선택하면 그 이미지로 영상을 만들 수 있어요.</p>}
+      <div className="flex gap-2">
+        <Input placeholder="훅 문구(선택 · 예: 이제 안 데여요)" value={hook} onChange={(e) => setHook(e.target.value)} />
+        <Button onClick={start} disabled={busy || !imageUrl} className="shrink-0 gap-1.5">
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Film className="size-4" />} 영상 생성
+        </Button>
+      </div>
+      {busy && <p className="text-xs text-muted-foreground">생성 중… Kling 영상은 보통 <span className="font-medium">30초~2분</span> 걸려요. 창을 열어두세요.</p>}
+      {vError && <p className="text-sm text-destructive">{vError}</p>}
+      {videoUrl && (
+        <div className="space-y-2">
+          <video src={videoUrl} controls playsInline className="mx-auto max-h-[70vh] rounded-lg border" />
+          <a href={videoUrl} download="affiliate-ad.mp4" className="text-xs text-brand underline">영상 다운로드</a>
+        </div>
+      )}
+    </Card>
   );
 }
 
