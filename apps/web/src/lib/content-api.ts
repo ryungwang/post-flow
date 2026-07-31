@@ -41,7 +41,8 @@ export type AffiliateResponse = {
   linkWithSubId: string;
   linkInBody: boolean;
   disclosure: string; // 대가성 고지문(항상 제공)
-  disclosureInBody: boolean; // false면 본문에 없음 → 첫 댓글로 써야 함
+  disclosureInBody: boolean; // false면 본문에 없음 → 첫 댓글로
+  firstComment: string | null; // 댓글 모드일 때 첫 댓글 텍스트(링크+고지문). 본문 모드면 null.
   provider: string;
   model: string;
 };

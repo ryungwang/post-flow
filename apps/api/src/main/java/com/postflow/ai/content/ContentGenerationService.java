@@ -115,9 +115,11 @@ public class ContentGenerationService {
         PlatformContentProfile profile = PlatformContentProfile.fromRequest(req.platform());
         String subId = buildSubId(req.subIdPrefix(), profile.provider().name());
         String linkWithSub = appendSubId(req.affiliateLink(), subId);
-        boolean linkInBody = !profile.imageCentric(); // 이미지 중심(IG)은 본문 링크 클릭 불가 → 프로필 링크
-        // 고지 위치: 댓글 모드 + 첫 댓글 지원 플랫폼이면 본문에서 고지문을 빼고 발행 시 첫 댓글로 단다.
-        boolean disclosureInBody = !(req.disclosureAsComment() && supportsFirstComment(profile.provider()));
+        // 댓글 모드(고지=첫댓글 + 지원 플랫폼): 링크·고지문 둘 다 본문에서 빼고 첫 댓글로 → 본문은 글만 깨끗하게.
+        boolean commentMode = req.disclosureAsComment() && supportsFirstComment(profile.provider());
+        boolean linkInBody = !profile.imageCentric() && !commentMode; // IG=프로필 링크 / 댓글 모드=링크도 댓글로
+        boolean disclosureInBody = !commentMode;
+        String firstComment = commentMode ? ("👉 " + linkWithSub + "\n\n" + COUPANG_DISCLOSURE) : null;
 
         String suffix = affiliateSuffix(linkInBody, linkWithSub, disclosureInBody);
         int bodyBudget = Math.max(80, profile.maxChars() - codePoints(suffix));
@@ -135,9 +137,10 @@ public class ContentGenerationService {
 
         GenerationResult result = llmProvider.generate(llmRequest);
 
-        boolean stripDisclosure = !disclosureInBody; // 댓글 모드면 모델이 본문에 넣은 고지문도 제거
+        // 모델이 본문에 넣은 고지/제휴 안내 줄은 표현 불문 항상 제거 — 고지문은 우리가 붙이는 정본만 쓴다
+        // (본문 모드=하단에 정식 고지문 append, 댓글 모드=본문엔 없고 첫 댓글로).
         List<GeneratedCard> cards = parseCards(result.text(), profile).stream()
-                .map(c -> stripDisclosure ? stripDisclosureLines(c) : c)
+                .map(ContentGenerationService::stripDisclosureLines)
                 .map(c -> decorateAffiliate(c, profile, suffix))
                 .toList();
 
@@ -146,22 +149,31 @@ public class ContentGenerationService {
                 userPrompt, result.text(), result.inputTokens(), result.outputTokens()));
 
         return new GenerateAffiliateResponse(
-                cards, subId, linkWithSub, linkInBody, COUPANG_DISCLOSURE, disclosureInBody,
+                cards, subId, linkWithSub, linkInBody, COUPANG_DISCLOSURE, disclosureInBody, firstComment,
                 result.provider(), result.model());
     }
 
-    /** 댓글 모드에서 모델이 본문에 넣은 대가성 고지문 줄을 제거한다('쿠팡 파트너스'+'수수료' 포함 줄). */
+    /** 모델이 본문에 넣은 고지/제휴 안내 줄 제거 — 쿠팡 파트너스·수수료·제휴 링크 안내 등 표현 불문. */
     private static GeneratedCard stripDisclosureLines(GeneratedCard c) {
         String content = c.content();
         if (content == null || content.isBlank()) {
             return c;
         }
         String cleaned = java.util.Arrays.stream(content.split("\n"))
-                .filter(line -> !(line.contains("쿠팡 파트너스") && line.contains("수수료")))
+                .filter(line -> !isAffiliateNoticeLine(line))
                 .reduce((a, b) -> a + "\n" + b).orElse("")
                 .replaceAll("\n{3,}", "\n\n")
                 .strip();
         return new GeneratedCard(cleaned, c.hashtags(), c.cta(), c.score());
+    }
+
+    /** 모델이 본문에 넣은 대가성 고지·제휴 안내 줄인지 — 표현이 달라도 잡도록 여러 패턴 매칭. */
+    private static boolean isAffiliateNoticeLine(String line) {
+        return line.contains("쿠팡 파트너스")
+                || line.contains("일정액")
+                || (line.contains("수수료") && line.contains("제공"))
+                || (line.contains("제휴") && line.contains("링크") && (line.contains("포함") || line.contains("참고")))
+                || (line.contains("광고") && line.contains("포함") && line.contains("게시물"));
     }
 
     /** 첫 댓글(자기 게시물 댓글)을 지원하는 플랫폼 — 이 플랫폼만 고지문을 댓글로 뺄 수 있다. */
@@ -204,6 +216,7 @@ public class ContentGenerationService {
         GenerationResult result = llmProvider.generate(llmRequest);
 
         List<GeneratedCard> cards = parseCards(result.text(), profile).stream()
+                .map(ContentGenerationService::stripDisclosureLines)
                 .map(c -> {
                     String body = clampCodePoints(c.content(), bodyBudget);
                     String content = prefix + body + suffix;
@@ -218,7 +231,7 @@ public class ContentGenerationService {
 
         // 블로그는 첫 댓글 개념이 없어 고지문은 항상 본문(하단)에 둔다.
         return new GenerateAffiliateResponse(
-                cards, subId, linkWithSub, true, COUPANG_DISCLOSURE, true, result.provider(), result.model());
+                cards, subId, linkWithSub, true, COUPANG_DISCLOSURE, true, null, result.provider(), result.model());
     }
 
     /** 본문 끝에 붙일 링크(선택) + (선택) 대가성 고지문 블록. 댓글 모드면 고지문 제외. */

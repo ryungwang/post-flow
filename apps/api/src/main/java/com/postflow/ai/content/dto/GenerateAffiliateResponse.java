@@ -17,8 +17,9 @@ public record GenerateAffiliateResponse(
         String subId,
         String linkWithSubId,
         boolean linkInBody,
-        String disclosure,        // 대가성 고지문(항상 제공). disclosureInBody=false면 본문엔 없고 첫 댓글로 써야 함.
-        boolean disclosureInBody, // true=고지문이 본문에 포함됨 / false=본문에 없음(발행 시 첫 댓글로)
+        String disclosure,        // 대가성 고지문(항상 제공)
+        boolean disclosureInBody, // true=고지문이 본문에 포함됨 / false=본문에 없음(첫 댓글로)
+        String firstComment,      // 댓글 모드일 때 첫 댓글에 넣을 텍스트(링크+고지문). 본문 모드면 null.
         String provider,
         String model
 ) {

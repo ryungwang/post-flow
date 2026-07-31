@@ -429,7 +429,7 @@ export function AffiliatePage() {
             <AffiliateCardView
               key={i}
               card={c}
-              firstComment={res.disclosureInBody ? undefined : res.disclosure}
+              firstComment={res.firstComment ?? undefined}
               mediaUrl={attachedVideoUrl}
               onMakeVideo={(h) => {
                 setVideoHook(h);
@@ -584,9 +584,11 @@ function LinkBanner({ res, platformLabel }: { res: AffiliateResponse; platformLa
         </Button>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        {res.linkInBody
-          ? "이 링크가 각 게시물 본문에 이미 포함돼 있어요."
-          : "이 플랫폼은 본문 링크가 클릭되지 않아, 이 링크를 프로필(bio) 링크로 넣어주세요. 게시물 CTA가 '프로필 링크 확인'으로 유도합니다."}
+        {res.firstComment
+          ? "링크와 고지문이 발행 시 함께 첫 댓글로 나가요(본문은 글만 깨끗하게)."
+          : res.linkInBody
+            ? "이 링크가 각 게시물 본문에 이미 포함돼 있어요."
+            : "이 플랫폼은 본문 링크가 클릭되지 않아, 이 링크를 프로필(bio) 링크로 넣어주세요. 게시물 CTA가 '프로필 링크 확인'으로 유도합니다."}
       </p>
     </div>
   );
@@ -651,9 +653,10 @@ function AffiliateCardView({ card, firstComment, mediaUrl, onMakeVideo, onSaved 
         </div>
       )}
       {firstComment && (
-        <p className="rounded-md border border-dashed px-2.5 py-1.5 text-[11px] text-muted-foreground">
-          첫 댓글(발행 시 자동): {firstComment}
-        </p>
+        <div className="rounded-md border border-dashed px-2.5 py-1.5 text-[11px] text-muted-foreground">
+          <span className="font-medium">첫 댓글(발행 시 자동):</span>
+          <span className="mt-0.5 block whitespace-pre-wrap">{firstComment}</span>
+        </div>
       )}
       {mediaUrl && (
         <p className="rounded-md border border-dashed px-2.5 py-1.5 text-[11px] text-emerald-600">
