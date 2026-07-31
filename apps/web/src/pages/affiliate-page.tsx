@@ -54,6 +54,41 @@ export function AffiliatePage() {
   const [nResults, setNResults] = useState<NaverProduct[] | null>(null);
   const [nLoading, setNLoading] = useState(false);
   const [picked, setPicked] = useState<NaverProduct | null>(null);
+  // 광고영상/이미지에 쓸 제품 이미지 URL(네이버 선택 or Extension JSON에서 채움)
+  const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
+  // 쿠팡 Extension 추출 JSON(실제 쿠팡 상품 데이터)
+  const [captureJson, setCaptureJson] = useState("");
+
+  const applyCaptureJson = () => {
+    try {
+      const p = JSON.parse(captureJson) as Record<string, unknown>;
+      if (typeof p.productName === "string") setProductName(p.productName);
+      const feats = Array.isArray(p.features) ? (p.features as unknown[]).filter((s) => typeof s === "string") as string[] : [];
+      if (feats.length) setProductFeatures(feats.join(" · "));
+      else if (typeof p.description === "string") setProductFeatures(p.description.slice(0, 500));
+      if (typeof p.affiliateUrl === "string" && p.affiliateUrl.trim()) setAffiliateLink(p.affiliateUrl.trim());
+      const imgs = Array.isArray(p.sourceImages) ? (p.sourceImages as unknown[]).filter((s) => typeof s === "string") as string[] : [];
+      const img = imgs.find((s) => s.startsWith("https://")) ?? imgs[0] ?? null;
+      if (img) {
+        setProductImageUrl(img);
+        setPicked({
+          name: typeof p.productName === "string" ? p.productName : "쿠팡 상품",
+          brand: typeof p.brand === "string" ? p.brand : null,
+          maker: null,
+          category: typeof p.category === "string" ? p.category : null,
+          price: typeof p.price === "number" ? p.price : null,
+          image: img,
+          link: typeof p.productUrl === "string" ? p.productUrl : null,
+          mallName: "쿠팡",
+          productId: null,
+        });
+      }
+      setCaptureJson("");
+      show("쿠팡 Extension JSON 적용 완료 — 제품명·특징·파트너스 링크·이미지를 채웠어요.", "success");
+    } catch {
+      show("추출 JSON 형식이 올바르지 않아요.", "error");
+    }
+  };
 
   const searchNaver = async () => {
     if (!nq.trim()) return;
@@ -101,6 +136,7 @@ export function AffiliatePage() {
   const pickProduct = (p: NaverProduct) => {
     setProductName(p.name);
     setPicked(p);
+    if (p.image) setProductImageUrl(p.image);
     setNResults(null);
     // 브랜드·카테고리를 근거 힌트로(사용자가 이미 적은 특징은 보존, 가격은 넣지 않음).
     const hint = [p.brand && `브랜드 ${p.brand}`, p.maker && p.maker !== p.brand && `제조사 ${p.maker}`, p.category && `카테고리 ${p.category}`]
@@ -237,6 +273,24 @@ export function AffiliatePage() {
           )}
         </div>
 
+        {/* 쿠팡 Extension 추출 JSON — 실제 쿠팡 상품 데이터로 채움(네이버 프록시보다 정확) */}
+        <details className="rounded-lg border border-dashed p-3">
+          <summary className="cursor-pointer text-sm font-medium">쿠팡 Extension 추출 JSON 가져오기 <span className="font-normal text-muted-foreground">(실제 쿠팡 상품 · 선택)</span></summary>
+          <div className="mt-2 space-y-2">
+            <Textarea
+              rows={3}
+              className="font-mono text-xs"
+              placeholder={'쿠팡 상품 페이지에서 Extension으로 추출한 JSON을 붙여넣으세요. 예) {"productName":"...","affiliateUrl":"https://link.coupang.com/a/...","features":["..."],"sourceImages":["https://..."]}'}
+              value={captureJson}
+              onChange={(e) => setCaptureJson(e.target.value)}
+            />
+            <div className="flex items-center gap-2">
+              <p className="flex-1 text-[11px] text-muted-foreground">붙여넣으면 제품명·특징·파트너스 링크·제품 이미지가 자동으로 채워져요. (AI 광고영상 이미지도 이걸로)</p>
+              <Button variant="outline" size="sm" onClick={applyCaptureJson} disabled={!captureJson.trim()} className="shrink-0">적용</Button>
+            </div>
+          </div>
+        </details>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>제품명 *</Label>
@@ -350,7 +404,7 @@ export function AffiliatePage() {
         </div>
       </Card>
 
-      <AffiliateVideoSection productName={productName} features={productFeatures} imageUrl={picked?.image ?? null} />
+      <AffiliateVideoSection productName={productName} features={productFeatures} imageUrl={productImageUrl} />
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
