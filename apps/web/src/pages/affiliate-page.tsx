@@ -429,8 +429,9 @@ export function AffiliatePage() {
             <AffiliateCardView
               key={i}
               card={c}
+              saveable={!isBlog}
               firstComment={res.firstComment ?? undefined}
-              mediaUrl={attachedVideoUrl}
+              mediaUrl={isBlog ? null : attachedVideoUrl}
               onMakeVideo={(h) => {
                 setVideoHook(h);
                 window.scrollTo({ top: 0, behavior: "smooth" });
@@ -594,7 +595,7 @@ function LinkBanner({ res, platformLabel }: { res: AffiliateResponse; platformLa
   );
 }
 
-function AffiliateCardView({ card, firstComment, mediaUrl, onMakeVideo, onSaved }: { card: GeneratedCard; firstComment?: string; mediaUrl?: string | null; onMakeVideo?: (hook: string) => void; onSaved: () => void }) {
+function AffiliateCardView({ card, saveable = true, firstComment, mediaUrl, onMakeVideo, onSaved }: { card: GeneratedCard; saveable?: boolean; firstComment?: string; mediaUrl?: string | null; onMakeVideo?: (hook: string) => void; onSaved: () => void }) {
   const hookLine = () => {
     const first = card.content.split("\n").map((s) => s.trim()).find(Boolean) ?? card.content;
     return first.length > 40 ? first.slice(0, 40) : first;
@@ -633,11 +634,13 @@ function AffiliateCardView({ card, firstComment, mediaUrl, onMakeVideo, onSaved 
         <ScoreBadge score={card.score} />
         <div className="flex gap-1.5">
           <Button variant="outline" size="sm" onClick={copy} className="gap-1.5">
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />} 복사
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />} {saveable ? "복사" : "HTML 복사"}
           </Button>
-          <Button variant="outline" size="sm" onClick={save} disabled={saving} className="gap-1.5">
-            {saving ? <Loader2 className="size-3.5 animate-spin" /> : <BookmarkPlus className="size-3.5" />} 임시저장
-          </Button>
+          {saveable && (
+            <Button variant="outline" size="sm" onClick={save} disabled={saving} className="gap-1.5">
+              {saving ? <Loader2 className="size-3.5 animate-spin" /> : <BookmarkPlus className="size-3.5" />} 임시저장
+            </Button>
+          )}
           {onMakeVideo && (
             <Button variant="outline" size="sm" onClick={() => onMakeVideo(hookLine())} className="gap-1.5">
               <Film className="size-3.5" /> 이 글로 영상
@@ -645,6 +648,11 @@ function AffiliateCardView({ card, firstComment, mediaUrl, onMakeVideo, onSaved 
           )}
         </div>
       </div>
+      {!saveable && (
+        <p className="rounded-md border border-dashed px-2.5 py-1.5 text-[11px] text-muted-foreground">
+          블로그 HTML은 SNS 발행용이 아니라 라이브러리에 저장하지 않아요. 위 <b>HTML 복사</b>로 복사해 블로그 편집기(HTML 모드)에 붙여넣으세요.
+        </p>
+      )}
       <p className="whitespace-pre-wrap text-sm leading-relaxed">{card.content}</p>
       {card.cta && <p className="text-sm font-medium text-foreground/80">{card.cta}</p>}
       {card.hashtags.length > 0 && (

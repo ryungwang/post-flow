@@ -9,7 +9,7 @@ import java.util.List;
  * Partial update. Non-null fields are applied.
  */
 public record UpdatePostRequest(
-        @Size(max = 500) String content,
+        @Size(max = 1000) String content,
         List<String> hashtags,
         String cta,
         Instant scheduledAt
