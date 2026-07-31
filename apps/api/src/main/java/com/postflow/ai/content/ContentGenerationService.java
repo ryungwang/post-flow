@@ -125,7 +125,7 @@ public class ContentGenerationService {
         int bodyBudget = Math.max(80, profile.maxChars() - codePoints(suffix));
 
         String systemPrompt = promptBuilder.systemPrompt(profile);
-        String userPrompt = promptBuilder.affiliateUserPrompt(req, bodyBudget);
+        String userPrompt = promptBuilder.affiliateUserPrompt(req, bodyBudget, commentMode);
 
         GenerationRequest llmRequest = GenerationRequest.builder()
                 .systemPrompt(systemPrompt)
