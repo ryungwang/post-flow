@@ -18,7 +18,7 @@ public final class AffiliateVideoDtos {
     public record SubmitResponse(String jobId, String status, String caption) {
     }
 
-    /** status: SUBMITTED | PROCESSING | READY | FAILED. output이 있으면 영상 다운로드 가능. */
-    public record StatusResponse(String status, String error, String output) {
+    /** status: SUBMITTED | PROCESSING | READY | FAILED. videoUrl(공개 URL)이 있으면 미리보기·발행 첨부 가능. */
+    public record StatusResponse(String status, String error, String videoUrl) {
     }
 }

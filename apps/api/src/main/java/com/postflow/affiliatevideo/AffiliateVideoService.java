@@ -42,17 +42,20 @@ public class AffiliateVideoService {
     private final ObjectMapper mapper;
     private final ObjectProvider<ShoppingShortsVideoGenerationProvider> videoProvider;
     private final ObjectProvider<ShoppingShortsRenderProvider> renderProvider;
+    private final com.postflow.storage.StorageService storage;
     private final String ffmpegPath;
     private final Path root;
 
     public AffiliateVideoService(LLMProvider llm, ObjectMapper mapper,
                                  ObjectProvider<ShoppingShortsVideoGenerationProvider> videoProvider,
                                  ObjectProvider<ShoppingShortsRenderProvider> renderProvider,
+                                 com.postflow.storage.StorageService storage,
                                  @Value("${shopping-shorts.ffmpeg.path:ffmpeg}") String ffmpegPath) {
         this.llm = llm;
         this.mapper = mapper;
         this.videoProvider = videoProvider;
         this.renderProvider = renderProvider;
+        this.storage = storage;
         this.ffmpegPath = ffmpegPath;
         this.root = Path.of(System.getProperty("user.dir"), "var", "affiliate-videos");
     }
@@ -99,31 +102,41 @@ public class AffiliateVideoService {
             throw new IllegalArgumentException("작업을 찾을 수 없어요.");
         }
         Path finalPath = dir.resolve("renders/final.mp4");
-        if (Files.isRegularFile(finalPath)) {
-            return new AffiliateVideoDtos.StatusResponse("READY", null, "output");
-        }
-        Path resultMp4 = dir.resolve("scenes").resolve(SCENE_ID).resolve("result.mp4");
-        if (!Files.isRegularFile(resultMp4)) {
-            SceneGenerationResult polled = kling.pollScenes(dir);
-            String s = polled.jobs().isEmpty() ? "PROCESSING" : polled.jobs().getFirst().status();
-            if ("FAILED".equals(s)) {
-                String err = polled.jobs().isEmpty() ? null : polled.jobs().getFirst().errorMessage();
-                return new AffiliateVideoDtos.StatusResponse("FAILED", err, null);
-            }
-            if (!"COMPLETED".equals(s)) {
-                return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null);
-            }
-            kling.downloadScenes(dir); // result-url → result.mp4
-            if (!Files.isRegularFile(resultMp4)) {
-                return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null);
-            }
-        }
+        Path urlFile = dir.resolve("renders/public-url.txt");
         try {
-            ensureSilentAudio(dir);
-            render.render(dir); // Kling 1컷 + 훅 자막 오버레이 → final.mp4
-            return new AffiliateVideoDtos.StatusResponse("READY", null, "output");
+            if (Files.isRegularFile(urlFile)) { // 이미 업로드됨 — 공개 URL 재사용
+                return new AffiliateVideoDtos.StatusResponse("READY", null, Files.readString(urlFile).trim());
+            }
+            if (!Files.isRegularFile(finalPath)) {
+                Path resultMp4 = dir.resolve("scenes").resolve(SCENE_ID).resolve("result.mp4");
+                if (!Files.isRegularFile(resultMp4)) {
+                    SceneGenerationResult polled = kling.pollScenes(dir);
+                    String s = polled.jobs().isEmpty() ? "PROCESSING" : polled.jobs().getFirst().status();
+                    if ("FAILED".equals(s)) {
+                        String err = polled.jobs().isEmpty() ? null : polled.jobs().getFirst().errorMessage();
+                        return new AffiliateVideoDtos.StatusResponse("FAILED", err, null);
+                    }
+                    if (!"COMPLETED".equals(s)) {
+                        return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null);
+                    }
+                    kling.downloadScenes(dir); // result-url → result.mp4
+                    if (!Files.isRegularFile(resultMp4)) {
+                        return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null);
+                    }
+                }
+                ensureSilentAudio(dir);
+                render.render(dir); // Kling 1컷 + 훅 자막 오버레이 → final.mp4
+            }
+            // 공개 스토리지에 업로드 → 미리보기 + 발행 media_url 로 쓸 공개 URL
+            String key = "affiliate-videos/" + userId + "/" + jobId + ".mp4";
+            try (java.io.InputStream in = Files.newInputStream(finalPath)) {
+                storage.upload(key, in, Files.size(finalPath), "video/mp4");
+            }
+            String publicUrl = storage.publicUrl(key);
+            Files.writeString(urlFile, publicUrl);
+            return new AffiliateVideoDtos.StatusResponse("READY", null, publicUrl);
         } catch (Exception e) {
-            log.warn("광고영상 렌더 실패 (job {}): {}", jobId, e.getMessage());
+            log.warn("광고영상 렌더/업로드 실패 (job {}): {}", jobId, e.getMessage());
             return new AffiliateVideoDtos.StatusResponse("FAILED", e.getMessage(), null);
         }
     }

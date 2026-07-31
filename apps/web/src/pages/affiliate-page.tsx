@@ -56,6 +56,8 @@ export function AffiliatePage() {
   const [picked, setPicked] = useState<NaverProduct | null>(null);
   // 광고영상/이미지에 쓸 제품 이미지 URL(네이버 선택 or Extension JSON에서 채움)
   const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
+  // 생성한 광고영상을 글에 첨부(발행 시 media로 나감). 공개 URL.
+  const [attachedVideoUrl, setAttachedVideoUrl] = useState<string | null>(null);
   // 쿠팡 Extension 추출 JSON(실제 쿠팡 상품 데이터)
   const [captureJson, setCaptureJson] = useState("");
 
@@ -194,10 +196,12 @@ export function AffiliatePage() {
       </div>
 
       <Card className="space-y-4 p-5">
-        {/* 상품 레이더 — 카테고리별 급상승 후보(검색+쇼핑 점수) */}
-        <div className="space-y-2 rounded-lg border border-dashed p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Label className="flex items-center gap-1.5"><TrendingUp className="size-3.5" /> 상품 레이더 <span className="font-normal text-muted-foreground">(카테고리별 급상승 후보)</span></Label>
+        {/* 상품 레이더 — 카테고리별 급상승 후보(검색+쇼핑 점수). 접이식 */}
+        <details className="rounded-lg border border-dashed p-3">
+          <summary className="flex cursor-pointer items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-sm font-medium"><TrendingUp className="size-3.5" /> 상품 레이더 <span className="font-normal text-muted-foreground">(네이버 급상승 · 발굴용)</span></span>
+          </summary>
+          <div className="mt-2 flex justify-end">
             <div className="flex overflow-hidden rounded-md border text-xs">
               {([7, 30] as const).map((w) => (
                 <button key={w} type="button" onClick={() => loadRadar(radarCat, w)} className={`px-2.5 py-1 ${radarWindow === w ? "bg-foreground text-background" : "hover:bg-muted/50"}`}>
@@ -206,7 +210,7 @@ export function AffiliatePage() {
               ))}
             </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {(radar?.categories ?? []).map((c) => (
               <Button key={c.key} variant={radarCat === c.key ? "default" : "outline"} size="sm" onClick={() => loadRadar(c.key, radarWindow)}>
                 {c.label}
@@ -224,8 +228,8 @@ export function AffiliatePage() {
               ))}
             </ul>
           )}
-          <p className="text-[11px] text-muted-foreground">점수 = 검색 추이·쇼핑 상승률·계절·카테고리 적합(확인 불가 항목은 제외하고 정규화). 상품을 누르면 그 키워드로 검색해 정보를 채워요.</p>
-        </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">점수 = 검색 추이·쇼핑 상승률·계절·카테고리 적합(확인 불가 항목은 제외하고 정규화). 네이버 수요 지표(쿠팡 데이터 아님) — 발굴용 참고. 상품을 누르면 그 키워드로 검색해요.</p>
+        </details>
 
         {/* 네이버 상품 검색 — 실제 상품 정보로 근거 자동 채움 */}
         <div className="space-y-2 rounded-lg border border-dashed p-3">
@@ -404,7 +408,13 @@ export function AffiliatePage() {
         </div>
       </Card>
 
-      <AffiliateVideoSection productName={productName} features={productFeatures} imageUrl={productImageUrl} />
+      <AffiliateVideoSection
+        productName={productName}
+        features={productFeatures}
+        imageUrl={productImageUrl}
+        attachedUrl={attachedVideoUrl}
+        onAttach={setAttachedVideoUrl}
+      />
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
@@ -416,7 +426,8 @@ export function AffiliatePage() {
               key={i}
               card={c}
               firstComment={res.disclosureInBody ? undefined : res.disclosure}
-              onSaved={() => show("임시저장했어요. 라이브러리에서 예약·발행하면 고지문이 첫 댓글로 달려요.", "success")}
+              mediaUrl={attachedVideoUrl}
+              onSaved={() => show("임시저장했어요. 라이브러리에서 예약·발행하면 고지문 첫 댓글" + (attachedVideoUrl ? "·영상" : "") + "이 함께 나가요.", "success")}
             />
           ))}
         </div>
@@ -426,7 +437,10 @@ export function AffiliatePage() {
 }
 
 /** 독립 "AI 광고영상" 섹션 — 네이버에서 고른 제품 이미지로 6초 세로 광고영상(Kling 1컷). 비동기 폴링. */
-function AffiliateVideoSection({ productName, features, imageUrl }: { productName: string; features: string; imageUrl: string | null }) {
+function AffiliateVideoSection({ productName, features, imageUrl, attachedUrl, onAttach }: {
+  productName: string; features: string; imageUrl: string | null;
+  attachedUrl: string | null; onAttach: (url: string | null) => void;
+}) {
   const { show } = useToast();
   const [hook, setHook] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
@@ -459,9 +473,10 @@ function AffiliateVideoSection({ productName, features, imageUrl }: { productNam
       try {
         const s = await affiliateVideoApi.status(jobId);
         setStatus(s.status);
-        if (s.status === "READY") {
+        if (s.status === "READY" && s.videoUrl) {
           clearInterval(t);
-          setVideoUrl(await affiliateVideoApi.fetchVideoUrl(jobId));
+          setVideoUrl(s.videoUrl);
+          onAttach(s.videoUrl); // 완성되면 자동으로 글에 첨부(발행 시 media로 나감)
         } else if (s.status === "FAILED") {
           clearInterval(t);
           setVError(s.error ?? "영상 생성에 실패했어요.");
@@ -498,7 +513,18 @@ function AffiliateVideoSection({ productName, features, imageUrl }: { productNam
       {videoUrl && (
         <div className="space-y-2">
           <video src={videoUrl} controls playsInline className="mx-auto max-h-[70vh] rounded-lg border" />
-          <a href={videoUrl} download="affiliate-ad.mp4" className="text-xs text-brand underline">영상 다운로드</a>
+          <div className="flex flex-wrap items-center gap-3">
+            {attachedUrl === videoUrl ? (
+              <>
+                <span className="text-xs font-medium text-emerald-600">✓ 글에 첨부됨 — 발행 시 함께 나가요</span>
+                <Button variant="ghost" size="sm" onClick={() => onAttach(null)}>첨부 해제</Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => onAttach(videoUrl)}>글에 첨부</Button>
+            )}
+            <a href={videoUrl} download="affiliate-ad.mp4" className="text-xs text-brand underline">다운로드</a>
+          </div>
+          <p className="text-[11px] text-muted-foreground">첨부하면 아래 글 카드를 임시저장·발행할 때 이 영상이 media로 함께 발행돼요(Threads·IG 영상).</p>
         </div>
       )}
     </Card>
@@ -557,7 +583,7 @@ function LinkBanner({ res, platformLabel }: { res: AffiliateResponse; platformLa
   );
 }
 
-function AffiliateCardView({ card, firstComment, onSaved }: { card: GeneratedCard; firstComment?: string; onSaved: () => void }) {
+function AffiliateCardView({ card, firstComment, mediaUrl, onSaved }: { card: GeneratedCard; firstComment?: string; mediaUrl?: string | null; onSaved: () => void }) {
   const qc = useQueryClient();
   const { show } = useToast();
   const [copied, setCopied] = useState(false);
@@ -576,7 +602,7 @@ function AffiliateCardView({ card, firstComment, onSaved }: { card: GeneratedCar
   const save = async () => {
     setSaving(true);
     try {
-      await postsApi.create({ content: card.content, hashtags: card.hashtags, cta: card.cta, firstComment });
+      await postsApi.create({ content: card.content, hashtags: card.hashtags, cta: card.cta, firstComment, mediaUrl });
       qc.invalidateQueries({ queryKey: ["posts"] });
       onSaved();
     } catch {
@@ -609,6 +635,11 @@ function AffiliateCardView({ card, firstComment, onSaved }: { card: GeneratedCar
       {firstComment && (
         <p className="rounded-md border border-dashed px-2.5 py-1.5 text-[11px] text-muted-foreground">
           첫 댓글(발행 시 자동): {firstComment}
+        </p>
+      )}
+      {mediaUrl && (
+        <p className="rounded-md border border-dashed px-2.5 py-1.5 text-[11px] text-emerald-600">
+          광고영상 첨부됨 — 발행 시 함께 나가요
         </p>
       )}
     </Card>
