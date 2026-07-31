@@ -193,11 +193,12 @@ public class AffiliateVideoService {
                 StringUtils.hasText(req.features()) ? "Features: " + req.features() : "",
                 StringUtils.hasText(req.hook()) ? req.hook() : req.productName());
 
-        GenerationResult result = llm.generate(GenerationRequest.builder()
-                .systemPrompt(system).prompt(user)
-                .maxTokens(700).tier(ModelTier.STANDARD).cacheHint(false).build());
+        String raw = "";
         try {
-            String raw = result.text() == null ? "" : result.text().trim();
+            GenerationResult result = llm.generate(GenerationRequest.builder()
+                    .systemPrompt(system).prompt(user)
+                    .maxTokens(700).tier(ModelTier.STANDARD).cacheHint(false).build());
+            raw = result.text() == null ? "" : result.text().trim();
             int a = raw.indexOf('{');
             int b = raw.lastIndexOf('}');
             JsonNode n = mapper.readTree(a >= 0 && b > a ? raw.substring(a, b + 1) : raw);
@@ -206,11 +207,14 @@ public class AffiliateVideoService {
                     "text, watermark, logo, deformed product, color change, blurry, low quality");
             String cap = n.path("caption").asText("");
             if (!StringUtils.hasText(kling)) {
-                throw new IllegalStateException("Kling 프롬프트를 생성하지 못했어요.");
+                throw new IllegalStateException("Kling 프롬프트가 비었어요.");
             }
             return new AdCopy(kling, neg, cap);
-        } catch (IOException e) {
-            throw new IllegalStateException("광고 카피 JSON 해석에 실패했어요.", e);
+        } catch (Exception e) {
+            // 원본 응답을 로그에 남겨 진단 가능하게(모델이 JSON 안 준 경우 등). 명확한 영상용 메시지로 던진다.
+            log.warn("광고 카피 생성/파싱 실패: {} | raw={}", e.getMessage(),
+                    raw.length() > 300 ? raw.substring(0, 300) + "…" : raw);
+            throw new IllegalStateException("광고 카피 생성에 실패했어요. 다시 시도해 주세요. (" + e.getMessage() + ")", e);
         }
     }
 

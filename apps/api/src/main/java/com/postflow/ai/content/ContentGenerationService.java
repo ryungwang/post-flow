@@ -135,7 +135,9 @@ public class ContentGenerationService {
 
         GenerationResult result = llmProvider.generate(llmRequest);
 
+        boolean stripDisclosure = !disclosureInBody; // 댓글 모드면 모델이 본문에 넣은 고지문도 제거
         List<GeneratedCard> cards = parseCards(result.text(), profile).stream()
+                .map(c -> stripDisclosure ? stripDisclosureLines(c) : c)
                 .map(c -> decorateAffiliate(c, profile, suffix))
                 .toList();
 
@@ -146,6 +148,20 @@ public class ContentGenerationService {
         return new GenerateAffiliateResponse(
                 cards, subId, linkWithSub, linkInBody, COUPANG_DISCLOSURE, disclosureInBody,
                 result.provider(), result.model());
+    }
+
+    /** 댓글 모드에서 모델이 본문에 넣은 대가성 고지문 줄을 제거한다('쿠팡 파트너스'+'수수료' 포함 줄). */
+    private static GeneratedCard stripDisclosureLines(GeneratedCard c) {
+        String content = c.content();
+        if (content == null || content.isBlank()) {
+            return c;
+        }
+        String cleaned = java.util.Arrays.stream(content.split("\n"))
+                .filter(line -> !(line.contains("쿠팡 파트너스") && line.contains("수수료")))
+                .reduce((a, b) -> a + "\n" + b).orElse("")
+                .replaceAll("\n{3,}", "\n\n")
+                .strip();
+        return new GeneratedCard(cleaned, c.hashtags(), c.cta(), c.score());
     }
 
     /** 첫 댓글(자기 게시물 댓글)을 지원하는 플랫폼 — 이 플랫폼만 고지문을 댓글로 뺄 수 있다. */

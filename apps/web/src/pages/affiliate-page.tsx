@@ -58,6 +58,8 @@ export function AffiliatePage() {
   const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
   // 생성한 광고영상을 글에 첨부(발행 시 media로 나감). 공개 URL.
   const [attachedVideoUrl, setAttachedVideoUrl] = useState<string | null>(null);
+  // 영상 훅 문구 — 글 카드의 "이 글로 영상"으로 채워짐(직접 수정도 가능).
+  const [videoHook, setVideoHook] = useState("");
   // 쿠팡 Extension 추출 JSON(실제 쿠팡 상품 데이터)
   const [captureJson, setCaptureJson] = useState("");
 
@@ -414,6 +416,8 @@ export function AffiliatePage() {
         imageUrl={productImageUrl}
         attachedUrl={attachedVideoUrl}
         onAttach={setAttachedVideoUrl}
+        hook={videoHook}
+        onHookChange={setVideoHook}
       />
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
@@ -427,6 +431,11 @@ export function AffiliatePage() {
               card={c}
               firstComment={res.disclosureInBody ? undefined : res.disclosure}
               mediaUrl={attachedVideoUrl}
+              onMakeVideo={(h) => {
+                setVideoHook(h);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                show("이 글의 훅을 영상에 담았어요. 위 'AI 광고영상'에서 생성하세요.", "success");
+              }}
               onSaved={() => show("임시저장했어요. 라이브러리에서 예약·발행하면 고지문 첫 댓글" + (attachedVideoUrl ? "·영상" : "") + "이 함께 나가요.", "success")}
             />
           ))}
@@ -437,12 +446,12 @@ export function AffiliatePage() {
 }
 
 /** 독립 "AI 광고영상" 섹션 — 네이버에서 고른 제품 이미지로 6초 세로 광고영상(Kling 1컷). 비동기 폴링. */
-function AffiliateVideoSection({ productName, features, imageUrl, attachedUrl, onAttach }: {
+function AffiliateVideoSection({ productName, features, imageUrl, attachedUrl, onAttach, hook, onHookChange }: {
   productName: string; features: string; imageUrl: string | null;
   attachedUrl: string | null; onAttach: (url: string | null) => void;
+  hook: string; onHookChange: (v: string) => void;
 }) {
   const { show } = useToast();
-  const [hook, setHook] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -503,7 +512,7 @@ function AffiliateVideoSection({ productName, features, imageUrl, attachedUrl, o
       </p>
       {!imageUrl && <p className="text-xs text-amber-600">위 "네이버에서 상품 정보 가져오기"에서 상품을 선택하면 그 이미지로 영상을 만들 수 있어요.</p>}
       <div className="flex gap-2">
-        <Input placeholder="훅 문구(선택 · 예: 이제 안 데여요)" value={hook} onChange={(e) => setHook(e.target.value)} />
+        <Input placeholder="훅 문구(선택 · 비우면 자동 · 글 카드의 '이 글로 영상'으로 채워짐)" value={hook} onChange={(e) => onHookChange(e.target.value)} />
         <Button onClick={start} disabled={busy || !imageUrl} className="shrink-0 gap-1.5">
           {busy ? <Loader2 className="size-4 animate-spin" /> : <Film className="size-4" />} 영상 생성
         </Button>
@@ -583,7 +592,11 @@ function LinkBanner({ res, platformLabel }: { res: AffiliateResponse; platformLa
   );
 }
 
-function AffiliateCardView({ card, firstComment, mediaUrl, onSaved }: { card: GeneratedCard; firstComment?: string; mediaUrl?: string | null; onSaved: () => void }) {
+function AffiliateCardView({ card, firstComment, mediaUrl, onMakeVideo, onSaved }: { card: GeneratedCard; firstComment?: string; mediaUrl?: string | null; onMakeVideo?: (hook: string) => void; onSaved: () => void }) {
+  const hookLine = () => {
+    const first = card.content.split("\n").map((s) => s.trim()).find(Boolean) ?? card.content;
+    return first.length > 40 ? first.slice(0, 40) : first;
+  };
   const qc = useQueryClient();
   const { show } = useToast();
   const [copied, setCopied] = useState(false);
@@ -623,6 +636,11 @@ function AffiliateCardView({ card, firstComment, mediaUrl, onSaved }: { card: Ge
           <Button variant="outline" size="sm" onClick={save} disabled={saving} className="gap-1.5">
             {saving ? <Loader2 className="size-3.5 animate-spin" /> : <BookmarkPlus className="size-3.5" />} 임시저장
           </Button>
+          {onMakeVideo && (
+            <Button variant="outline" size="sm" onClick={() => onMakeVideo(hookLine())} className="gap-1.5">
+              <Film className="size-3.5" /> 이 글로 영상
+            </Button>
+          )}
         </div>
       </div>
       <p className="whitespace-pre-wrap text-sm leading-relaxed">{card.content}</p>
