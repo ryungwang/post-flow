@@ -172,22 +172,35 @@ public class AffiliateVideoService {
     /** Claude로 시네마틱 Kling 프롬프트(영문) + 훅 자막(한국어) 생성. 사실만, 텍스트/워터마크 금지. */
     private AdCopy generateAdCopy(AffiliateVideoDtos.SubmitRequest req) {
         String system = """
-                You are an award-winning short-form product ad director for Korean SNS reels/shorts.
+                You are a viral short-form ad director for Korean SNS reels/shorts (스레드/릴스/쇼츠).
+                Your job: ONE scroll-stopping 5-6s image-to-video shot that is FUN, punchy, and impossible to
+                scroll past — NOT a slow, tasteful premium product pan (that gets ignored).
                 Return ONLY a JSON object. No markdown, no prose.
-                Design a single cinematic 5-6 second image-to-video shot that makes the product look premium and desirable.
                 """;
         String user = """
                 Product: %s
                 %s
-                Hook idea: %s
+                Hook angle: %s
+
+                This is an image-to-video shot ANCHORED on the product photo — the product must stay the exact
+                same shape and color, no deformation. Within that, make it as dynamic, lively and playful as possible.
+
+                Design ONE high-energy moment that stops the thumb in the first 0.5 seconds:
+                - Bold KINETIC camera: fast punch-in / snap zoom / quick orbit / whip-pan — never a slow drift.
+                - A FUN, exaggerated visualization of THIS product's benefit — pick what fits:
+                  cooling/AC → frost bursts, cool-air streams, heat-shimmer melting away, ice crystals;
+                  cleaning → grime instantly vanishing (oddly-satisfying); kitchen → sizzling/steam pops;
+                  beauty → sparkle/glow bloom. Satisfying, snappy, a little over-the-top and funny is GOOD.
+                - Lively energy: light bursts, particles, vivid pops of color, snappy motion. Meme-adjacent
+                  playfulness is welcome as long as the product stays believable.
 
                 Produce JSON:
                 {
-                  "klingPrompt": "ENGLISH cinematic image-to-video prompt for this exact product. Describe camera move (slow push-in / orbit / gentle handheld), lighting (soft studio or lifestyle), mood, and a realistic usage context. The product must stay faithful — same shape, color, no deformation. Premium commercial look. 5-6 seconds.",
-                  "negativePrompt": "text, captions, watermark, logo, extra fingers, deformed product, wrong product shape, color change, blurry, low quality",
-                  "caption": "짧고 강한 한국어 훅 자막 한 줄(최대 16자). 화면에 크게 박힐 문구. 과장·허위 금지, 이모지 금지."
+                  "klingPrompt": "ENGLISH image-to-video prompt for THIS exact product. LEAD with the dynamic camera move and the fun benefit-visualization effect, then lighting/mood. Keep the product 100%% faithful. High-energy, scroll-stopping, playful commercial. 5-6 seconds.",
+                  "negativePrompt": "slow, boring, static, dull, sleepy, lifeless, text, captions, watermark, logo, extra fingers, deformed product, wrong product shape, color change, blurry, low quality",
+                  "caption": "짧고 강한 한국어 훅 자막 한 줄(최대 16자). 재치있고 궁금하게, 스크롤 멈추게. 과장·허위·가격 금지, 이모지 금지."
                 }
-                Rules: do not invent specs, prices, discounts, or effects. Korean caption only in the 'caption' field.
+                Rules: do not invent specs, prices, discounts, or fake results. Korean caption only in the 'caption' field.
                 """.formatted(
                 req.productName(),
                 StringUtils.hasText(req.features()) ? "Features: " + req.features() : "",
@@ -221,7 +234,7 @@ public class AffiliateVideoService {
     private void writeStoryboard(Path dir, AffiliateVideoDtos.SubmitRequest req, AdCopy copy) throws IOException {
         ShoppingShortsDtos.StoryboardScene scene = new ShoppingShortsDtos.StoryboardScene(
                 SCENE_ID, 1, "광고", SECONDS, "AI_VIDEO", List.of(req.imageUrl()),
-                copy.klingPrompt(), "", "slow push-in", "", "", copy.caption(), "", "",
+                copy.klingPrompt(), "", "dynamic punch-in", "", "", copy.caption(), "", "",
                 copy.klingPrompt(), copy.negativePrompt(), true);
         ShoppingShortsDtos.StoryboardResponse storyboard = new ShoppingShortsDtos.StoryboardResponse(
                 "affiliate", "ad", req.productName(), "cinematic-ad", copy.caption(),
