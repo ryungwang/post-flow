@@ -17,6 +17,8 @@ import com.postflow.ai.dto.GenerationResult;
 import com.postflow.aigeneration.AiGeneration;
 import com.postflow.aigeneration.AiGenerationRepository;
 import com.postflow.user.UsageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,7 @@ import java.util.List;
 @Service
 public class ContentGenerationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ContentGenerationService.class);
     private static final int MAX_OUTPUT_TOKENS = 16000;
 
     private final LLMProvider llmProvider;
@@ -349,7 +352,9 @@ public class ContentGenerationService {
     }
 
     private int estimateMaxTokens(int quantity) {
-        return Math.min(MAX_OUTPUT_TOKENS, 500 + quantity * 300);
+        // 한국어 리치 멀티라인 글은 카드당 700~1000토큰까지 나온다. 예산이 빠듯하면 JSON이 잘려
+        // parseCards가 실패하므로(글생성 오류) 카드당 넉넉히 잡는다.
+        return Math.min(MAX_OUTPUT_TOKENS, 800 + quantity * 900);
     }
 
     /** Series items are larger (title + rich multi-line post per day) → wider budget to avoid truncation. */
@@ -367,6 +372,10 @@ public class ContentGenerationService {
                     .sorted(java.util.Comparator.comparingInt(GeneratedCard::score).reversed())
                     .toList();
         } catch (JsonProcessingException e) {
+            // 원본을 남겨 진단 가능하게. 대개 maxTokens 초과로 배열이 잘려 파싱 실패(끝에 ']' 없음).
+            boolean looksTruncated = !json.stripTrailing().endsWith("]");
+            log.warn("카드 JSON 파싱 실패(truncated={}): {} | rawTail={}", looksTruncated, e.getOriginalMessage(),
+                    raw.length() > 240 ? "…" + raw.substring(raw.length() - 240) : raw);
             throw new ContentGenerationException("Failed to parse generated cards as JSON", e);
         }
     }
