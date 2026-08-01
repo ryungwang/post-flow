@@ -41,6 +41,7 @@ public class ContentGenerationService {
     private final ContentPromptBuilder promptBuilder;
     private final AiGenerationRepository aiGenerationRepository;
     private final ObjectMapper objectMapper;
+    private final com.fasterxml.jackson.databind.ObjectReader cardsReader;
     private final UsageService usageService;
     private final com.postflow.brand.BrandRepository brandRepository;
     private final com.postflow.threads.SocialAccountService socialAccountService;
@@ -56,6 +57,12 @@ public class ContentGenerationService {
         this.promptBuilder = promptBuilder;
         this.aiGenerationRepository = aiGenerationRepository;
         this.objectMapper = objectMapper;
+        // 모델이 멀티라인 본문을 낼 때 \n 대신 '진짜 줄바꿈'을 JSON 문자열에 넣어 파싱이 깨지는 일이 잦다.
+        // 문자열 내 제어문자·후행 콤마를 허용하는 관대한 리더로 그 흔한 실패를 흡수한다.
+        this.cardsReader = objectMapper.copy()
+                .configure(com.fasterxml.jackson.core.json.JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
+                .configure(com.fasterxml.jackson.core.json.JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true)
+                .readerFor(new TypeReference<List<GeneratedCard>>() {});
         this.usageService = usageService;
         this.brandRepository = brandRepository;
         this.socialAccountService = socialAccountService;
@@ -365,7 +372,7 @@ public class ContentGenerationService {
     private List<GeneratedCard> parseCards(String raw, PlatformContentProfile profile) {
         String json = extractJsonArray(raw);
         try {
-            List<GeneratedCard> cards = objectMapper.readValue(json, new TypeReference<>() {});
+            List<GeneratedCard> cards = cardsReader.readValue(json);
             return cards.stream()
                     .map(c -> clampContent(c, profile))
                     .map(c -> c.withScore(ContentScorer.score(c.content(), c.hashtags(), c.cta(), profile)))
