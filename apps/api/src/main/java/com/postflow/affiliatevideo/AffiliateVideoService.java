@@ -50,14 +50,19 @@ public class AffiliateVideoService {
                                  ObjectProvider<ShoppingShortsVideoGenerationProvider> videoProvider,
                                  ObjectProvider<ShoppingShortsRenderProvider> renderProvider,
                                  com.postflow.storage.StorageService storage,
-                                 @Value("${shopping-shorts.ffmpeg.path:ffmpeg}") String ffmpegPath) {
+                                 @Value("${shopping-shorts.ffmpeg.path:ffmpeg}") String ffmpegPath,
+                                 @Value("${affiliate-video.work-dir:}") String workDir) {
         this.llm = llm;
         this.mapper = mapper;
         this.videoProvider = videoProvider;
         this.renderProvider = renderProvider;
         this.storage = storage;
         this.ffmpegPath = ffmpegPath;
-        this.root = Path.of(System.getProperty("user.dir"), "var", "affiliate-videos");
+        // 중간 작업 파일(스토리보드·씬·렌더)용 로컬 경로. 최종 mp4는 S3(StorageService)로 올린다.
+        // prod 컨테이너는 작업 디렉터리(/app)가 읽기전용이라 쓰기 가능한 임시 디렉터리(java.io.tmpdir=/tmp)를 쓴다.
+        String base = (workDir == null || workDir.isBlank())
+                ? System.getProperty("java.io.tmpdir") : workDir;
+        this.root = Path.of(base, "affiliate-videos");
     }
 
     /** 광고영상 생성 시작 — Claude 프롬프트 → Kling 제출. jobId를 돌려주고, 진행은 status로 폴링한다. */
