@@ -87,9 +87,15 @@ function extractCoupangProductFromDom() {
     document.querySelector(".total-price strong")?.textContent
       || document.querySelector(".prod-coupon-price .total-price")?.textContent
       || document.querySelector(".prod-price .total-price")?.textContent
+      || document.querySelector(".prod-sale-price .total-price")?.textContent
+      || document.querySelector(".prod-price-container .total-price")?.textContent
+      || document.querySelector("[class*='PriceInfo'] [class*='finalPrice']")?.textContent
+      || document.querySelector("[class*='prod-price'] strong")?.textContent
+      || content('meta[property="product:price:amount"]')
       || "",
   );
-  const price = parseNumber(priceText);
+  // 가격은 DOM 클래스가 상품마다 달라 잘 빗나간다 → 구조화 데이터(JSON-LD offers.price)를 최우선으로.
+  const price = jsonLdPrice() ?? parseNumber(priceText);
   const originalPriceText = text(
     document.querySelector(".prod-origin-price")?.textContent
       || document.querySelector(".origin-price")?.textContent
@@ -116,21 +122,30 @@ function extractCoupangProductFromDom() {
     .filter((value, index, list) => list.indexOf(value) === index)
     .slice(0, 20);
 
+  // 쿠팡 페이지의 판매자 고지/광고 보일러플레이트 — 상품 특징이 아니므로 걸러낸다.
+  const JUNK = /쿠팡상품번호|쿠팡으로부터|제휴업체|판매상품입니다|판매자\s?정보|상호\s?\/\s?대표|사업자|통신판매|구매안전|미성년자|법정대리인|소재지|e-?mail|이메일|연락처|신고번호|중개자|반품|교환|환불|배송비/i;
   const descriptionCandidates = Array.from(document.querySelectorAll(
     ".prod-description, .prod-attr-item, .prod-detail-content, .product-item__table, [class*='description'], [class*='feature']",
   ))
     .map((node) => text(node.textContent))
-    .filter((value) => value.length >= 8)
+    .filter((value) => value.length >= 8 && !JUNK.test(value))
     .slice(0, 20);
 
   const features = Array.from(new Set(descriptionCandidates
     .flatMap((value) => value.split(/[·\n]/))
     .map(text)
-    .filter((value) => value.length >= 4 && value.length <= 120)))
+    .filter((value) => value.length >= 4 && value.length <= 120 && !JUNK.test(value))))
     .slice(0, 12);
 
-  const sourceImages = Array.from(document.images)
+  // 메인 상품 갤러리 컨테이너를 우선 타겟(추천상품·리뷰·audit·로고 제외). 없으면 페이지 전체로 폴백(후퇴 방지).
+  const galleryScope = document.querySelector(
+    ".prod-image__items, .prod-image, [class*='ProductImage'], [class*='prod-image']",
+  );
+  const scoped = Boolean(galleryScope);
+  const imageNodes = scoped ? Array.from(galleryScope.querySelectorAll("img")) : Array.from(document.images);
+  const sourceImages = imageNodes
     .filter((img) => {
+      if (scoped) return true; // 갤러리 내부면 크기 무관(상품 이미지)
       const width = Number(img.naturalWidth || img.width || 0);
       const height = Number(img.naturalHeight || img.height || 0);
       return width === 0 || height === 0 || (width >= 180 && height >= 180);
@@ -145,10 +160,10 @@ function extractCoupangProductFromDom() {
     ])
     .map(normalizeImageUrl)
     .filter(Boolean)
-    .filter((url) => !/sprite|icon|logo|profile|avatar|blank|transparent/i.test(url))
+    .filter((url) => !/sprite|icon|logo|profile|avatar|blank|transparent|image_audit/i.test(url))
     .filter((url) => /\.(jpg|jpeg|png|webp)(\?|$)/i.test(url) || url.includes("image"))
     .filter((url, index, list) => list.indexOf(url) === index)
-    .slice(0, 30);
+    .slice(0, scoped ? 10 : 30);
 
   const representativeImage = normalizeImageUrl(content('meta[property="og:image"]'));
   const images = representativeImage
@@ -181,6 +196,24 @@ function extractCoupangProductFromDom() {
   function parseNumber(value) {
     const digits = String(value || "").replace(/[^\d]/g, "");
     return digits ? Number(digits) : null;
+  }
+
+  // 쿠팡 상품 페이지의 JSON-LD(Product/offers)에서 가격을 읽는다. DOM 클래스와 무관해 안정적.
+  function jsonLdPrice() {
+    for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+      try {
+        const data = JSON.parse(s.textContent || "");
+        for (const d of Array.isArray(data) ? data : [data]) {
+          const offers = d && d.offers ? (Array.isArray(d.offers) ? d.offers[0] : d.offers) : null;
+          const raw = (offers && (offers.price ?? offers.lowPrice)) ?? (d && d.price);
+          const n = parseNumber(raw);
+          if (n) return n;
+        }
+      } catch {
+        // 파싱 실패한 스크립트는 건너뛴다
+      }
+    }
+    return null;
   }
 
   function normalizeImageUrl(value) {

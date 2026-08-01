@@ -24,6 +24,14 @@ public class FacebookOAuthService {
     }
 
     public String buildAuthorizeUrl(Long userId) {
+        // appId/redirectUri가 비면 client_id 없이 FB로 보내져 "Sorry, something went wrong"만 뜬다.
+        // 사용자가 원인을 알 수 있게 먼저 막는다.
+        if (properties.appId() == null || properties.appId().isBlank()) {
+            throw new FacebookApiException("페이스북 앱이 아직 설정되지 않았어요. (서버에 FACEBOOK_APP_ID 필요)");
+        }
+        if (properties.redirectUri() == null || properties.redirectUri().isBlank()) {
+            throw new FacebookApiException("페이스북 redirect URI가 설정되지 않았어요. (서버에 FACEBOOK_REDIRECT_URI 필요)");
+        }
         return UriComponentsBuilder.fromUriString(properties.dialogBaseUrlOrDefault())
                 .path("/" + properties.apiVersionOrDefault() + "/dialog/oauth")
                 .queryParam("client_id", properties.appId())
