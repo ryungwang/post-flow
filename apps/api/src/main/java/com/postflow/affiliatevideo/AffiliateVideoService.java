@@ -46,6 +46,16 @@ public class AffiliateVideoService {
     private final String ffmpegPath;
     private final Path root;
 
+    // 무거운 후처리(Kling 다운로드·ffmpeg 렌더·S3 업로드)는 요청 스레드가 아니라 여기서 돈다 — 폴링 요청이
+    // 렌더를 붙들어 톰캣 스레드를 고갈시키고 API 전체를 502로 만드는 걸 막는다. 단일 스레드로 동시 렌더도 제한.
+    private final java.util.concurrent.ExecutorService worker =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "affiliate-video-worker");
+                t.setDaemon(true);
+                return t;
+            });
+    private final java.util.Set<String> inProgress = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     public AffiliateVideoService(LLMProvider llm, ObjectMapper mapper,
                                  ObjectProvider<ShoppingShortsVideoGenerationProvider> videoProvider,
                                  ObjectProvider<ShoppingShortsRenderProvider> renderProvider,
@@ -101,7 +111,10 @@ public class AffiliateVideoService {
         }
     }
 
-    /** 진행 상태 폴링 — Kling 완료되면 다운로드 → (무음) → 렌더 → READY(+영상). */
+    /**
+     * 진행 상태 폴링(가볍게, 즉시 반환). Kling 씬이 완료되면 무거운 후처리(다운로드·렌더·업로드)는
+     * 백그라운드 워커에 넘기고 바로 PROCESSING을 돌려준다 — 폴링 요청이 렌더를 붙들어 API를 502로 만들지 않게.
+     */
     public AffiliateVideoDtos.StatusResponse status(Long userId, String jobId) {
         ShoppingShortsVideoGenerationProvider kling = videoProvider.getIfAvailable();
         ShoppingShortsRenderProvider render = renderProvider.getIfAvailable();
@@ -112,43 +125,81 @@ public class AffiliateVideoService {
         if (!Files.isDirectory(dir)) {
             throw new IllegalArgumentException("작업을 찾을 수 없어요.");
         }
-        Path finalPath = dir.resolve("renders/final.mp4");
         Path urlFile = dir.resolve("renders/public-url.txt");
+        Path errorFile = dir.resolve("renders/error.txt");
+        Path resultMp4 = dir.resolve("scenes").resolve(SCENE_ID).resolve("result.mp4");
         try {
-            if (Files.isRegularFile(urlFile)) { // 이미 업로드됨 — 공개 URL 재사용
+            if (Files.isRegularFile(urlFile)) {
                 return new AffiliateVideoDtos.StatusResponse("READY", null, Files.readString(urlFile).trim());
             }
-            if (!Files.isRegularFile(finalPath)) {
-                Path resultMp4 = dir.resolve("scenes").resolve(SCENE_ID).resolve("result.mp4");
+            if (Files.isRegularFile(errorFile)) {
+                return new AffiliateVideoDtos.StatusResponse("FAILED", Files.readString(errorFile).trim(), null);
+            }
+            if (inProgress.contains(jobId)) {
+                return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null); // 백그라운드 후처리 중
+            }
+            // Kling 씬이 아직이면 가벼운 폴링만. 완료면 후처리를 백그라운드로 넘긴다.
+            if (!Files.isRegularFile(resultMp4)) {
+                SceneGenerationResult polled = kling.pollScenes(dir);
+                String s = polled.jobs().isEmpty() ? "PROCESSING" : polled.jobs().getFirst().status();
+                if ("FAILED".equals(s)) {
+                    String err = polled.jobs().isEmpty() ? null : polled.jobs().getFirst().errorMessage();
+                    return new AffiliateVideoDtos.StatusResponse("FAILED", err, null);
+                }
+                if (!"COMPLETED".equals(s)) {
+                    return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null);
+                }
+            }
+            enqueuePostProcess(userId, jobId, dir); // Kling 완료 → 무거운 후처리는 백그라운드
+            return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null);
+        } catch (Exception e) {
+            // 폴링 자체의 일시 오류는 실패로 확정하지 말고 계속 폴링하게(다음 호출에서 재시도).
+            log.warn("광고영상 상태 조회 오류 (job {}): {}", jobId, e.toString());
+            return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null);
+        }
+    }
+
+    /** 다운로드·무음·렌더·업로드를 백그라운드 워커에서 1회만 수행(중복 방지). 결과는 파일 마커(url/error)로 남긴다. */
+    private void enqueuePostProcess(Long userId, String jobId, Path dir) {
+        if (!inProgress.add(jobId)) {
+            return; // 이미 처리 중
+        }
+        worker.submit(() -> {
+            Path resultMp4 = dir.resolve("scenes").resolve(SCENE_ID).resolve("result.mp4");
+            Path finalPath = dir.resolve("renders/final.mp4");
+            Path urlFile = dir.resolve("renders/public-url.txt");
+            try {
                 if (!Files.isRegularFile(resultMp4)) {
-                    SceneGenerationResult polled = kling.pollScenes(dir);
-                    String s = polled.jobs().isEmpty() ? "PROCESSING" : polled.jobs().getFirst().status();
-                    if ("FAILED".equals(s)) {
-                        String err = polled.jobs().isEmpty() ? null : polled.jobs().getFirst().errorMessage();
-                        return new AffiliateVideoDtos.StatusResponse("FAILED", err, null);
-                    }
-                    if (!"COMPLETED".equals(s)) {
-                        return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null);
-                    }
-                    kling.downloadScenes(dir); // result-url → result.mp4
-                    if (!Files.isRegularFile(resultMp4)) {
-                        return new AffiliateVideoDtos.StatusResponse("PROCESSING", null, null);
-                    }
+                    videoProvider.getIfAvailable().downloadScenes(dir);
                 }
                 ensureSilentAudio(dir);
-                render.render(dir); // Kling 1컷 + 훅 자막 오버레이 → final.mp4
+                if (!Files.isRegularFile(finalPath)) {
+                    renderProvider.getIfAvailable().render(dir); // Kling 1컷 + 훅 자막 오버레이 → final.mp4
+                }
+                String key = "affiliate-videos/" + userId + "/" + jobId + ".mp4";
+                try (java.io.InputStream in = Files.newInputStream(finalPath)) {
+                    storage.upload(key, in, Files.size(finalPath), "video/mp4");
+                }
+                String publicUrl = storage.publicUrl(key);
+                Files.writeString(urlFile, publicUrl);
+                log.info("광고영상 완료 job {} → {}", jobId, publicUrl);
+            } catch (Exception e) {
+                log.warn("광고영상 후처리 실패 (job {}): {}", jobId, e.toString());
+                writeError(dir, e.getMessage());
+            } finally {
+                inProgress.remove(jobId);
             }
-            // 공개 스토리지에 업로드 → 미리보기 + 발행 media_url 로 쓸 공개 URL
-            String key = "affiliate-videos/" + userId + "/" + jobId + ".mp4";
-            try (java.io.InputStream in = Files.newInputStream(finalPath)) {
-                storage.upload(key, in, Files.size(finalPath), "video/mp4");
-            }
-            String publicUrl = storage.publicUrl(key);
-            Files.writeString(urlFile, publicUrl);
-            return new AffiliateVideoDtos.StatusResponse("READY", null, publicUrl);
-        } catch (Exception e) {
-            log.warn("광고영상 렌더/업로드 실패 (job {}): {}", jobId, e.getMessage());
-            return new AffiliateVideoDtos.StatusResponse("FAILED", e.getMessage(), null);
+        });
+    }
+
+    /** 후처리 실패를 마커 파일로 남겨 다음 폴링이 FAILED를 반환하게 한다. */
+    private void writeError(Path dir, String message) {
+        try {
+            Path errorFile = dir.resolve("renders/error.txt");
+            Files.createDirectories(errorFile.getParent());
+            Files.writeString(errorFile, message == null || message.isBlank() ? "렌더/업로드에 실패했어요." : message);
+        } catch (IOException ignored) {
+            // 마커 기록 실패는 무시 — 다음 폴링에서 다시 시도된다.
         }
     }
 
