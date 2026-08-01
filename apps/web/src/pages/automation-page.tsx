@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { commentRulesApi, type CommentRule, type TestResult } from "@/lib/comment-rules-api";
 import { postsApi, type Post } from "@/lib/posts-api";
-import { PROVIDER_LABEL } from "@/lib/social-api";
+import { PROVIDER_LABEL, socialApi } from "@/lib/social-api";
 import { roiApi } from "@/lib/roi-api";
 import { ApiError } from "@/lib/api";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -26,6 +26,10 @@ import { cn } from "@/lib/utils";
 
 const ALL = "__all__";
 const NONE = "__none__";
+
+// 댓글 자동응답(첫 댓글 조회·답글)이 구현된 SNS만 규칙 대상이 될 수 있다. 나머지(LinkedIn 등)는
+// 규칙을 만들어도 답글이 안 나가므로 대상 SNS 선택지에서 뺀다.
+const COMMENT_CAPABLE = ["THREADS", "FACEBOOK", "INSTAGRAM", "MASTODON", "BLUESKY"];
 
 /**
  * 발행 성공한 채널 목록(계정 단위, 중복 제거). 자동응답은 이 채널들에만 적용된다.
@@ -50,6 +54,7 @@ export function AutomationPage() {
   const toast = useToast();
   const { data, isLoading } = useQuery({ queryKey: ["comment-rules"], queryFn: commentRulesApi.list });
   const { data: posts } = useQuery({ queryKey: ["posts"], queryFn: postsApi.list });
+  const { data: channels } = useQuery({ queryKey: ["social-accounts"], queryFn: socialApi.channels });
   const { data: links } = useQuery({ queryKey: ["cta-links"], queryFn: roiApi.listCtaLinks });
   const rules = data ?? [];
   // 발행 성공한 채널이 하나라도 있는 글만 대상이 될 수 있다(답글 달 곳이 있어야 함).
@@ -60,10 +65,9 @@ export function AutomationPage() {
   const [provider, setProvider] = useState<string>(ALL);
   const [postId, setPostId] = useState<string>(ALL);
   const [ctaLinkId, setCtaLinkId] = useState<string>(NONE);
-  // 발행된 글들에 실제로 존재하는 SNS만 선택지로(중복 제거, 순서 안정).
-  const availableProviders = Array.from(
-    new Set(publishedPosts.flatMap((p) => publishedChannels(p).map((c) => c.provider))),
-  );
+  // 연결된 SNS 계정 중 댓글 자동응답이 되는 것만 대상 SNS 선택지로(발행 이력이 없어도 미리 규칙 설정 가능).
+  const availableProviders = Array.from(new Set((channels ?? []).map((c) => c.provider)))
+    .filter((p) => COMMENT_CAPABLE.includes(p));
   // 선택한 SNS로 발행된 글만 대상 후보로 좁힌다.
   const postsForProvider = provider === ALL
     ? publishedPosts

@@ -137,11 +137,29 @@ function extractCoupangProductFromDom() {
     .filter((value) => value.length >= 8 && !JUNK.test(value))
     .slice(0, 20);
 
-  const features = Array.from(new Set(descriptionCandidates
-    .flatMap((value) => value.split(/[·\n]/))
-    .map(text)
-    .filter((value) => value.length >= 4 && value.length <= 120 && !JUNK.test(value))))
-    .slice(0, 12);
+  // 상품정보제공고시 표(품명·용량·원산지·제조사 등)의 <b>실제 값</b>만 뽑는다. "상세페이지 참조"·"해당없음"·빈칸은 버린다.
+  const noticeTable = Array.from(document.querySelectorAll("table"))
+    .find((t) => /제품명|식품의 유형|원재료명|원산지|내용량|모델명|제조자|제조국|품명/.test(t.textContent || ""));
+  const noticeSpecs = noticeTable
+    ? Array.from(noticeTable.querySelectorAll("tr"))
+        .flatMap((tr) => {
+          const cells = Array.from(tr.querySelectorAll("th, td")).map((c) => text(c.textContent));
+          const pairs = [];
+          for (let i = 0; i + 1 < cells.length; i += 2) pairs.push([cells[i], cells[i + 1]]);
+          return pairs;
+        })
+        .filter(([k, v]) => k && v && k.length <= 30
+          && !/상세\s?페이지\s?참조|해당\s?없음|^참조$|^-$|^\.$/.test(v) && !JUNK.test(v))
+        .map(([k, v]) => `${k}: ${v}`)
+    : [];
+
+  const features = Array.from(new Set([
+    ...noticeSpecs,
+    ...descriptionCandidates
+      .flatMap((value) => value.split(/[·\n]/))
+      .map(text)
+      .filter((value) => value.length >= 4 && value.length <= 120 && !JUNK.test(value)),
+  ])).slice(0, 12);
 
   // 메인 상품 갤러리 컨테이너를 우선 타겟(추천상품·리뷰·audit·로고 제외). 없으면 페이지 전체로 폴백(후퇴 방지).
   const galleryScope = document.querySelector(
