@@ -43,7 +43,7 @@ export function AffiliatePage() {
   const [disclosureAsComment, setDisclosureAsComment] = useState(false);
   const isBlog = platform === "BLOG";
   // 첫 댓글(=고지문 댓글) 지원 플랫폼. 나머지는 본문 고지로 폴백.
-  const commentCapable = ["THREADS", "FACEBOOK", "INSTAGRAM", "MASTODON"].includes(platform);
+  const commentCapable = ["THREADS", "FACEBOOK", "INSTAGRAM", "MASTODON", "BLUESKY"].includes(platform);
 
   const [res, setRes] = useState<AffiliateResponse | null>(null);
   const [loading, setLoading] = useState(false);

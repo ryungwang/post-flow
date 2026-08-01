@@ -191,7 +191,8 @@ public class ContentGenerationService {
         return p == com.postflow.social.SocialProvider.THREADS
                 || p == com.postflow.social.SocialProvider.FACEBOOK
                 || p == com.postflow.social.SocialProvider.INSTAGRAM
-                || p == com.postflow.social.SocialProvider.MASTODON;
+                || p == com.postflow.social.SocialProvider.MASTODON
+                || p == com.postflow.social.SocialProvider.BLUESKY;
     }
 
     /**

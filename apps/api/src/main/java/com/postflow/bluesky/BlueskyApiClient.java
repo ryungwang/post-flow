@@ -159,6 +159,120 @@ public class BlueskyApiClient {
         }
     }
 
+    /**
+     * 내 게시물(또는 특정 댓글)에 답글을 단다. root/parent 강한참조(uri+cid)가 필요해서 대상의 cid를
+     * 공개 스레드 조회로 먼저 해석한다. {@code parentUri}가 원글이면 첫 댓글(최상위 댓글)이 되고,
+     * 댓글의 uri면 그 댓글에 대한 답글이 된다. Returns the reply record uri. 401 → BlueskyAuthException.
+     */
+    public String createReply(String did, String accessJwt, String text, String rootUri, String parentUri) {
+        String rootCid = getRecordCid(accessJwt, rootUri);
+        String parentCid = rootUri.equals(parentUri) ? rootCid : getRecordCid(accessJwt, parentUri);
+        if (rootCid == null || parentCid == null) {
+            throw new BlueskyApiException("답글 대상 게시물을 찾지 못했어요.");
+        }
+        Map<String, Object> record = new LinkedHashMap<>();
+        record.put("$type", POST_COLLECTION);
+        record.put("text", text);
+        record.put("createdAt", Instant.now().toString());
+        record.put("reply", Map.of(
+                "root", Map.of("uri", rootUri, "cid", rootCid),
+                "parent", Map.of("uri", parentUri, "cid", parentCid)));
+        Map<String, Object> body = Map.of("repo", did, "collection", POST_COLLECTION, "record", record);
+        try {
+            CreateRecordResponse res = http.post().uri("/xrpc/com.atproto.repo.createRecord")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessJwt)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve().body(CreateRecordResponse.class);
+            return res != null ? res.uri() : null;
+        } catch (RestClientResponseException e) {
+            String responseBody = e.getResponseBodyAsString();
+            if (isAuthError(e, responseBody)) {
+                throw new BlueskyAuthException("블루스카이 액세스 토큰 만료");
+            }
+            throw new BlueskyApiException("블루스카이 답글 실패: " + shortError(responseBody));
+        } catch (RestClientException e) {
+            throw new BlueskyApiException("블루스카이 답글에 실패했어요(네트워크).", e);
+        }
+    }
+
+    /** 게시물에 달린 직접 답글(댓글) 목록 — 자동응답 매칭용. 공개 AppView 사용(인증 불필요). */
+    public List<PostThreadView> getReplies(String postUri) {
+        try {
+            PostThreadResponse res = appView.get()
+                    .uri("/xrpc/app.bsky.feed.getPostThread?uri={u}&depth=1", postUri)
+                    .retrieve().body(PostThreadResponse.class);
+            if (res == null || res.thread() == null || res.thread().replies() == null) {
+                return List.of();
+            }
+            return res.thread().replies();
+        } catch (RestClientException e) {
+            throw new BlueskyApiException("블루스카이 댓글 조회에 실패했어요.", e);
+        }
+    }
+
+    /**
+     * 강한참조용 cid를 PDS의 getRecord로 즉시 해석한다(공개 AppView 색인 지연 없이 발행 직후에도 확실).
+     * at:// uri에 소유자 repo(did)와 rkey가 들어 있어 그걸로 조회한다. 401 → BlueskyAuthException.
+     */
+    private String getRecordCid(String accessJwt, String atUri) {
+        String repo = repoOf(atUri);
+        String rkey = rkeyOf(atUri);
+        if (repo == null || rkey == null) {
+            return null;
+        }
+        try {
+            GetRecordResponse res = http.get()
+                    .uri("/xrpc/com.atproto.repo.getRecord?repo={r}&collection={c}&rkey={k}",
+                            repo, POST_COLLECTION, rkey)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessJwt)
+                    .retrieve().body(GetRecordResponse.class);
+            return res != null ? res.cid() : null;
+        } catch (RestClientResponseException e) {
+            String body = e.getResponseBodyAsString();
+            if (isAuthError(e, body)) {
+                throw new BlueskyAuthException("블루스카이 액세스 토큰 만료");
+            }
+            throw new BlueskyApiException("블루스카이 게시물 조회 실패: " + shortError(body));
+        } catch (RestClientException e) {
+            throw new BlueskyApiException("블루스카이 게시물 조회 실패(네트워크).", e);
+        }
+    }
+
+    /** at://{did}/{collection}/{rkey} 에서 소유자 repo(did) 추출. */
+    private static String repoOf(String atUri) {
+        if (atUri == null || !atUri.startsWith("at://")) {
+            return null;
+        }
+        String rest = atUri.substring("at://".length());
+        int slash = rest.indexOf('/');
+        return slash > 0 ? rest.substring(0, slash) : rest;
+    }
+
+    /** at:// uri의 마지막 세그먼트(rkey) 추출. */
+    private static String rkeyOf(String atUri) {
+        if (atUri == null) {
+            return null;
+        }
+        int slash = atUri.lastIndexOf('/');
+        return slash >= 0 ? atUri.substring(slash + 1) : atUri;
+    }
+
+    private record GetRecordResponse(String uri, String cid) {
+    }
+
+    public record PostThreadResponse(PostThreadView thread) {
+    }
+
+    public record PostThreadView(ThreadPost post, List<PostThreadView> replies) {
+    }
+
+    public record ThreadPost(String uri, String cid, BskyRecord record, ThreadAuthor author) {
+    }
+
+    public record ThreadAuthor(String handle, String displayName) {
+    }
+
     /** Download the image and upload it as a blob; returns the blob JSON node for embedding. */
     @SuppressWarnings("unchecked")
     private Object uploadImageBlob(String accessJwt, String mediaUrl) {

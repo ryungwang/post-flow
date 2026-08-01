@@ -75,6 +75,8 @@ function extractCoupangProductFromDom() {
   const text = (value) => (value || "").replace(/\s+/g, " ").trim();
   const attr = (selector, name) => document.querySelector(selector)?.getAttribute(name) || "";
   const content = (selector) => attr(selector, "content");
+  const ld = jsonLdProduct();
+  const ldOffer = ld && ld.offers ? (Array.isArray(ld.offers) ? ld.offers[0] : ld.offers) : null;
 
   const productName = text(
     document.querySelector(".prod-buy-header__title")?.textContent
@@ -89,19 +91,23 @@ function extractCoupangProductFromDom() {
       || document.querySelector(".prod-price .total-price")?.textContent
       || document.querySelector(".prod-sale-price .total-price")?.textContent
       || document.querySelector(".prod-price-container .total-price")?.textContent
+      || document.querySelector(".final-price-amount")?.textContent
       || document.querySelector("[class*='PriceInfo'] [class*='finalPrice']")?.textContent
       || document.querySelector("[class*='prod-price'] strong")?.textContent
       || content('meta[property="product:price:amount"]')
       || "",
   );
   // 가격은 DOM 클래스가 상품마다 달라 잘 빗나간다 → 구조화 데이터(JSON-LD offers.price)를 최우선으로.
-  const price = jsonLdPrice() ?? parseNumber(priceText);
+  const price = parseNumber(ldOffer && (ldOffer.price ?? ldOffer.lowPrice)) ?? parseNumber(priceText);
   const originalPriceText = text(
     document.querySelector(".prod-origin-price")?.textContent
       || document.querySelector(".origin-price")?.textContent
+      || document.querySelector(".original-price-amount")?.textContent
       || "",
   );
-  const originalPrice = parseNumber(originalPriceText);
+  // 정가(취소선): JSON-LD priceSpecification(StrikethroughPrice) 우선.
+  const originalPrice = parseNumber(ldOffer && ldOffer.priceSpecification && ldOffer.priceSpecification.price)
+    ?? parseNumber(originalPriceText);
 
   const brand = text(
     document.querySelector(".prod-brand-name")?.textContent
@@ -165,10 +171,16 @@ function extractCoupangProductFromDom() {
     .filter((url, index, list) => list.indexOf(url) === index)
     .slice(0, scoped ? 10 : 30);
 
-  const representativeImage = normalizeImageUrl(content('meta[property="og:image"]'));
-  const images = representativeImage
-    ? [representativeImage, ...sourceImages.filter((url) => url !== representativeImage)]
-    : sourceImages;
+  // JSON-LD 의 image 배열 = 정식 상품 갤러리(가장 깨끗). 이걸 앞에 두고, DOM 스크랩을 뒤에 붙여 보강. 중복 제거.
+  const ldImages = (Array.isArray(ld && ld.image) ? ld.image : (typeof (ld && ld.image) === "string" ? [ld.image] : []))
+    .map(normalizeImageUrl)
+    .filter(Boolean);
+  const representativeImage = ldImages[0] || normalizeImageUrl(content('meta[property="og:image"]'));
+  const images = Array.from(new Set([
+    ...(representativeImage ? [representativeImage] : []),
+    ...ldImages,
+    ...sourceImages,
+  ])).slice(0, 30);
 
   const captureWarnings = [];
   if (!productName) captureWarnings.push("상품명을 추출하지 못했습니다.");
@@ -198,16 +210,13 @@ function extractCoupangProductFromDom() {
     return digits ? Number(digits) : null;
   }
 
-  // 쿠팡 상품 페이지의 JSON-LD(Product/offers)에서 가격을 읽는다. DOM 클래스와 무관해 안정적.
-  function jsonLdPrice() {
+  // 쿠팡 상품 페이지의 JSON-LD 에서 Product 노드를 찾는다. 가격·정가·이미지의 정식 소스(DOM 클래스와 무관해 안정적).
+  function jsonLdProduct() {
     for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
       try {
         const data = JSON.parse(s.textContent || "");
         for (const d of Array.isArray(data) ? data : [data]) {
-          const offers = d && d.offers ? (Array.isArray(d.offers) ? d.offers[0] : d.offers) : null;
-          const raw = (offers && (offers.price ?? offers.lowPrice)) ?? (d && d.price);
-          const n = parseNumber(raw);
-          if (n) return n;
+          if (d && (d["@type"] === "Product" || d.offers)) return d;
         }
       } catch {
         // 파싱 실패한 스크립트는 건너뛴다
