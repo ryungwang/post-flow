@@ -27,9 +27,10 @@ FROM eclipse-temurin:21-jre
 # 컨테이너 타임존 = 한국(KST) — 로그 타임스탬프 KST. 저장·Instant 직렬화는 UTC 유지.
 ENV TZ=Asia/Seoul
 WORKDIR /app
-# AI 광고영상/쇼핑쇼츠 렌더용: ffmpeg(+ffprobe) 및 한글 자막 폰트(Noto CJK). 없으면 렌더 단계가 실패한다.
+# AI 광고영상/쇼핑쇼츠 렌더용: ffmpeg(+ffprobe) 및 한글 자막 폰트(나눔). Noto CJK는 ~300MB로 작은
+# 박스의 이미지 pull을 지연시켜 나눔(~15MB)으로 교체. 폰트 경로: /usr/share/fonts/truetype/nanum/NanumGothic.ttf
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk \
+ && apt-get install -y --no-install-recommends ffmpeg fonts-nanum \
  && rm -rf /var/lib/apt/lists/*
 RUN groupadd -g 10001 app && useradd -u 10001 -g app -r app
 COPY --from=build /app/build/libs/*.jar app.jar
