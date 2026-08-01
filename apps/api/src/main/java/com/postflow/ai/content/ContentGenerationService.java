@@ -141,7 +141,7 @@ public class ContentGenerationService {
                 .systemPrompt(systemPrompt)
                 .prompt(userPrompt)
                 .maxTokens(estimateMaxTokens(req.quantity()))
-                .tier(ModelTier.STANDARD)
+                .tier(ModelTier.PREMIUM) // 제휴=전환 직결 → 카피 품질 위해 Opus(bulk 워크호스보다 상향)
                 .cacheHint(true)
                 .build();
 
