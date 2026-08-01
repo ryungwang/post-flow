@@ -86,7 +86,13 @@ public class AffiliateVideoService {
             String status = result.jobs().isEmpty() ? "FAILED" : result.jobs().getFirst().status();
             return new AffiliateVideoDtos.SubmitResponse(jobId, status, copy.caption());
         } catch (IOException e) {
-            throw new IllegalStateException("광고영상 작업 생성에 실패했어요.", e);
+            // 작업 디렉터리 생성/스토리보드 기록 등 파일 IO 실패(prod 쓰기 권한·경로 등). 원인을 노출해 진단.
+            log.warn("광고영상 작업 생성 실패(IO) user {} job {} dir {}: {}", userId, jobId, dir, e.toString());
+            throw new IllegalStateException("광고영상 작업 생성에 실패했어요. (" + e.getMessage() + ")", e);
+        } catch (RuntimeException e) {
+            // Kling 제출·카피 생성 등 런타임 실패도 원인을 남긴다(원 메시지는 그대로 전달).
+            log.warn("광고영상 작업 생성 실패 user {} job {}: {}", userId, jobId, e.toString());
+            throw e;
         }
     }
 
