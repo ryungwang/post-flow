@@ -129,7 +129,8 @@ public class ContentGenerationService {
         boolean commentMode = req.disclosureAsComment() && supportsFirstComment(profile.provider());
         boolean linkInBody = !profile.imageCentric() && !commentMode; // IG=프로필 링크 / 댓글 모드=링크도 댓글로
         boolean disclosureInBody = !commentMode;
-        String firstComment = commentMode ? ("👉 " + linkWithSub + "\n\n" + COUPANG_DISCLOSURE) : null;
+        // 고지문을 첫 댓글 맨 위(명확성) → 링크 순으로. 본문은 유도·홍보 없이 순수 콘텐츠(사용자 방침).
+        String firstComment = commentMode ? (COUPANG_DISCLOSURE + "\n\n👉 " + linkWithSub) : null;
 
         String suffix = affiliateSuffix(linkInBody, linkWithSub, disclosureInBody);
         int bodyBudget = Math.max(80, profile.maxChars() - codePoints(suffix));
