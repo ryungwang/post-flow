@@ -57,9 +57,18 @@ export function AutomationPage() {
 
   const [keyword, setKeyword] = useState("");
   const [template, setTemplate] = useState("관심 가져주셔서 감사해요! 여기서 받아보세요 👉 {link}");
+  const [provider, setProvider] = useState<string>(ALL);
   const [postId, setPostId] = useState<string>(ALL);
   const [ctaLinkId, setCtaLinkId] = useState<string>(NONE);
-  const selectedPost = postId === ALL ? null : publishedPosts.find((p) => String(p.id) === postId);
+  // 발행된 글들에 실제로 존재하는 SNS만 선택지로(중복 제거, 순서 안정).
+  const availableProviders = Array.from(
+    new Set(publishedPosts.flatMap((p) => publishedChannels(p).map((c) => c.provider))),
+  );
+  // 선택한 SNS로 발행된 글만 대상 후보로 좁힌다.
+  const postsForProvider = provider === ALL
+    ? publishedPosts
+    : publishedPosts.filter((p) => publishedChannels(p).some((c) => c.provider === provider));
+  const selectedPost = postId === ALL ? null : postsForProvider.find((p) => String(p.id) === postId);
 
   // 규칙 목록 필터
   const [ruleQ, setRuleQ] = useState("");
@@ -75,6 +84,7 @@ export function AutomationPage() {
     mutationFn: () => commentRulesApi.create({
       keyword,
       replyTemplate: template,
+      provider: provider === ALL ? null : provider,
       postId: postId === ALL ? null : Number(postId),
       ctaLinkId: ctaLinkId === NONE ? null : Number(ctaLinkId),
     }),
@@ -117,6 +127,28 @@ export function AutomationPage() {
               <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="예: CHECK" />
             </div>
             <div className="space-y-1.5">
+              <Label>대상 SNS</Label>
+              <Select
+                value={provider}
+                onValueChange={(v) => { setProvider(v); setPostId(ALL); }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>전체 SNS</SelectItem>
+                  {availableProviders.map((pr) => (
+                    <SelectItem key={pr} value={pr}>{PROVIDER_LABEL[pr] ?? pr}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {provider === ALL
+                  ? "모든 SNS의 발행 게시물에 적용돼요."
+                  : `${PROVIDER_LABEL[provider] ?? provider} 채널에만 답글이 나가요(다른 SNS로도 발행된 글이라도).`}
+              </p>
+            </div>
+            <div className="space-y-1.5">
               <Label>대상 게시물</Label>
               <Select value={postId} onValueChange={setPostId}>
                 {/* 트리거는 본문만(한 줄). 선택한 글의 발행 채널은 Select 아래 별도 줄에 뱃지로. */}
@@ -128,10 +160,12 @@ export function AutomationPage() {
                   )}
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL}>전체 발행 게시물</SelectItem>
+                  <SelectItem value={ALL}>
+                    {provider === ALL ? "전체 발행 게시물" : `${PROVIDER_LABEL[provider] ?? provider} 전체 게시물`}
+                  </SelectItem>
                   {/* 답글은 실제 발행된 채널에만 달 수 있으므로, 발행 성공한 채널이 하나라도 있는 글만.
                       같은 내용이 여러 글로 보일 수 있어 채널 뱃지+발행일로 구분해야 사용자가 고를 수 있다. */}
-                  {publishedPosts.map((p) => (
+                  {postsForProvider.map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
                       <span className="flex flex-col gap-1 py-0.5">
                         {/* 본문이 게시물을 식별하는 주 정보라 항상 첫 줄에 온전히. */}
@@ -261,8 +295,9 @@ function RuleRow({ rule, onToggle, onRemove, busy }: { rule: CommentRule; onTogg
     <li className="px-6 py-4">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">키워드: {rule.keyword}</Badge>
+            <Badge variant="outline">{rule.provider ? (PROVIDER_LABEL[rule.provider] ?? rule.provider) : "전체 SNS"}</Badge>
             <Badge variant={rule.active ? "success" : "secondary"}>{rule.active ? "활성" : "비활성"}</Badge>
           </div>
           <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{rule.replyTemplate}</p>

@@ -1,8 +1,11 @@
 package com.postflow.automation;
 
 import com.postflow.common.entity.BaseTimeEntity;
+import com.postflow.social.SocialProvider;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -29,6 +32,11 @@ public class CommentRule extends BaseTimeEntity {
     @Column(name = "post_id")
     private Long postId;
 
+    /** 대상 SNS. null = 전체 SNS. 지정 시 그 플랫폼 채널에만 답글을 단다(한 글이 여러 SNS로 팬아웃돼도). */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private SocialProvider provider;
+
     @Column(nullable = false, length = 100)
     private String keyword;
 
@@ -42,10 +50,12 @@ public class CommentRule extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean active = true;
 
-    public static CommentRule create(Long userId, Long postId, String keyword, String replyTemplate, Long ctaLinkId) {
+    public static CommentRule create(Long userId, Long postId, SocialProvider provider,
+                                     String keyword, String replyTemplate, Long ctaLinkId) {
         CommentRule r = new CommentRule();
         r.userId = userId;
         r.postId = postId;
+        r.provider = provider;
         r.keyword = keyword;
         r.replyTemplate = replyTemplate;
         r.ctaLinkId = ctaLinkId;
@@ -54,6 +64,7 @@ public class CommentRule extends BaseTimeEntity {
     }
 
     public void update(String keyword, String replyTemplate, Long ctaLinkId, Boolean active) {
+        // 대상(postId·provider)은 생성 시에만 정한다 — 토글 등 부분 수정에서 초기화되지 않게 여기선 안 건드림.
         if (keyword != null && !keyword.isBlank()) this.keyword = keyword;
         if (replyTemplate != null && !replyTemplate.isBlank()) this.replyTemplate = replyTemplate;
         this.ctaLinkId = ctaLinkId;

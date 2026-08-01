@@ -101,6 +101,10 @@ public class CommentAutomationJob {
         if (account == null) {
             return; // 미연결·만료·타인 계정 → 건너뜀
         }
+        // 규칙에 대상 SNS가 지정돼 있으면 그 플랫폼 채널에만 답글(한 글이 여러 SNS로 팬아웃돼도 걸러냄).
+        if (rule.getProvider() != null && account.getProvider() != rule.getProvider()) {
+            return;
+        }
         CommentResponder responder = responders.find(account.getProvider()).orElse(null);
         if (responder == null) {
             return; // 이 플랫폼은 댓글 자동응답 미지원(정상 상황)

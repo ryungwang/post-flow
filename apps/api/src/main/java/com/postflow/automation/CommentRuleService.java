@@ -40,7 +40,8 @@ public class CommentRuleService {
     @Transactional
     public CommentRuleDto create(Long userId, CommentRuleRequest req) {
         assertRefsOwned(userId, req.postId(), req.ctaLinkId());
-        CommentRule rule = CommentRule.create(userId, req.postId(), req.keyword(), req.replyTemplate(), req.ctaLinkId());
+        CommentRule rule = CommentRule.create(userId, req.postId(), parseProvider(req.provider()),
+                req.keyword(), req.replyTemplate(), req.ctaLinkId());
         return CommentRuleDto.from(ruleRepository.save(rule));
     }
 
@@ -50,6 +51,18 @@ public class CommentRuleService {
         assertRefsOwned(userId, req.postId(), req.ctaLinkId());
         rule.update(req.keyword(), req.replyTemplate(), req.ctaLinkId(), req.active());
         return CommentRuleDto.from(rule);
+    }
+
+    /** 요청의 provider 문자열을 enum으로. null·빈값·알 수 없는 값이면 전체 SNS(null). */
+    private static com.postflow.social.SocialProvider parseProvider(String provider) {
+        if (provider == null || provider.isBlank()) {
+            return null;
+        }
+        try {
+            return com.postflow.social.SocialProvider.valueOf(provider.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     /** Client-supplied post / CTA-link references must belong to the user. */

@@ -3,6 +3,7 @@ import { api } from "@/lib/api";
 export type CommentRule = {
   id: number;
   postId: number | null;
+  provider: string | null; // 대상 SNS(THREADS/BLUESKY/…). null = 전체 SNS.
   keyword: string;
   replyTemplate: string;
   ctaLinkId: number | null;
@@ -11,6 +12,7 @@ export type CommentRule = {
 
 export type CommentRuleInput = {
   postId?: number | null;
+  provider?: string | null; // 대상 SNS. null·미지정 = 전체 SNS.
   keyword: string;
   replyTemplate: string;
   ctaLinkId?: number | null;
