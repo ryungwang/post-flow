@@ -129,7 +129,9 @@ threads:
   # 둘은 별개 권한 — 읽기만 하려 해도 read_replies 없으면 code10(permission denied). basic 제외 검수 대상.
   # Instagram 교차게시는 Threads API 파라미터로 불가(share_to_instagram 없음) → 별도 IG Graph API 통합 필요.
   #   docs/SNS_ROADMAP.md Phase 4 참조. 여기 scope엔 포함하지 않는다.
-  scopes: threads_basic,threads_content_publish,threads_manage_insights,threads_read_replies,threads_manage_replies,threads_keyword_search,threads_profile_discovery,threads_manage_mentions,threads_delete
+  # threads_profile_discovery(타인 공개 프로필 조회=경쟁사 분석)는 앱검수 거부(2026-07: 스크린캐스트 불일치).
+  #   미승인 scope를 OAuth에 넣으면 일반 사용자 로그인이 깨질 수 있어 승인 전까지 제외. 재승인 시 다시 추가.
+  scopes: threads_basic,threads_content_publish,threads_manage_insights,threads_read_replies,threads_manage_replies,threads_keyword_search,threads_manage_mentions,threads_delete
   authorize-base-url: https://threads.net
   graph-base-url: https://graph.threads.net
   frontend-redirect-url: ${THREADS_FRONTEND_REDIRECT_URL:http://localhost:5173/settings/threads?threads=connected}
