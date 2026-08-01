@@ -19,13 +19,8 @@ import { ScoreBadge } from "@/components/score-badge";
 import { useToast } from "@/components/toast";
 import { ApiError } from "@/lib/api";
 
-const TONES = [
-  { value: "Friendly", label: "친근함" },
-  { value: "Expert", label: "전문가" },
-  { value: "Storytelling", label: "스토리텔링" },
-  { value: "Casual", label: "캐주얼" },
-  { value: "Educational", label: "교육적" },
-];
+// 제휴 톤은 '자극적 스토리텔링'으로 고정(선택 UI 숨김). 본문은 제품 설명 없이 궁금증·몰입만.
+const AFFILIATE_TONE = "Storytelling";
 const QUANTITIES = [5, 10, 30];
 // SNS + 블로그(쿠팡 HTML 배너 삽입). 블로그는 긴 리뷰 글 + 상품·배너·프로모션 HTML.
 const AFF_PLATFORMS = [...PLATFORMS, { value: "BLOG", label: "블로그 (HTML)", hint: "긴 리뷰 글 + 쿠팡 HTML 배너 삽입" }];
@@ -38,7 +33,7 @@ export function AffiliatePage() {
   const [productFeatures, setProductFeatures] = useState("");
   const [platform, setPlatform] = useState("THREADS");
   const [blogHtml, setBlogHtml] = useState("");
-  const [tone, setTone] = useState("Friendly");
+  const tone = AFFILIATE_TONE; // 고정: 자극적 스토리텔링 · 반말(선택 UI 숨김)
   const [quantity, setQuantity] = useState(5);
   const [disclosureAsComment, setDisclosureAsComment] = useState(false);
   const isBlog = platform === "BLOG";
@@ -351,15 +346,6 @@ export function AffiliatePage() {
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>톤</Label>
-            <Select value={tone} onValueChange={setTone}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {TONES.map((t) => (<SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="space-y-1.5">
             <Label>개수</Label>
             <Select value={String(quantity)} onValueChange={(v) => setQuantity(Number(v))}>
