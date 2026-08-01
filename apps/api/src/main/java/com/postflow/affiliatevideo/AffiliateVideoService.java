@@ -7,7 +7,6 @@ import com.postflow.ai.ModelTier;
 import com.postflow.ai.dto.GenerationRequest;
 import com.postflow.ai.dto.GenerationResult;
 import com.postflow.shoppingshorts.ShoppingShortsDtos;
-import com.postflow.shoppingshorts.ShoppingShortsRenderProvider;
 import com.postflow.shoppingshorts.ShoppingShortsVideoGenerationProvider;
 import com.postflow.shoppingshorts.ShoppingShortsVideoGenerationProvider.SceneGenerationResult;
 import org.slf4j.Logger;
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -27,9 +25,9 @@ import java.util.UUID;
 
 /**
  * 제휴용 <b>짧고 굵은 SNS 광고영상</b>(6초 · Kling 1컷) 생성 — 쇼핑쇼츠의 무거운 다단계 파이프라인과 별개의
- * 독립 린 흐름. Claude가 시네마틱 Kling 프롬프트 + 훅 자막을 만들고, Kling image-to-video 1컷을 뽑아
- * (제품 이미지 기반이라 제품이 안 망가진다), 훅 자막을 크게 오버레이해 렌더한다. SNS는 음소거 자동재생이라
- * 내레이션 없이 자막이 전달을 담당 → 무음 트랙만 넣는다. Kling·렌더 provider가 설정된 경우에만 동작.
+ * 독립 린 흐름. Claude가 Kling 프롬프트를 만들고, Kling image-to-video 1컷을 뽑아(제품 이미지 기반이라
+ * 제품이 안 망가진다), <b>그 클립을 그대로</b> S3에 올려 발행용 영상으로 쓴다. SNS 짧은 클립엔 자막이
+ * 불필요하므로 ffmpeg 렌더·자막 오버레이는 하지 않는다(공유 prod 박스 부담 방지 — 다운로드·업로드 I/O만).
  */
 @Service
 public class AffiliateVideoService {
@@ -41,13 +39,11 @@ public class AffiliateVideoService {
     private final LLMProvider llm;
     private final ObjectMapper mapper;
     private final ObjectProvider<ShoppingShortsVideoGenerationProvider> videoProvider;
-    private final ObjectProvider<ShoppingShortsRenderProvider> renderProvider;
     private final com.postflow.storage.StorageService storage;
-    private final String ffmpegPath;
     private final Path root;
 
-    // 무거운 후처리(Kling 다운로드·ffmpeg 렌더·S3 업로드)는 요청 스레드가 아니라 여기서 돈다 — 폴링 요청이
-    // 렌더를 붙들어 톰캣 스레드를 고갈시키고 API 전체를 502로 만드는 걸 막는다. 단일 스레드로 동시 렌더도 제한.
+    // Kling 다운로드·S3 업로드(I/O만, ffmpeg 렌더 없음)는 요청 스레드가 아니라 여기서 돈다 — 폴링 요청이
+    // 작업을 붙들어 톰캣 스레드를 고갈시키고 API를 502로 만드는 걸 막는다. 단일 스레드로 동시 처리도 제한.
     private final java.util.concurrent.ExecutorService worker =
             java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
                 Thread t = new Thread(r, "affiliate-video-worker");
@@ -58,16 +54,12 @@ public class AffiliateVideoService {
 
     public AffiliateVideoService(LLMProvider llm, ObjectMapper mapper,
                                  ObjectProvider<ShoppingShortsVideoGenerationProvider> videoProvider,
-                                 ObjectProvider<ShoppingShortsRenderProvider> renderProvider,
                                  com.postflow.storage.StorageService storage,
-                                 @Value("${shopping-shorts.ffmpeg.path:ffmpeg}") String ffmpegPath,
                                  @Value("${affiliate-video.work-dir:}") String workDir) {
         this.llm = llm;
         this.mapper = mapper;
         this.videoProvider = videoProvider;
-        this.renderProvider = renderProvider;
         this.storage = storage;
-        this.ffmpegPath = ffmpegPath;
         // 중간 작업 파일(스토리보드·씬·렌더)용 로컬 경로. 최종 mp4는 S3(StorageService)로 올린다.
         // prod 컨테이너는 작업 디렉터리(/app)가 읽기전용이라 쓰기 가능한 임시 디렉터리(java.io.tmpdir=/tmp)를 쓴다.
         String base = (workDir == null || workDir.isBlank())
@@ -117,9 +109,8 @@ public class AffiliateVideoService {
      */
     public AffiliateVideoDtos.StatusResponse status(Long userId, String jobId) {
         ShoppingShortsVideoGenerationProvider kling = videoProvider.getIfAvailable();
-        ShoppingShortsRenderProvider render = renderProvider.getIfAvailable();
-        if (kling == null || render == null) {
-            throw new IllegalStateException("영상 생성/렌더가 설정되지 않았어요.");
+        if (kling == null) {
+            throw new IllegalStateException("영상 생성이 설정되지 않았어요.");
         }
         Path dir = campaignDir(userId, jobId);
         if (!Files.isDirectory(dir)) {
@@ -159,26 +150,25 @@ public class AffiliateVideoService {
         }
     }
 
-    /** 다운로드·무음·렌더·업로드를 백그라운드 워커에서 1회만 수행(중복 방지). 결과는 파일 마커(url/error)로 남긴다. */
+    /**
+     * Kling 클립을 그대로 SNS 영상으로 쓴다 — 자막 오버레이·ffmpeg 렌더 없이 다운로드→S3 업로드만.
+     * (SNS 짧은 클립엔 자막 불필요. ffmpeg를 안 써서 공유 prod 박스에 부담이 없다.) I/O만이라 백그라운드에서 1회 수행.
+     */
     private void enqueuePostProcess(Long userId, String jobId, Path dir) {
         if (!inProgress.add(jobId)) {
             return; // 이미 처리 중
         }
         worker.submit(() -> {
             Path resultMp4 = dir.resolve("scenes").resolve(SCENE_ID).resolve("result.mp4");
-            Path finalPath = dir.resolve("renders/final.mp4");
             Path urlFile = dir.resolve("renders/public-url.txt");
             try {
                 if (!Files.isRegularFile(resultMp4)) {
-                    videoProvider.getIfAvailable().downloadScenes(dir);
+                    videoProvider.getIfAvailable().downloadScenes(dir); // Kling result-url → result.mp4
                 }
-                ensureSilentAudio(dir);
-                if (!Files.isRegularFile(finalPath)) {
-                    renderProvider.getIfAvailable().render(dir); // Kling 1컷 + 훅 자막 오버레이 → final.mp4
-                }
+                Files.createDirectories(urlFile.getParent());
                 String key = "affiliate-videos/" + userId + "/" + jobId + ".mp4";
-                try (java.io.InputStream in = Files.newInputStream(finalPath)) {
-                    storage.upload(key, in, Files.size(finalPath), "video/mp4");
+                try (java.io.InputStream in = Files.newInputStream(resultMp4)) {
+                    storage.upload(key, in, Files.size(resultMp4), "video/mp4");
                 }
                 String publicUrl = storage.publicUrl(key);
                 Files.writeString(urlFile, publicUrl);
@@ -302,23 +292,5 @@ public class AffiliateVideoService {
                 "affiliate", "ad", req.productName(), "cinematic-ad", copy.caption(),
                 (int) SECONDS, List.of(scene), null, null);
         mapper.writerWithDefaultPrettyPrinter().writeValue(dir.resolve("storyboard.json").toFile(), storyboard);
-    }
-
-    /** SNS는 음소거 자동재생 → 무음 트랙만 넣어 렌더가 audio를 요구하는 문제를 통과시킨다. */
-    private void ensureSilentAudio(Path dir) throws IOException, InterruptedException {
-        Path audio = dir.resolve("audio/narration.m4a");
-        if (Files.isRegularFile(audio)) {
-            return;
-        }
-        Files.createDirectories(audio.getParent());
-        Process p = new ProcessBuilder(ffmpegPath, "-y",
-                "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-                "-t", String.valueOf((int) SECONDS + 1),
-                "-c:a", "aac", "-b:a", "96k", audio.toString())
-                .redirectErrorStream(true).start();
-        String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        if (p.waitFor() != 0) {
-            throw new IllegalStateException("무음 트랙 생성 실패: " + out);
-        }
     }
 }
