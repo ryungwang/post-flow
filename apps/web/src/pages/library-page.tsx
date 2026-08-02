@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { PostDetailDialog } from "@/components/post-detail-dialog";
 import { ScoreBadge } from "@/components/score-badge";
+import { PROVIDER_LABEL } from "@/lib/social-api";
 import { postsApi, type Post, type PostStatus } from "@/lib/posts-api";
 import { isVideoUrl } from "@/lib/media-api";
 import { POST_STATUS_META } from "@/lib/post-status";
@@ -51,7 +52,15 @@ export function LibraryPage() {
     },
   });
   const duplicate = useMutation({
-    mutationFn: (p: Post) => postsApi.create({ content: p.content, hashtags: p.hashtags, cta: p.cta ?? undefined }),
+    // 리사이클(재발행)용 복제 — 영상·첫댓글·발행채널까지 그대로 복사해 새 초안으로. 발행하면 원본처럼 나간다.
+    mutationFn: (p: Post) => postsApi.create({
+      content: p.content,
+      hashtags: p.hashtags,
+      cta: p.cta ?? undefined,
+      mediaUrl: p.mediaUrl ?? undefined,
+      firstComment: p.firstComment ?? undefined,
+      channelIds: p.targets.length ? p.targets.map((t) => t.socialAccountId) : undefined,
+    }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
   });
 
@@ -246,6 +255,17 @@ export function LibraryPage() {
                         <div className="flex flex-col items-start gap-1.5">
                           <Badge variant={meta.variant}>{meta.label}</Badge>
                           <ScoreBadge score={p.score} />
+                          {/* 발행/예약 채널 — 어디로 나갔/나갈지 목록에서 바로 보이게(계정 단위 중복 제거). */}
+                          {p.targets.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {[...new Map(p.targets.map((t) => [t.socialAccountId, t])).values()].map((t) => (
+                                <Badge key={t.socialAccountId} variant="outline" className="px-1.5 py-0 text-[10px] font-normal">
+                                  {PROVIDER_LABEL[t.provider] ?? t.provider}
+                                  {t.channel && <span className="ml-1 opacity-70">@{t.channel}</span>}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-muted-foreground">{fmt(when)}</td>

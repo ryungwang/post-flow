@@ -33,6 +33,7 @@ export type Post = {
   threadsMediaId: string | null;
   createdAt: string;
   targets: PostTarget[];
+  firstComment: string | null; // 발행 후 자동으로 다는 첫 댓글(제휴 대가성 고지문 등)
 };
 
 export type CreatePost = {

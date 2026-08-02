@@ -19,7 +19,8 @@ public record PostDto(
         Instant publishedAt,
         String threadsMediaId,
         Instant createdAt,
-        List<PostTargetDto> targets
+        List<PostTargetDto> targets,
+        String firstComment
 ) {
     /** Enriched with per-channel targets (PostService supplies them — needs SocialAccount join). */
     public static PostDto from(Post post, List<PostTargetDto> targets) {
@@ -36,7 +37,8 @@ public record PostDto(
                 post.getPublishedAt(),
                 post.getThreadsMediaId(),
                 post.getCreatedAt(),
-                targets != null ? targets : List.of());
+                targets != null ? targets : List.of(),
+                post.getFirstComment());
     }
 
     /** Without targets (fallback for callers that don't enrich). */
