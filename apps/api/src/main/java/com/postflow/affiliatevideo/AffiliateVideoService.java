@@ -170,7 +170,10 @@ public class AffiliateVideoService {
                 try (java.io.InputStream in = Files.newInputStream(resultMp4)) {
                     storage.upload(key, in, Files.size(resultMp4), "video/mp4");
                 }
-                String publicUrl = storage.publicUrl(key);
+                // 공유 버킷(synub-prod-uploads-haru)은 비공개라 raw publicUrl은 403(검은 화면) — 생태계
+                // 정석(office·center)대로 presigned URL 사용. plain <video src>라 CORS 불필요, Meta도 서버사이드로
+                // 7일 내 가져감. SigV4 최대 7일(장기 예약 발행은 만료 가능 — 필요 시 발행 시점 재서명으로 보강).
+                String publicUrl = storage.presignedUrl(key, java.time.Duration.ofDays(7));
                 Files.writeString(urlFile, publicUrl);
                 log.info("광고영상 완료 job {} → {}", jobId, publicUrl);
             } catch (Exception e) {
