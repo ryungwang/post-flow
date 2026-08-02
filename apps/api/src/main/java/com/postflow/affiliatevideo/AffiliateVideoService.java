@@ -235,14 +235,21 @@ public class AffiliateVideoService {
                 %s
                 Situation/angle: %s
 
-                Invent ONE creative text-to-video scene that is genuinely funny, witty, or absurdly cute — the kind
-                of clip people screenshot and share. Convey the theme/pain-point through the SCENE, not the product.
-                - Go wild with the concept, and vary it every time (do NOT default to one mascot/animal):
-                  an exaggerated relatable gag, an absurd visual metaphor, an adorable animal/character reacting,
-                  a dramatic over-the-top moment — whatever is funniest for THIS theme.
-                  예) 폭염 테마 → 아이스크림처럼 줄줄 녹아내리다 시원한 바람 한 번에 확 되살아나는 사람;
-                     더위에 대자로 뻗은 고양이가 스윽 부활; 선풍기 붙잡고 오열하다 표정이 확 바뀌는 순간.
-                - Cinematic, expressive, high quality, believable. Vertical 9:16. Meme-worthy energy.
+                Invent ONE creative scene that is genuinely FUNNY and shareable in a single 5s shot. The comedy
+                must live in the VISUAL itself (Kling can't do setup→punchline editing) — so make the image absurd,
+                exaggerated, or adorably ridiculous ON ITS OWN.
+
+                STRONGLY prefer what actually reads as funny on Kling:
+                - An expressive CUTE ANIMAL acting like a human in this theme's situation — this is the money shot
+                  (a fluffy dog, a chubby cat, a hamster…). 예) 고양이가 리모컨 들고 에어컨 켜려다 좌절;
+                  강아지가 고지서 보고 눈 튀어나올 듯 경악; 햄스터가 선풍기 앞에서 볼살 펄럭.
+                - OR extreme cartoonish exaggeration / over-the-top reaction: a person melting like ice cream,
+                  a jaw literally dropping, comically dramatic despair-then-relief.
+                - Vary the concept each time (don't lock to one animal). Expressive faces, bold action.
+
+                HARD BAN (this = 노잼): a normal realistic person just doing the literal thing (e.g., a man calmly
+                looking at a bill at a table). Do NOT depict the situation literally/realistically. Push it to absurd.
+                Cinematic, expressive, high quality. Vertical 9:16. Meme energy.
 
                 Produce JSON:
                 {
