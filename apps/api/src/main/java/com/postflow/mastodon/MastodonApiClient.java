@@ -51,7 +51,7 @@ public class MastodonApiClient {
     public MastodonStatus createStatus(String instanceUrl, String token, String text, String mediaUrl) {
         MultiValueMap<String, Object> form = new LinkedMultiValueMap<>();
         form.add("status", text == null ? "" : text);
-        if (isImage(mediaUrl)) {
+        if (isMedia(mediaUrl)) {
             String mediaId = uploadMedia(instanceUrl, token, mediaUrl);
             if (mediaId != null) {
                 form.add("media_ids[]", mediaId);
@@ -198,7 +198,7 @@ public class MastodonApiClient {
         if (bytes == null || bytes.length == 0) {
             return null;
         }
-        String filename = "image" + extensionFor(mediaUrl);
+        String filename = "media" + extensionFor(mediaUrl);
         ByteArrayResource file = new ByteArrayResource(bytes) {
             @Override
             public String getFilename() {
@@ -213,15 +213,48 @@ public class MastodonApiClient {
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(body)
                     .retrieve().body(MastodonMedia.class);
-            return media != null ? media.id() : null;
+            if (media == null) {
+                return null;
+            }
+            // 영상은 서버가 비동기 인코딩(202) → url이 아직 없으면 준비될 때까지 폴링(안 하면 상태 첨부 시 422).
+            if (media.url() == null && isVideo(mediaUrl)) {
+                waitUntilProcessed(instanceUrl, token, media.id());
+            }
+            return media.id();
         } catch (RestClientResponseException e) {
             if (e.getStatusCode().value() == 401) {
                 throw new MastodonAuthException("액세스 토큰이 만료됐어요.");
             }
-            throw new MastodonApiException("마스토돈 이미지 업로드에 실패했어요. (" + e.getStatusCode().value() + ")", e);
+            throw new MastodonApiException("마스토돈 미디어 업로드에 실패했어요. (" + e.getStatusCode().value() + ")", e);
         } catch (RestClientException e) {
-            throw new MastodonApiException("마스토돈 이미지 업로드에 실패했어요.", e);
+            throw new MastodonApiException("마스토돈 미디어 업로드에 실패했어요.", e);
         }
+    }
+
+    /** 비동기 인코딩 중인 미디어가 준비(url 발급)될 때까지 짧게 폴링. 최대 ~30초. */
+    private void waitUntilProcessed(String instanceUrl, String token, String mediaId) {
+        for (int i = 0; i < 20; i++) {
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            try {
+                MastodonMedia m = http.get().uri(URI.create(instanceUrl + "/api/v1/media/" + mediaId))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve().body(MastodonMedia.class);
+                if (m != null && m.url() != null) {
+                    return; // 인코딩 완료
+                }
+            } catch (RestClientException ignored) {
+                // 일시 오류는 무시하고 재시도
+            }
+        }
+    }
+
+    private static boolean isMedia(String url) {
+        return isImage(url) || isVideo(url);
     }
 
     private static boolean isImage(String url) {
@@ -231,6 +264,14 @@ public class MastodonApiClient {
         String u = stripQuery(url).toLowerCase();
         return u.endsWith(".jpg") || u.endsWith(".jpeg") || u.endsWith(".png")
                 || u.endsWith(".webp") || u.endsWith(".gif");
+    }
+
+    private static boolean isVideo(String url) {
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+        String u = stripQuery(url).toLowerCase();
+        return u.endsWith(".mp4") || u.endsWith(".mov") || u.endsWith(".webm") || u.endsWith(".m4v");
     }
 
     private static String extensionFor(String url) {
@@ -295,6 +336,6 @@ public class MastodonApiClient {
             MastodonStatusItem status) {
     }
 
-    public record MastodonMedia(String id, String type, List<Object> ignored) {
+    public record MastodonMedia(String id, String type, String url) {
     }
 }

@@ -237,7 +237,8 @@ public class AffiliateVideoService {
 
                 Invent ONE creative scene that is genuinely FUNNY and shareable in a single 5s shot. The comedy
                 must live in the VISUAL itself (Kling can't do setup→punchline editing) — so make the image absurd,
-                exaggerated, or adorably ridiculous ON ITS OWN.
+                exaggerated, or adorably ridiculous ON ITS OWN. Push it to the EXTREME: the more unexpected,
+                over-the-top, dramatic and absurd, the better. Mild/cute-but-boring = fail. Aim for "wait, ㅋㅋㅋ 뭐야".
 
                 STRONGLY prefer what actually reads as funny on Kling:
                 - An expressive CUTE ANIMAL acting like a human in this theme's situation — this is the money shot
