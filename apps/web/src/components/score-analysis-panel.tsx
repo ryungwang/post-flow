@@ -9,15 +9,17 @@ export function ScoreAnalysisPanel({
   hashtags,
   cta,
   score,
+  affiliate = false,
 }: {
   content: string;
   hashtags: string[];
   cta: string | null;
   score: number;
+  affiliate?: boolean;
 }) {
   const [analysis, setAnalysis] = useState<ScoreAnalysis | null>(null);
   const analyze = useMutation({
-    mutationFn: () => contentApi.score(content, hashtags, cta),
+    mutationFn: () => contentApi.score(content, hashtags, cta, affiliate),
     onSuccess: setAnalysis,
   });
 

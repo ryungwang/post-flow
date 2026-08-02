@@ -342,7 +342,7 @@ export function PostDetailDialog({
 
                   {/* attention analysis */}
                   <div className="mt-4">
-                    <ScoreAnalysisPanel content={p.content} hashtags={p.hashtags} cta={p.cta} score={p.score} />
+                    <ScoreAnalysisPanel content={p.content} hashtags={p.hashtags} cta={p.cta} score={p.score} affiliate={!!p.firstComment} />
                   </div>
 
                   <div className="mt-3 text-xs text-muted-foreground tabular-nums">

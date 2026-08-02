@@ -102,6 +102,31 @@ public final class ContentScorer {
         return new ScoreAnalysis(Math.min(100, h + len + q + c + tags + st), components, tips);
     }
 
+    /**
+     * 제휴 글용 분해 — CTA 항목을 빼고(스텔스 전략상 N/A), 길이·해시태그는 제휴 기준으로 채점.
+     * total은 {@link #scoreAffiliate}와 동일(100 환산). 팁도 제휴 맥락으로.
+     */
+    public static ScoreAnalysis analyzeAffiliate(String content, List<String> hashtags) {
+        if (content == null || content.isBlank()) {
+            return new ScoreAnalysis(0, List.of(), List.of("본문을 입력하세요."));
+        }
+        String first = firstLine(content);
+        int h = hook(first), len = affiliateLength(content), q = question(content),
+                tags = affiliateHashtags(hashtags), st = structure(content);
+        List<Component> components = List.of(
+                new Component("훅", h, 35),
+                new Component("길이", len, 20),
+                new Component("질문", q, 12),
+                new Component("해시태그", tags, 10),
+                new Component("구조", st, 10)); // CTA는 제휴에서 일부러 안 씀 → 항목 제외
+        List<String> tips = new java.util.ArrayList<>();
+        if (h < 25) tips.add("첫 문장을 공감·의외의 관찰로 더 세게 — 스크롤을 멈추게 하세요.");
+        if (q == 0) tips.add("끝을 참여 질문('너네도 그래?')으로 맺어 댓글을 유도하세요.");
+        if (st < 6) tips.add("줄바꿈으로 가독성을 높이세요.");
+        if (tips.isEmpty()) tips.add("제휴 스텔스 글로 잘 갖췄어요 — 링크·고지문은 첫 댓글로 나갑니다.");
+        return new ScoreAnalysis(scoreAffiliate(content, hashtags), components, tips);
+    }
+
     /** Hook strength of a single line, normalized to 0-100 (for ranking hook variants). */
     public static int hookScore(String line) {
         if (line == null || line.isBlank()) {

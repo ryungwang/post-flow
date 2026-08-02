@@ -61,8 +61,8 @@ export const contentApi = {
     api.post<AffiliateResponse>("/ai/affiliate/generate", req),
   hooks: (topic: string, count = 6) =>
     api.post<HookVariant[]>("/ai/hooks", { topic, count }),
-  score: (content: string, hashtags: string[], cta: string | null) =>
-    api.post<ScoreAnalysis>("/ai/score", { content, hashtags, cta }),
+  score: (content: string, hashtags: string[], cta: string | null, affiliate = false) =>
+    api.post<ScoreAnalysis>("/ai/score", { content, hashtags, cta, affiliate }),
   ideas: (count = 5, page = 0) => api.get<Idea[]>(`/ai/ideas?count=${count}&page=${page}`),
   hashtags: (topic: string, content: string) => api.post<string[]>("/ai/hashtags", { topic, content }),
 };

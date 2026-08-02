@@ -45,6 +45,10 @@ public class AiContentController {
         String content = String.valueOf(body.getOrDefault("content", ""));
         List<String> hashtags = body.get("hashtags") instanceof List<?> l ? (List<String>) l : List.of();
         String cta = body.get("cta") != null ? String.valueOf(body.get("cta")) : null;
+        // 제휴 글은 CTA·해시태그·길이 기준이 달라 별개 분해 사용.
+        if (Boolean.TRUE.equals(body.get("affiliate"))) {
+            return ContentScorer.analyzeAffiliate(content, hashtags);
+        }
         return ContentScorer.analyze(content, hashtags, cta);
     }
 
