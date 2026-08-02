@@ -34,6 +34,34 @@ public final class ContentScorer {
         return Math.max(0, Math.min(100, total));
     }
 
+    /**
+     * 제휴(쿠파스 스텔스) 글 전용 점수 — CTA·많은 해시태그·긴 길이는 '광고 티'라 일부러 안 쓰는 전략이므로
+     * 감점하지 않는다. 훅·참여 질문·구조 중심으로 보고, 짧은 길이와 0~3개 해시태그는 만점 처리.
+     * CTA(13점) 제외분(max 87)을 100점으로 환산해 일반 글과 별개 기준으로 매긴다.
+     */
+    public static int scoreAffiliate(String content, List<String> hashtags) {
+        if (content == null || content.isBlank()) {
+            return 0;
+        }
+        int raw = hook(firstLine(content)) + affiliateLength(content) + question(content)
+                + affiliateHashtags(hashtags) + structure(content); // max 35+20+12+10+10 = 87
+        return Math.max(0, Math.min(100, Math.round(raw * 100f / 87f)));
+    }
+
+    /** 제휴 스텔스 글은 짧고 담백 — 60~350자 만점, 그 밖은 부드럽게 감점. */
+    private static int affiliateLength(String content) {
+        int n = content.codePointCount(0, content.length());
+        if (n >= 60 && n <= 350) return 20;
+        if (n < 60) return Math.round(n / 60f * 20);
+        return Math.max(10, 20 - (n - 350) / 40);
+    }
+
+    /** 제휴는 해시태그 0~3개가 정석(많으면 광고 티) → 0~3 만점, 넘으면 감점. */
+    private static int affiliateHashtags(List<String> hashtags) {
+        int n = hashtags == null ? 0 : hashtags.size();
+        return n <= 3 ? 10 : Math.max(4, 10 - (n - 3) * 2);
+    }
+
     public record Component(String label, int score, int max) {
     }
 

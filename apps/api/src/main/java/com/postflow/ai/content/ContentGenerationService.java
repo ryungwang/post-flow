@@ -153,6 +153,8 @@ public class ContentGenerationService {
         List<GeneratedCard> cards = parseCards(result.text(), profile).stream()
                 .map(ContentGenerationService::stripDisclosureLines)
                 .map(c -> decorateAffiliate(c, profile, suffix))
+                // 제휴 전용 채점(CTA·많은 해시태그·긴 길이 감점 안 함) — 일반 글과 다른 기준.
+                .map(c -> c.withScore(ContentScorer.scoreAffiliate(c.content(), c.hashtags())))
                 .toList();
 
         aiGenerationRepository.save(AiGeneration.record(

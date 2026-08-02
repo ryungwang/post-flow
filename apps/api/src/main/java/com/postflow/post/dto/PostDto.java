@@ -31,7 +31,10 @@ public record PostDto(
                 post.getCta(),
                 post.getMediaUrl(),
                 post.getSocialAccountId(),
-                ContentScorer.score(post.getContent(), post.getHashtags(), post.getCta()),
+                // 제휴 글(첫 댓글=고지문 있음)은 제휴 전용 기준으로 채점 — CTA·해시태그·길이 감점 안 함.
+                post.getFirstComment() != null
+                        ? ContentScorer.scoreAffiliate(post.getContent(), post.getHashtags())
+                        : ContentScorer.score(post.getContent(), post.getHashtags(), post.getCta()),
                 post.getStatus().name(),
                 post.getScheduledAt(),
                 post.getPublishedAt(),
