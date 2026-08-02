@@ -24,10 +24,10 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 제휴용 <b>짧고 굵은 SNS 광고영상</b>(6초 · Kling 1컷) 생성 — 쇼핑쇼츠의 무거운 다단계 파이프라인과 별개의
- * 독립 린 흐름. Claude가 Kling 프롬프트를 만들고, Kling image-to-video 1컷을 뽑아(제품 이미지 기반이라
- * 제품이 안 망가진다), <b>그 클립을 그대로</b> S3에 올려 발행용 영상으로 쓴다. SNS 짧은 클립엔 자막이
- * 불필요하므로 ffmpeg 렌더·자막 오버레이는 하지 않는다(공유 prod 박스 부담 방지 — 다운로드·업로드 I/O만).
+ * 제휴용 <b>짧고 굵은 SNS 창작 광고영상</b>(6초 · Kling 1컷) 생성 — 쇼핑쇼츠의 무거운 다단계와 별개의 린 흐름.
+ * Claude가 제품 테마를 <b>재밌고 웃긴 창작 씬</b>(text-to-video)으로 각색하고(제품 자체는 화면에 안 나온다 —
+ * 제품 사진을 억지로 움직이면 뭉개지므로), Kling text2video 1컷을 뽑아 <b>그 클립을 그대로</b> S3에 올려
+ * 발행용 영상으로 쓴다. 짧은 클립이라 자막·ffmpeg 렌더는 안 한다(공유 prod 박스 보호 — 다운로드·업로드 I/O만).
  */
 @Service
 public class AffiliateVideoService {
@@ -73,22 +73,20 @@ public class AffiliateVideoService {
         if (kling == null) {
             throw new IllegalStateException("영상 생성이 설정되지 않았어요. (SHOPPING_SHORTS_VIDEO_PROVIDER=kling + Kling 키 필요)");
         }
-        if (!StringUtils.hasText(req.imageUrl())) {
-            throw new IllegalArgumentException("제품 이미지 URL이 필요해요. (네이버 검색/업로드 이미지)");
-        }
+        // 창작 씬(text-to-video)이라 제품 이미지는 필요 없다 — 제품을 보여주는 게 아니라 테마를 창작 씬으로 그린다.
         String jobId = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         Path dir = campaignDir(userId, jobId);
         try {
             Files.createDirectories(dir);
             AdCopy copy = generateAdCopy(req);
             writeStoryboard(dir, req, copy);
+            // imageUrl 없이 mode=TEXT_TO_VIDEO → Kling text2video(제품 이미지 애니메이션이 아니라 창작 씬).
             Map<String, Object> prompt = Map.of(
                     "sceneId", SCENE_ID,
                     "prompt", copy.klingPrompt(),
                     "negativePrompt", copy.negativePrompt(),
                     "duration", 5,
-                    "imageUrl", req.imageUrl(),
-                    "mode", "IMAGE_TO_VIDEO");
+                    "mode", "TEXT_TO_VIDEO");
             SceneGenerationResult result = kling.generateScenes(dir, List.of(prompt));
             String status = result.jobs().isEmpty() ? "FAILED" : result.jobs().getFirst().status();
             return new AffiliateVideoDtos.SubmitResponse(jobId, status, copy.caption());
@@ -227,38 +225,36 @@ public class AffiliateVideoService {
     /** Claude로 시네마틱 Kling 프롬프트(영문) + 훅 자막(한국어) 생성. 사실만, 텍스트/워터마크 금지. */
     private AdCopy generateAdCopy(AffiliateVideoDtos.SubmitRequest req) {
         String system = """
-                You are a viral short-form ad director for Korean SNS reels/shorts (스레드/릴스/쇼츠).
-                Your job: ONE scroll-stopping 5-6s image-to-video shot that is FUN, punchy, and impossible to
-                scroll past — NOT a slow, tasteful premium product pan (that gets ignored).
-                Return ONLY a JSON object. No markdown, no prose.
+                You are a creative director for viral, FUNNY Korean SNS short-video ads (스레드/릴스/쇼츠).
+                You INVENT one original, hilarious, scroll-stopping 5-6s SCENE that makes people laugh or go "ㅋㅋㅋ"
+                and share it. You convey a product's THEME/pain-point through a witty, absurd, or adorable creative
+                concept — the actual product NEVER appears on screen. Return ONLY a JSON object. No markdown.
                 """;
         String user = """
-                Product: %s
+                Product THEME (context only — the product itself must NOT appear on screen): %s
                 %s
-                Hook angle: %s
+                Situation/angle: %s
 
-                This is an image-to-video shot ANCHORED on the product photo — the product must stay the exact
-                same shape and color, no deformation. Within that, make it as dynamic, lively and playful as possible.
-
-                Design ONE high-energy moment that stops the thumb in the first 0.5 seconds:
-                - Bold KINETIC camera: fast punch-in / snap zoom / quick orbit / whip-pan — never a slow drift.
-                - A FUN, exaggerated visualization of THIS product's benefit — pick what fits:
-                  cooling/AC → frost bursts, cool-air streams, heat-shimmer melting away, ice crystals;
-                  cleaning → grime instantly vanishing (oddly-satisfying); kitchen → sizzling/steam pops;
-                  beauty → sparkle/glow bloom. Satisfying, snappy, a little over-the-top and funny is GOOD.
-                - Lively energy: light bursts, particles, vivid pops of color, snappy motion. Meme-adjacent
-                  playfulness is welcome as long as the product stays believable.
+                Invent ONE creative text-to-video scene that is genuinely funny, witty, or absurdly cute — the kind
+                of clip people screenshot and share. Convey the theme/pain-point through the SCENE, not the product.
+                - Go wild with the concept, and vary it every time (do NOT default to one mascot/animal):
+                  an exaggerated relatable gag, an absurd visual metaphor, an adorable animal/character reacting,
+                  a dramatic over-the-top moment — whatever is funniest for THIS theme.
+                  예) 폭염 테마 → 아이스크림처럼 줄줄 녹아내리다 시원한 바람 한 번에 확 되살아나는 사람;
+                     더위에 대자로 뻗은 고양이가 스윽 부활; 선풍기 붙잡고 오열하다 표정이 확 바뀌는 순간.
+                - Cinematic, expressive, high quality, believable. Vertical 9:16. Meme-worthy energy.
 
                 Produce JSON:
                 {
-                  "klingPrompt": "ENGLISH image-to-video prompt for THIS exact product. LEAD with the dynamic camera move and the fun benefit-visualization effect, then lighting/mood. Keep the product 100%% faithful. High-energy, scroll-stopping, playful commercial. 5-6 seconds.",
-                  "negativePrompt": "slow, boring, static, dull, sleepy, lifeless, text, captions, watermark, logo, extra fingers, deformed product, wrong product shape, color change, blurry, low quality",
-                  "caption": "짧고 강한 한국어 훅 자막 한 줄(최대 16자). 재치있고 궁금하게, 스크롤 멈추게. 과장·허위·가격 금지, 이모지 금지."
+                  "klingPrompt": "ENGLISH text-to-video prompt for the funny creative scene. Vividly describe the subject, the comedic action/turning moment, setting, facial expression, lighting, mood. Cinematic, hilarious, adorable, high quality, believable. NO on-screen text or watermark. 5-6 seconds, vertical 9:16.",
+                  "negativePrompt": "on-screen text, captions, watermark, logo, product box, deformed, extra limbs, distorted anatomy, blurry, low quality, creepy, uncanny",
+                  "caption": "짧은 한국어 훅 한 줄(최대 16자, 선택). 이모지 금지."
                 }
-                Rules: do not invent specs, prices, discounts, or fake results. Korean caption only in the 'caption' field.
+                Rules: keep it brand-safe and tasteful, no offensive content. The actual product must NOT be shown.
+                Korean caption only in the 'caption' field.
                 """.formatted(
                 req.productName(),
-                StringUtils.hasText(req.features()) ? "Features: " + req.features() : "",
+                StringUtils.hasText(req.features()) ? "Features(theme hint): " + req.features() : "",
                 StringUtils.hasText(req.hook()) ? req.hook() : req.productName());
 
         String raw = "";

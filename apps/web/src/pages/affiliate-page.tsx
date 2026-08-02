@@ -445,7 +445,6 @@ function AffiliateVideoSection({ productName, features, imageUrl, attachedUrl, o
   const [vError, setVError] = useState<string | null>(null);
 
   const start = async () => {
-    if (!imageUrl) { show("네이버에서 상품을 선택해 제품 이미지를 먼저 잡아주세요.", "error"); return; }
     if (!productName.trim()) { show("제품명을 입력해 주세요.", "error"); return; }
     setVError(null); setVideoUrl(null); setStatus("SUBMITTED"); setJobId(null);
     try {
@@ -453,7 +452,7 @@ function AffiliateVideoSection({ productName, features, imageUrl, attachedUrl, o
         productName: productName.trim(),
         features: features.trim() || undefined,
         hook: hook.trim() || undefined,
-        imageUrl,
+        imageUrl: imageUrl || undefined, // 창작 씬(text2video)이라 제품 이미지는 안 씀 — 있으면 무시됨
       });
       setJobId(r.jobId);
       setStatus(r.status);
@@ -495,12 +494,11 @@ function AffiliateVideoSection({ productName, features, imageUrl, attachedUrl, o
         <h2 className="font-semibold">AI 광고영상 <span className="text-xs font-normal text-muted-foreground">(6초 · Kling · 세로 SNS)</span></h2>
       </div>
       <p className="text-xs text-muted-foreground">
-        네이버에서 고른 제품 이미지로 <span className="font-medium">6초짜리 세로 광고영상</span>을 만들어요. SNS는 음소거 자동재생이라 큰 자막이 전달합니다.
+        제품 테마로 <span className="font-medium">6초짜리 세로 창작 광고영상</span>을 만들어요. 제품을 그대로 보여주는 게 아니라, 테마에 맞는 <span className="font-medium">재밌는 창작 씬</span>이 나옵니다(제품 이미지 불필요).
       </p>
-      {!imageUrl && <p className="text-xs text-amber-600">위 "네이버에서 상품 정보 가져오기"에서 상품을 선택하면 그 이미지로 영상을 만들 수 있어요.</p>}
       <div className="flex gap-2">
         <Input placeholder="훅 문구(선택 · 비우면 자동 · 글 카드의 '이 글로 영상'으로 채워짐)" value={hook} onChange={(e) => onHookChange(e.target.value)} />
-        <Button onClick={start} disabled={busy || !imageUrl} className="shrink-0 gap-1.5">
+        <Button onClick={start} disabled={busy || !productName.trim()} className="shrink-0 gap-1.5">
           {busy ? <Loader2 className="size-4 animate-spin" /> : <Film className="size-4" />} 영상 생성
         </Button>
       </div>
