@@ -70,14 +70,14 @@ export function AffiliatePage() {
   // 쿠팡 Extension 추출 JSON(수동 소싱 폴백)
   const [captureJson, setCaptureJson] = useState("");
 
-  // 쿠팡 소싱 패널에서 상품 선택 → 폼 자동 채움(제품명·제휴 링크·이미지·특징 힌트).
+  // 쿠팡 소싱 패널에서 상품 선택 → 폼 자동 채움. 상품을 새로 고르면 그 상품 기준으로 항상 갱신(스테일 방지).
   const pickCoupang = (p: CoupangProduct) => {
     setProductName(p.productName);
     if (p.productUrl) setAffiliateLink(p.productUrl);
     if (p.productImage) setProductImageUrl(p.productImage);
     const hints = [p.categoryName, p.isRocket ? "로켓배송" : null, p.productPrice ? `${p.productPrice.toLocaleString()}원` : null]
       .filter(Boolean).join(" · ");
-    if (hints && !productFeatures.trim()) setProductFeatures(hints);
+    setProductFeatures(hints); // 새 상품 = 새 컨텍스트 → 항상 그 상품 값으로 덮어씀
     show("쿠팡 상품을 불러왔어요 — 제품명·제휴 링크가 채워졌어요.", "success");
   };
 
