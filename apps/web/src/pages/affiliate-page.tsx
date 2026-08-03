@@ -2,7 +2,7 @@
 // 네이버 쇼핑 검색으로 실제 상품 정보를 근거로 채운다.
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookmarkPlus, Check, Copy, Film, Info, Link2, Loader2, Search, TrendingUp } from "lucide-react";
+import { BookmarkPlus, Check, Copy, Film, Info, Link2, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,14 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { contentApi, type AffiliateResponse, type GeneratedCard } from "@/lib/content-api";
-import { naverApi, type NaverProduct, type RadarProduct, type RadarResponse } from "@/lib/naver-api";
+import { CoupangSourcePanel } from "@/components/coupang-source-panel";
 import { affiliateVideoApi } from "@/lib/affiliate-video-api";
 import { postsApi } from "@/lib/posts-api";
 import { GENERATE_PLATFORMS as PLATFORMS } from "@/lib/platforms";
 import { ScoreBadge } from "@/components/score-badge";
 import { useToast } from "@/components/toast";
 import { ApiError } from "@/lib/api";
-import { coupangApi } from "@/lib/coupang-api";
+import { coupangApi, type CoupangProduct } from "@/lib/coupang-api";
 
 // 제휴 톤은 '자극적 스토리텔링'으로 고정(선택 UI 숨김). 본문은 제품 설명 없이 궁금증·몰입만.
 const AFFILIATE_TONE = "Storytelling";
@@ -61,19 +61,25 @@ export function AffiliatePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 네이버 상품 검색(제품 정보 근거 채우기)
-  const [nq, setNq] = useState("");
-  const [nResults, setNResults] = useState<NaverProduct[] | null>(null);
-  const [nLoading, setNLoading] = useState(false);
-  const [picked, setPicked] = useState<NaverProduct | null>(null);
-  // 광고영상/이미지에 쓸 제품 이미지 URL(네이버 선택 or Extension JSON에서 채움)
+  // 광고영상/이미지 참고용 제품 이미지 URL(Extension JSON or 쿠팡 소싱에서 채움)
   const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
   // 생성한 광고영상을 글에 첨부(발행 시 media로 나감). 공개 URL.
   const [attachedVideoUrl, setAttachedVideoUrl] = useState<string | null>(null);
   // 영상 훅 문구 — 글 카드의 "이 글로 영상"으로 채워짐(직접 수정도 가능).
   const [videoHook, setVideoHook] = useState("");
-  // 쿠팡 Extension 추출 JSON(실제 쿠팡 상품 데이터)
+  // 쿠팡 Extension 추출 JSON(수동 소싱 폴백)
   const [captureJson, setCaptureJson] = useState("");
+
+  // 쿠팡 소싱 패널에서 상품 선택 → 폼 자동 채움(제품명·제휴 링크·이미지·특징 힌트).
+  const pickCoupang = (p: CoupangProduct) => {
+    setProductName(p.productName);
+    if (p.productUrl) setAffiliateLink(p.productUrl);
+    if (p.productImage) setProductImageUrl(p.productImage);
+    const hints = [p.categoryName, p.isRocket ? "로켓배송" : null, p.productPrice ? `${p.productPrice.toLocaleString()}원` : null]
+      .filter(Boolean).join(" · ");
+    if (hints && !productFeatures.trim()) setProductFeatures(hints);
+    show("쿠팡 상품을 불러왔어요 — 제품명·제휴 링크가 채워졌어요.", "success");
+  };
 
   const applyCaptureJson = () => {
     try {
@@ -85,79 +91,12 @@ export function AffiliatePage() {
       if (typeof p.affiliateUrl === "string" && p.affiliateUrl.trim()) setAffiliateLink(p.affiliateUrl.trim());
       const imgs = Array.isArray(p.sourceImages) ? (p.sourceImages as unknown[]).filter((s) => typeof s === "string") as string[] : [];
       const img = imgs.find((s) => s.startsWith("https://")) ?? imgs[0] ?? null;
-      if (img) {
-        setProductImageUrl(img);
-        setPicked({
-          name: typeof p.productName === "string" ? p.productName : "쿠팡 상품",
-          brand: typeof p.brand === "string" ? p.brand : null,
-          maker: null,
-          category: typeof p.category === "string" ? p.category : null,
-          price: typeof p.price === "number" ? p.price : null,
-          image: img,
-          link: typeof p.productUrl === "string" ? p.productUrl : null,
-          mallName: "쿠팡",
-          productId: null,
-        });
-      }
+      if (img) setProductImageUrl(img);
       setCaptureJson("");
-      show("쿠팡 Extension JSON 적용 완료 — 제품명·특징·파트너스 링크·이미지를 채웠어요.", "success");
+      show("쿠팡 Extension JSON 적용 완료 — 제품명·특징·파트너스 링크를 채웠어요.", "success");
     } catch {
       show("추출 JSON 형식이 올바르지 않아요.", "error");
     }
-  };
-
-  const searchNaver = async () => {
-    if (!nq.trim()) return;
-    setNLoading(true);
-    try {
-      setNResults(await naverApi.searchShop(nq.trim(), 10));
-    } catch (e) {
-      show(e instanceof ApiError ? e.message : "상품 검색에 실패했어요.", "error");
-    } finally {
-      setNLoading(false);
-    }
-  };
-
-  // 상품 레이더 — 카테고리별 급상승 후보(네이버 DataLab 검색+쇼핑 점수)
-  const [radarCat, setRadarCat] = useState("living");
-  const [radarWindow, setRadarWindow] = useState<7 | 30>(7);
-  const [radar, setRadar] = useState<RadarResponse | null>(null);
-  const [radarLoading, setRadarLoading] = useState(false);
-
-  const loadRadar = async (cat: string, win: 7 | 30) => {
-    setRadarCat(cat);
-    setRadarWindow(win);
-    setRadarLoading(true);
-    try {
-      setRadar(await naverApi.radar(cat, win));
-    } catch (e) {
-      show(e instanceof ApiError ? e.message : "레이더 조회에 실패했어요.", "error");
-    } finally {
-      setRadarLoading(false);
-    }
-  };
-  useEffect(() => { loadRadar("living", 7); }, []); // 최초 1회(카테고리 목록·후보 로드)
-
-  // 후보 키워드로 바로 상품 검색(제품 정보 채우기로 연결)
-  const searchByKeyword = (kw: string) => {
-    setNq(kw);
-    setNResults(null);
-    setNLoading(true);
-    naverApi.searchShop(kw, 10)
-      .then((r) => setNResults(r))
-      .catch((e) => show(e instanceof ApiError ? e.message : "상품 검색에 실패했어요.", "error"))
-      .finally(() => setNLoading(false));
-  };
-
-  const pickProduct = (p: NaverProduct) => {
-    setProductName(p.name);
-    setPicked(p);
-    if (p.image) setProductImageUrl(p.image);
-    setNResults(null);
-    // 브랜드·카테고리를 근거 힌트로(사용자가 이미 적은 특징은 보존, 가격은 넣지 않음).
-    const hint = [p.brand && `브랜드 ${p.brand}`, p.maker && p.maker !== p.brand && `제조사 ${p.maker}`, p.category && `카테고리 ${p.category}`]
-      .filter(Boolean).join(" · ");
-    if (hint && !productFeatures.trim()) setProductFeatures(hint);
   };
 
   const generate = async () => {
@@ -210,88 +149,10 @@ export function AffiliatePage() {
       </div>
 
       <Card className="space-y-4 p-5">
-        {/* 상품 레이더 — 카테고리별 급상승 후보(검색+쇼핑 점수). 접이식 */}
-        <details className="rounded-lg border border-dashed p-3">
-          <summary className="flex cursor-pointer items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-sm font-medium"><TrendingUp className="size-3.5" /> 상품 레이더 <span className="font-normal text-muted-foreground">(네이버 급상승 · 발굴용)</span></span>
-          </summary>
-          <div className="mt-2 flex justify-end">
-            <div className="flex overflow-hidden rounded-md border text-xs">
-              {([7, 30] as const).map((w) => (
-                <button key={w} type="button" onClick={() => loadRadar(radarCat, w)} className={`px-2.5 py-1 ${radarWindow === w ? "bg-foreground text-background" : "hover:bg-muted/50"}`}>
-                  최근 {w}일
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {(radar?.categories ?? []).map((c) => (
-              <Button key={c.key} variant={radarCat === c.key ? "default" : "outline"} size="sm" onClick={() => loadRadar(c.key, radarWindow)}>
-                {c.label}
-              </Button>
-            ))}
-          </div>
-          {radar && !radar.dataLab && (
-            <p className="text-xs text-amber-600">네이버 앱에 <span className="font-medium">데이터랩(검색어트렌드·쇼핑인사이트)</span> API 사용 설정이 필요해요. 켜면 상승률 점수가 채워집니다.</p>
-          )}
-          {radarLoading && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> 레이더 분석 중…</p>}
-          {radar && !radarLoading && (
-            <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
-              {radar.products.map((p) => (
-                <RadarRow key={p.name} p={p} onSearch={() => searchByKeyword(p.name)} />
-              ))}
-            </ul>
-          )}
-          <p className="mt-2 text-[11px] text-muted-foreground">점수 = 검색 추이·쇼핑 상승률·계절·카테고리 적합(확인 불가 항목은 제외하고 정규화). 네이버 수요 지표(쿠팡 데이터 아님) — 발굴용 참고. 상품을 누르면 그 키워드로 검색해요.</p>
-        </details>
+        {/* 쿠팡 Open API 소싱 — 골드박스·베스트·검색으로 실제 팔리는 상품을 바로(제휴 링크 자동). */}
+        <CoupangSourcePanel onPick={pickCoupang} />
 
-        {/* 네이버 상품 검색 — 실제 상품 정보로 근거 자동 채움 */}
-        <div className="space-y-2 rounded-lg border border-dashed p-3">
-          <Label className="flex items-center gap-1.5"><Search className="size-3.5" /> 네이버에서 상품 정보 가져오기 <span className="font-normal text-muted-foreground">(선택 · 정확도↑)</span></Label>
-          <div className="flex gap-2">
-            <Input
-              placeholder="상품 키워드 검색 (예: 무선 핸디 청소기)"
-              value={nq}
-              onChange={(e) => setNq(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && searchNaver()}
-            />
-            <Button variant="outline" onClick={searchNaver} disabled={nLoading || !nq.trim()} className="shrink-0 gap-1.5">
-              {nLoading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} 검색
-            </Button>
-          </div>
-          {nResults && nResults.length === 0 && <p className="text-xs text-muted-foreground">검색 결과가 없어요.</p>}
-          {nResults && nResults.length > 0 && (
-            <ul className="max-h-72 space-y-1 overflow-y-auto">
-              {nResults.map((p, i) => (
-                <li key={i}>
-                  <button type="button" onClick={() => pickProduct(p)} className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/50">
-                    {p.image && <img src={p.image} alt="" className="size-11 shrink-0 rounded object-cover" />}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{p.name}</div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {[p.brand, p.category].filter(Boolean).join(" · ")}
-                        {p.price != null && <span> · 참고가 {p.price.toLocaleString()}원</span>}
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {picked && (
-            <div className="flex items-center gap-3 rounded-md bg-muted/40 p-2 text-xs">
-              {picked.image && <img src={picked.image} alt="" className="size-10 shrink-0 rounded object-cover" />}
-              <div className="min-w-0 flex-1">
-                <span className="font-medium">선택됨:</span> {picked.name}
-                {picked.price != null && <span className="text-muted-foreground"> · 참고가 {picked.price.toLocaleString()}원(네이버)</span>}
-                <div className="text-muted-foreground">가격·이미지는 네이버 기준 참고용 — 쿠팡과 다를 수 있어 본문엔 자동 삽입되지 않아요.</div>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>해제</Button>
-            </div>
-          )}
-        </div>
-
-        {/* 쿠팡 Extension 추출 JSON — 실제 쿠팡 상품 데이터로 채움(네이버 프록시보다 정확) */}
+        {/* 쿠팡 Extension 추출 JSON — 수동 소싱 폴백(상품 상세페이지에서 추출) */}
         <details className="rounded-lg border border-dashed p-3">
           <summary className="cursor-pointer text-sm font-medium">쿠팡 Extension 추출 JSON 가져오기 <span className="font-normal text-muted-foreground">(실제 쿠팡 상품 · 선택)</span></summary>
           <div className="mt-2 space-y-2">
@@ -556,29 +417,6 @@ function AffiliateVideoSection({ productName, features, imageUrl, attachedUrl, o
 }
 
 /** 레이더 후보 한 줄 — 점수 + 검색·쇼핑 상승률·계절(확인 불가는 그대로 표기). 누르면 그 키워드로 상품 검색. */
-function RadarRow({ p, onSearch }: { p: RadarProduct; onSearch: () => void }) {
-  const find = (label: string) => p.breakdown.find((b) => b.label === label);
-  const search = find("검색 추이 상승률");
-  const shop = find("쇼핑 검색 상승률");
-  const season = find("계절·시기 적합성");
-  return (
-    <li>
-      <button type="button" onClick={onSearch} className="flex w-full items-center gap-3 rounded-md border p-2 text-left hover:bg-muted/50">
-        <ScoreBadge score={p.score} compact />
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium">{p.name}</div>
-          <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-            <span className={search?.status === "available" ? "text-emerald-600" : ""}>검색 {search?.status === "available" ? search.note : "확인 불가"}</span>
-            <span className={shop?.status === "available" ? "text-emerald-600" : ""}>쇼핑 {shop?.status === "available" ? shop.note.replace("네이버쇼핑 ", "") : "확인 불가"}</span>
-            {season?.status === "available" && <span>· {season.note}</span>}
-          </div>
-        </div>
-        <Search className="size-4 shrink-0 text-muted-foreground" />
-      </button>
-    </li>
-  );
-}
-
 /** subId가 붙은 최종 링크 안내 — 특히 링크를 본문에 못 넣는 플랫폼(IG)에선 프로필 링크로 안내. */
 function LinkBanner({ res, platformLabel }: { res: AffiliateResponse; platformLabel: string }) {
   const [copied, setCopied] = useState(false);

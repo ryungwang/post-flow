@@ -185,9 +185,8 @@ instagram:
   frontend-redirect-url: ${INSTAGRAM_FRONTEND_REDIRECT_URL:http://localhost:5173/settings/threads?instagram=connected}
 
 naver:
-  # 네이버 오픈API(검색) — 제휴 콘텐츠 작성 시 실제 상품 정보(제목·브랜드·카테고리·가격·이미지)를 근거로 끌어옴.
-  # 네이버 개발자센터(developers.naver.com) > 애플리케이션 등록 > "검색" API 사용 설정 후 발급.
-  # 미설정 시 상품 검색만 비활성(다른 기능 무관).
+  # 네이버 오픈API(검색) — 쇼핑쇼츠 소재 발굴(상품 레이더·검색)용. 제휴(SNS)는 쿠팡 Open API로 이동함.
+  # 미설정 시 쇼핑쇼츠 상품 검색만 비활성(다른 기능 무관).
   client-id: ${NAVER_CLIENT_ID:}
   client-secret: ${NAVER_CLIENT_SECRET:}
   search-base-url: https://openapi.naver.com
