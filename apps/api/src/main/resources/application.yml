@@ -191,3 +191,10 @@ naver:
   client-id: ${NAVER_CLIENT_ID:}
   client-secret: ${NAVER_CLIENT_SECRET:}
   search-base-url: https://openapi.naver.com
+
+coupang:
+  # 쿠팡 파트너스 Open API — 상품 URL을 제휴 딥링크로 자동 변환(추후 상품검색·골드박스도).
+  # 파트너스 콘솔 > API 관리에서 ACCESS/SECRET 키 발급 후 운영 .env로 주입. 미설정 시 딥링크만 비활성.
+  access-key: ${COUPANG_ACCESS_KEY:}
+  secret-key: ${COUPANG_SECRET_KEY:}
+  base-url: ${COUPANG_BASE_URL:https://api-gateway.coupang.com}

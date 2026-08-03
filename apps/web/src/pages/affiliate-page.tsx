@@ -18,6 +18,7 @@ import { GENERATE_PLATFORMS as PLATFORMS } from "@/lib/platforms";
 import { ScoreBadge } from "@/components/score-badge";
 import { useToast } from "@/components/toast";
 import { ApiError } from "@/lib/api";
+import { coupangApi } from "@/lib/coupang-api";
 
 // 제휴 톤은 '자극적 스토리텔링'으로 고정(선택 UI 숨김). 본문은 제품 설명 없이 궁금증·몰입만.
 const AFFILIATE_TONE = "Storytelling";
@@ -29,6 +30,22 @@ export function AffiliatePage() {
   const { show } = useToast();
   const [productName, setProductName] = useState("");
   const [affiliateLink, setAffiliateLink] = useState("");
+  const [coupangUrl, setCoupangUrl] = useState("");
+  const [deeplinking, setDeeplinking] = useState(false);
+  const genDeeplink = async () => {
+    const u = coupangUrl.trim();
+    if (!u) { show("쿠팡 상품 URL을 붙여넣어 주세요.", "error"); return; }
+    setDeeplinking(true);
+    try {
+      const r = await coupangApi.deeplink(u);
+      setAffiliateLink(r.shortUrl);
+      show("제휴 딥링크를 자동 생성했어요.", "success");
+    } catch (e) {
+      show(e instanceof ApiError ? e.message : "딥링크 생성에 실패했어요.", "error");
+    } finally {
+      setDeeplinking(false);
+    }
+  };
   const [subIdPrefix, setSubIdPrefix] = useState("");
   const [productFeatures, setProductFeatures] = useState("");
   const [platform, setPlatform] = useState("THREADS");
@@ -300,6 +317,19 @@ export function AffiliatePage() {
           <div className="space-y-1.5">
             <Label>내 쿠팡파트너스 링크 *</Label>
             <Input placeholder="https://link.coupang.com/a/..." value={affiliateLink} autoCapitalize="none" onChange={(e) => setAffiliateLink(e.target.value)} />
+            {/* 쿠팡 Open API 딥링크 자동생성 — 상품 URL만 붙여넣으면 위 제휴 링크가 채워짐(수동 링크 생성 불필요). */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="또는 쿠팡 상품 URL 붙여넣기 → 링크 자동생성"
+                value={coupangUrl}
+                autoCapitalize="none"
+                onChange={(e) => setCoupangUrl(e.target.value)}
+                className="text-xs"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={genDeeplink} disabled={deeplinking || !coupangUrl.trim()} className="shrink-0 gap-1.5">
+                {deeplinking ? <Loader2 className="size-3.5 animate-spin" /> : <Link2 className="size-3.5" />} 링크 생성
+              </Button>
+            </div>
           </div>
         </div>
 
